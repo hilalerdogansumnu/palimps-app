@@ -72,5 +72,16 @@
 
 ## Deployment
 
-- [ ] Checkpoint oluştur
+- [x] Checkpoint oluştur (v1.0 - 86ee4179)
 - [ ] Kullanıcıya sunum
+
+## Kullanıcı Giriş/Çıkış Sistemi
+
+- [x] Giriş ekranı tasarımı ve OAuth butonları (Google, Apple)
+- [x] Kullanıcı profil ekranı (ad, email, avatar, istatistikler)
+- [x] Çıkış yapma butonu ve onay dialogu
+- [x] Kimlik doğrulama koruması (AuthGuard)
+- [x] Giriş yapmamış kullanıcıları login ekranına yönlendirme
+- [x] Giriş sonrası ana ekrana otomatik yönlendirme
+- [x] Loading durumu ve hata yönetimi
+- [x] Profil sekmesi tab bar'a eklendi
