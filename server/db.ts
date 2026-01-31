@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, books, readingMoments, InsertBook, InsertReadingMoment } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,141 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ============================================
+// BOOKS
+// ============================================
+
+/**
+ * Kullanıcının tüm kitaplarını listele
+ */
+export async function getUserBooks(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(books)
+    .where(eq(books.userId, userId))
+    .orderBy(desc(books.createdAt));
+}
+
+/**
+ * Kitap ID'sine göre kitap getir
+ */
+export async function getBookById(bookId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select().from(books).where(eq(books.id, bookId)).limit(1);
+  return result[0] || null;
+}
+
+/**
+ * Yeni kitap oluştur
+ */
+export async function createBook(data: InsertBook) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(books).values(data);
+  return Number(result[0].insertId);
+}
+
+/**
+ * Kitap güncelle
+ */
+export async function updateBook(bookId: number, data: Partial<InsertBook>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(books).set(data).where(eq(books.id, bookId));
+}
+
+/**
+ * Kitap sil
+ */
+export async function deleteBook(bookId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Önce kitaba ait tüm okuma anlarını sil
+  await db.delete(readingMoments).where(eq(readingMoments.bookId, bookId));
+  
+  // Sonra kitabı sil
+  await db.delete(books).where(eq(books.id, bookId));
+}
+
+// ============================================
+// READING MOMENTS
+// ============================================
+
+/**
+ * Kitaba ait tüm okuma anlarını listele (zaman çizgisi)
+ */
+export async function getReadingMomentsByBook(bookId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db
+    .select()
+    .from(readingMoments)
+    .where(eq(readingMoments.bookId, bookId))
+    .orderBy(desc(readingMoments.createdAt));
+}
+
+/**
+ * Okuma anı ID'sine göre okuma anı getir
+ */
+export async function getReadingMomentById(momentId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select().from(readingMoments).where(eq(readingMoments.id, momentId)).limit(1);
+  return result[0] || null;
+}
+
+/**
+ * Yeni okuma anı oluştur
+ */
+export async function createReadingMoment(data: InsertReadingMoment) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(readingMoments).values(data);
+  return Number(result[0].insertId);
+}
+
+/**
+ * Okuma anı güncelle
+ */
+export async function updateReadingMoment(momentId: number, data: Partial<InsertReadingMoment>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(readingMoments).set(data).where(eq(readingMoments.id, momentId));
+}
+
+/**
+ * Okuma anı sil
+ */
+export async function deleteReadingMoment(momentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(readingMoments).where(eq(readingMoments.id, momentId));
+}
+
+/**
+ * Kitaba ait okuma anı sayısını getir
+ */
+export async function getReadingMomentCount(bookId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const moments = await db
+    .select()
+    .from(readingMoments)
+    .where(eq(readingMoments.bookId, bookId));
+
+  return moments.length;
+}

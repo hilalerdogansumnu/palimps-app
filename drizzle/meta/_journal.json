@@ -8,6 +8,13 @@
       "when": 1763372440610,
       "tag": "0000_elite_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1769833421717,
+      "tag": "0001_mighty_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }

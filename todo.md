@@ -1,0 +1,76 @@
+# Okuma Hafızası MVP - TODO Listesi
+
+## Backend ve Veritabanı
+
+- [x] Veritabanı şeması oluştur (books, reading_moments, users tabloları)
+- [x] Kitap CRUD API'leri (create, read, list)
+- [x] Okuma Anı CRUD API'leri (create, read, list by book)
+- [x] Fotoğraf yükleme API'si (S3 storage)
+- [x] OCR API entegrasyonu (backend LLM ile)
+- [x] Kullanıcı kimlik doğrulama (OAuth)
+
+## Mobil Uygulama - Temel Yapı
+
+- [x] Tab bar navigasyonu (Ana Ekran)
+- [x] Tema yapılandırması (açık/koyu mod)
+- [x] API client (tRPC) yapılandırması
+
+## Ana Ekran (Kitaplarım)
+
+- [x] Kitap listesi ekranı
+- [x] Kitap kartı bileşeni (kapak, ad, yazar, okuma anı sayısı)
+- [x] Boş durum ekranı ("Henüz kitap eklemediniz")
+- [x] Yeni kitap ekle butonu (+ ikonu)
+- [x] Login ekranı (OAuth)
+
+## Yeni Kitap Ekle Ekranı
+
+- [x] Kitap ekle formu (ad, yazar, kapak fotoğrafı)
+- [x] Fotoğraf seçme/çekme işlevi (kamera + galeri)
+- [x] Form validasyonu (kitap adı zorunlu)
+- [x] Kaydet butonu ve API entegrasyonu
+- [x] Başarılı kayıt sonrası ana ekrana dönüş
+
+## Kitap Detay Ekranı
+
+- [x] Kitap başlık ve bilgi alanı
+- [x] Okuma anları listesi (zaman çizgisi)
+- [x] Okuma anı kartı bileşeni (thumbnail, OCR özeti, not, tarih)
+- [x] Boş durum ekranı ("Henüz okuma anı eklemediniz")
+- [x] Yeni okuma anı ekle butonu
+
+## Yeni Okuma Anı Ekle Ekranı
+
+- [x] Fotoğraf çekme/seçme arayüzü
+- [x] OCR işlemi (loading göstergesi)
+- [x] OCR sonucu gösterme
+- [x] Not ekleme alanı (opsiyonel)
+- [x] Kaydet butonu ve API entegrasyonu
+- [x] Hata yönetimi (OCR başarısız, fotoğraf yüklenemedi)
+
+## Okuma Anı Detay Ekranı
+
+- [x] Tam ekran fotoğraf görüntüleme
+- [x] OCR metni tam gösterim
+- [x] Kullanıcı notu gösterim
+- [x] Zaman damgası gösterim
+
+## Veri Senkronizasyonu
+
+- [x] Cloud-based veri saklama (PostgreSQL + S3)
+- [x] API üzerinden veri senkronizasyonu
+- [x] Kullanıcı kimlik doğrulama ile veri güvenl## Uygulama Logosu ve Branding
+
+- [x] Uygulama logosu tasarımı (AI ile)
+- [x] Logo dosyalarını proje klasörlerine ekleme
+- [x] app.config.ts güncellemesi (uygulama adı, logo URL)
+#### Test ve İyileştirme
+
+- [x] API router yapısını test et
+- [x] TypeScript tip kontrolleri
+- [x] Tüm ekranların çalıştığını doğrulai
+
+## Deployment
+
+- [ ] Checkpoint oluştur
+- [ ] Kullanıcıya sunum
