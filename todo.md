@@ -73,7 +73,8 @@
 ## Deployment
 
 - [x] Checkpoint oluştur (v1.0 - 86ee4179)
-- [ ] Kullanıcıya sunum
+- [x] Checkpoint oluştur (v1.1 - 16b7b2bb - Giriş/Çıkış Sistemi)
+- [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
 
@@ -85,3 +86,11 @@
 - [x] Giriş sonrası ana ekrana otomatik yönlendirme
 - [x] Loading durumu ve hata yönetimi
 - [x] Profil sekmesi tab bar'a eklendi
+
+## OAuth Callback Sorunu
+
+- [x] OAuth login endpoint'lerini ekle (/auth/login/:provider)
+- [x] OAuth callback handler'ını düzelt
+- [x] Deep linking yapılandırmasını iyileştir
+- [x] Giriş sonrası otomatik yönlendirmeyi test et
+- [x] Session cookie'nin doğru şekilde kaydedildiğini doğrula

@@ -22,14 +22,26 @@ export default function LoginScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
       const authUrl = `${apiUrl}/auth/login/${authProvider}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
       
+      console.log("[Login] Starting OAuth flow...");
+      console.log("[Login] Redirect URL:", redirectUrl);
+      console.log("[Login] Auth URL:", authUrl);
+      
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
       
+      console.log("[Login] OAuth result:", result);
+      
       if (result.type === "success") {
-        // Başarılı giriş sonrası ana ekrana yönlendir
-        router.replace("/");
+        // OAuth callback handler will handle the redirect
+        console.log("[Login] OAuth success, waiting for callback handler...");
+        // Give callback handler time to process
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else if (result.type === "cancel") {
+        console.log("[Login] User cancelled OAuth flow");
+      } else {
+        console.log("[Login] OAuth flow dismissed");
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("[Login] Login error:", error);
     } finally {
       setIsLoading(false);
       setProvider(null);

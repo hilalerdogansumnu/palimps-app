@@ -62,6 +62,38 @@ function buildUserResponse(
 }
 
 export function registerOAuthRoutes(app: Express) {
+  // Login endpoint - redirects to Manus OAuth
+  app.get("/auth/login/:provider", async (req: Request, res: Response) => {
+    const provider = req.params.provider;
+    const redirectUri = getQueryParam(req, "redirect_uri");
+
+    if (!redirectUri) {
+      res.status(400).json({ error: "redirect_uri is required" });
+      return;
+    }
+
+    if (provider !== "google" && provider !== "apple") {
+      res.status(400).json({ error: "Invalid provider. Must be 'google' or 'apple'" });
+      return;
+    }
+
+    try {
+      // Manus OAuth base URL
+      const oauthBaseUrl = process.env.MANUS_OAUTH_URL || "https://oauth.manus.space";
+      
+      // Build OAuth URL with provider and callback
+      const callbackUrl = `${req.protocol}://${req.get("host")}/api/oauth/callback`;
+      const loginUrl = `${oauthBaseUrl}/authorize?provider=${provider}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(redirectUri)}`;
+
+      console.log("[OAuth] Redirecting to login URL:", loginUrl);
+      // Redirect user to Manus OAuth
+      res.redirect(302, loginUrl);
+    } catch (error) {
+      console.error("[OAuth] Login URL generation failed", error);
+      res.status(500).json({ error: "Failed to generate login URL" });
+    }
+  });
+
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
