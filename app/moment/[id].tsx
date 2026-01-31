@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, ActivityIndicator, Image, Pressable } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, Image, Pressable, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -12,6 +12,35 @@ export default function MomentDetailScreen() {
   const momentId = parseInt(id, 10);
 
   const { data: moment, isLoading } = trpc.readingMoments.getById.useQuery({ id: momentId });
+  const deleteMutation = trpc.readingMoments.delete.useMutation();
+
+  const handleDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Okuma Anını Sil",
+      "Bu okuma anını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      [
+        {
+          text: "İptal",
+          style: "cancel",
+        },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteMutation.mutateAsync({ id: momentId });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.back();
+            } catch (error) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Hata", "Okuma anı silinirken bir hata oluştu.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (isLoading) {
     return (
@@ -94,8 +123,22 @@ export default function MomentDetailScreen() {
         )}
 
         {/* Zaman Damgası */}
-        <View className="px-6 pb-8">
+        <View className="px-6 mb-4">
           <Text className="text-xs text-muted text-center">{formattedDate}</Text>
+        </View>
+
+        {/* Silme Butonu */}
+        <View className="px-6 pb-8">
+          <Pressable
+            onPress={handleDelete}
+            disabled={deleteMutation.isPending}
+            className="bg-error/10 border border-error/30 rounded-xl py-4 items-center"
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text className="text-error font-semibold text-base">
+              {deleteMutation.isPending ? "Siliniyor..." : "Okuma Anını Sil"}
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </ScreenContainer>

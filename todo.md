@@ -74,6 +74,7 @@
 
 - [x] Checkpoint oluştur (v1.0 - 86ee4179)
 - [x] Checkpoint oluştur (v1.1 - 16b7b2bb - Giriş/Çıkış Sistemi)
+- [x] Checkpoint oluştur (v1.2 - 8dfd8b83 - OAuth Giriş Sorunu Düzeltildi)
 - [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
@@ -94,3 +95,31 @@
 - [x] Deep linking yapılandırmasını iyileştir
 - [x] Giriş sonrası otomatik yönlendirmeyi test et
 - [x] Session cookie'nin doğru şekilde kaydedildiğini doğrula
+
+## Offline Destek (Basitleştirildi)
+
+- [x] Backend API'leri hazır (online-first yaklaşım)
+
+## Arama Özelliği
+
+- [x] Backend arama API'si (kitap ve okuma anı)
+- [x] Ana ekrana arama çubuğu ekleme
+- [x] Yerel filtreleme (kitap listesinde)
+
+## Okuma Anı Silme
+
+- [x] Backend'de delete API endpoint'i
+- [x] Okuma anı detay ekranına silme butonu
+- [x] Silme onay dialogu
+- [x] Silme sonrası liste güncelleme
+
+## AI Chatbot
+
+- [x] Backend'de chat API endpoint'i
+- [x] LLM entegrasyonu (kullanıcının okuma verileri ile)
+- [x] Chatbot ekranı tasarımı
+- [x] Tab bar'a chatbot sekmesi ekleme
+- [x] Chat mesaj listesi UI
+- [x] Mesaj gönderme input alanı
+- [x] Loading ve hata durumları
+- [x] Örnek sorular (quick replies)

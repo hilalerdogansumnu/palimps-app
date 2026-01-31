@@ -229,6 +229,100 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ============================================
+  // SEARCH
+  // ============================================
+  search: router({
+    /**
+     * Kitap ve okuma anlarında arama yap
+     */
+    all: protectedProcedure
+      .input(z.object({ query: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const [books, moments] = await Promise.all([
+          db.searchBooks(ctx.user.id, input.query),
+          db.searchReadingMoments(ctx.user.id, input.query),
+        ]);
+        
+        return {
+          books,
+          moments,
+        };
+      }),
+  }),
+
+  // ============================================
+  // AI CHATBOT
+  // ============================================
+  chat: router({
+    /**
+     * Kullanıcının okuma verisi ile sohbet et
+     */
+    send: protectedProcedure
+      .input(
+        z.object({
+          message: z.string().min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Kullanıcının tüm kitaplarını ve okuma anlarını al
+        const books = await db.getUserBooks(ctx.user.id);
+        const allMoments = await Promise.all(
+          books.map((book) => db.getReadingMomentsByBook(book.id))
+        );
+        const moments = allMoments.flat();
+
+        // Kullanıcı verilerini context olarak hazırla
+        const userContext = `
+Kullanıcının Okuma Verileri:
+
+Kitaplar (${books.length} adet):
+${books.map((b) => `- "${b.title}" ${b.author ? `by ${b.author}` : ""}`).join("\n")}
+
+Okuma Anları (${moments.length} adet):
+${moments
+  .slice(0, 50) // Son 50 okuma anı
+  .map((m) => {
+    const book = books.find((b) => b.id === m.bookId);
+    return `
+[Kitap: ${book?.title || "Bilinmeyen"}]
+OCR Metni: ${m.ocrText || "Yok"}
+Kullanıcı Notu: ${m.userNote || "Yok"}
+Tarih: ${m.createdAt}
+`;
+  })
+  .join("\n---\n")}
+`;
+
+        // LLM'e gönder
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`,
+            },
+            {
+              role: "user",
+              content: input.message,
+            },
+          ],
+        });
+
+        const firstChoice = response.choices[0];
+        const reply =
+          firstChoice && firstChoice.message
+            ? typeof firstChoice.message.content === "string"
+              ? firstChoice.message.content
+              : JSON.stringify(firstChoice.message.content)
+            : "Üzülürüm, bir hata oluştu.";
+
+        return {
+          reply,
+          timestamp: new Date().toISOString(),
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

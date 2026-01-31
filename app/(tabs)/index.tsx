@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Pressable } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Pressable, TextInput } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useState } from "react";
 
 type BookWithCount = {
   id: number;
@@ -20,6 +21,7 @@ type BookWithCount = {
 export default function HomeScreen() {
   const colors = useColors();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -60,6 +62,22 @@ export default function HomeScreen() {
     );
   }
 
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}` as any);
+    }
+  };
+
+  // Arama varsa filtreleme yap
+  const filteredBooks = books?.filter((book) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const titleMatch = book.title.toLowerCase().includes(query);
+    const authorMatch = book.author?.toLowerCase().includes(query) ?? false;
+    return titleMatch || authorMatch;
+  });
+
   if (!books || books.length === 0) {
     return (
       <ScreenContainer className="p-6">
@@ -99,7 +117,7 @@ export default function HomeScreen() {
 
   return (
     <ScreenContainer className="p-6">
-      <View className="flex-row items-center justify-between mb-6">
+      <View className="flex-row items-center justify-between mb-4">
         <Text className="text-3xl font-bold text-foreground">Kitaplarım</Text>
         <Pressable
           onPress={handleAddBook}
@@ -112,8 +130,22 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      {/* Arama Çubuğu */}
+      <View className="mb-4">
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Kitap veya yazar ara..."
+          placeholderTextColor={colors.muted}
+          returnKeyType="search"
+          onSubmitEditing={handleSearch}
+          className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground"
+          style={{ color: colors.foreground }}
+        />
+      </View>
+
       <FlatList
-        data={books}
+        data={filteredBooks}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <Pressable

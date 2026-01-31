@@ -227,3 +227,56 @@ export async function getReadingMomentCount(bookId: number): Promise<number> {
 
   return moments.length;
 }
+
+// ============================================
+// SEARCH
+// ============================================
+
+/**
+ * Kitaplarda arama yap (başlık ve yazar)
+ */
+export async function searchBooks(userId: number, query: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const allBooks = await db
+    .select()
+    .from(books)
+    .where(eq(books.userId, userId));
+
+  const lowerQuery = query.toLowerCase();
+  
+  return allBooks.filter((book) => {
+    const titleMatch = book.title.toLowerCase().includes(lowerQuery);
+    const authorMatch = book.author?.toLowerCase().includes(lowerQuery) ?? false;
+    return titleMatch || authorMatch;
+  });
+}
+
+/**
+ * Okuma anlarında arama yap (OCR metni ve kullanıcı notu)
+ */
+export async function searchReadingMoments(userId: number, query: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Önce kullanıcının kitaplarını al
+  const userBooks = await getUserBooks(userId);
+  const bookIds = userBooks.map((b) => b.id);
+
+  if (bookIds.length === 0) return [];
+
+  // Tüm okuma anlarını al
+  const allMoments = await Promise.all(
+    bookIds.map((bookId) => getReadingMomentsByBook(bookId))
+  );
+  const moments = allMoments.flat();
+
+  const lowerQuery = query.toLowerCase();
+  
+  return moments.filter((moment) => {
+    const ocrMatch = moment.ocrText?.toLowerCase().includes(lowerQuery) ?? false;
+    const noteMatch = moment.userNote?.toLowerCase().includes(lowerQuery) ?? false;
+    return ocrMatch || noteMatch;
+  });
+}
