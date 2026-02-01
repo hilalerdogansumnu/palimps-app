@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "PALIMPS",
+    "tagline": "Personal Reading Memory System"
+  },
+  "auth": {
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "privacyNote": "Your reading data stays private",
+    "loggingIn": "Signing in...",
+    "signOut": "Sign Out",
+    "signOutConfirm": "Are you sure you want to sign out?"
+  },
+  "home": {
+    "title": "Library",
+    "emptyState": "No books yet",
+    "emptyStateAction": "Add your first book",
+    "addBook": "Add Book",
+    "search": "Search books...",
+    "moments": "{{count}} moment",
+    "moments_plural": "{{count}} moments"
+  },
+  "bookDetail": {
+    "noMomentsYet": "No moments yet",
+    "addFirstMoment": "Add your first moment",
+    "back": "Back"
+  },
+  "addBook": {
+    "title": "Add Book",
+    "bookTitle": "Book Title",
+    "author": "Author",
+    "coverPhoto": "Cover Photo",
+    "takePhoto": "Take Photo",
+    "chooseFromLibrary": "Choose from Library",
+    "save": "Save",
+    "cancel": "Cancel",
+    "bookTitleRequired": "Book title is required"
+  },
+  "addMoment": {
+    "title": "New Moment",
+    "takePhoto": "Take Photo",
+    "chooseFromLibrary": "Choose from Library",
+    "ocrProcessing": "Reading text...",
+    "ocrText": "Extracted Text",
+    "yourNote": "Your Note (optional)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "photoRequired": "Photo is required"
+  },
+  "momentDetail": {
+    "ocrText": "Extracted Text",
+    "yourNote": "Your Note",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete this moment?",
+    "deleteSuccess": "Moment deleted"
+  },
+  "profile": {
+    "title": "Profile",
+    "stats": "Statistics",
+    "totalBooks": "Books",
+    "totalMoments": "Moments",
+    "language": "Language",
+    "settings": "Settings",
+    "about": "About PALIMPS"
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Ask about your reading...",
+    "send": "Send",
+    "exampleQuestions": "Example Questions",
+    "example1": "What books have I read recently?",
+    "example2": "Show me my notes about...",
+    "example3": "Summarize my reading on..."
+  },
+  "languages": {
+    "en": "English",
+    "tr": "Türkçe",
+    "de": "Deutsch",
+    "es": "Español"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No"
+  }
+}

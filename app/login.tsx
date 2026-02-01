@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -11,6 +12,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
 
@@ -41,10 +43,10 @@ export default function LoginScreen() {
       {/* Logo and tagline (quiet, minimal) */}
       <View className="items-center mb-16">
         <Text className="text-lg text-foreground mb-2 font-medium tracking-wide">
-          PALIMPS
+          {t("app.name")}
         </Text>
         <Text className="text-sm text-muted text-center">
-          Personal Reading Memory System
+          {t("app.tagline")}
         </Text>
       </View>
 
@@ -71,7 +73,7 @@ export default function LoginScreen() {
             <ActivityIndicator size="small" color={colors.foreground} />
           ) : (
             <Text style={{ fontSize: 15, color: colors.foreground }}>
-              Continue with Google
+              {t("auth.continueWithGoogle")}
             </Text>
           )}
         </Pressable>
@@ -97,7 +99,7 @@ export default function LoginScreen() {
             <ActivityIndicator size="small" color={colors.foreground} />
           ) : (
             <Text style={{ fontSize: 15, color: colors.foreground }}>
-              Continue with Apple
+              {t("auth.continueWithApple")}
             </Text>
           )}
         </Pressable>
@@ -106,7 +108,7 @@ export default function LoginScreen() {
       {/* Privacy note (subtle) */}
       <View className="mt-16">
         <Text className="text-xs text-muted text-center">
-          Your reading data stays private
+          {t("auth.privacyNote")}
         </Text>
       </View>
     </ScreenContainer>

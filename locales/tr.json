@@ -1,0 +1,93 @@
+{
+  "app": {
+    "name": "PALIMPS",
+    "tagline": "Kişisel Okuma Hafıza Sistemi"
+  },
+  "auth": {
+    "continueWithGoogle": "Google ile Devam Et",
+    "continueWithApple": "Apple ile Devam Et",
+    "privacyNote": "Okuma verileriniz gizli kalır",
+    "loggingIn": "Giriş yapılıyor...",
+    "signOut": "Çıkış Yap",
+    "signOutConfirm": "Çıkış yapmak istediğinizden emin misiniz?"
+  },
+  "home": {
+    "title": "Kütüphane",
+    "emptyState": "Henüz kitap yok",
+    "emptyStateAction": "İlk kitabınızı ekleyin",
+    "addBook": "Kitap Ekle",
+    "search": "Kitap ara...",
+    "moments": "{{count}} an",
+    "moments_plural": "{{count}} an"
+  },
+  "bookDetail": {
+    "noMomentsYet": "Henüz an yok",
+    "addFirstMoment": "İlk anınızı ekleyin",
+    "back": "Geri"
+  },
+  "addBook": {
+    "title": "Kitap Ekle",
+    "bookTitle": "Kitap Adı",
+    "author": "Yazar",
+    "coverPhoto": "Kapak Fotoğrafı",
+    "takePhoto": "Fotoğraf Çek",
+    "chooseFromLibrary": "Galeriden Seç",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "bookTitleRequired": "Kitap adı gerekli"
+  },
+  "addMoment": {
+    "title": "Yeni An",
+    "takePhoto": "Fotoğraf Çek",
+    "chooseFromLibrary": "Galeriden Seç",
+    "ocrProcessing": "Metin okunuyor...",
+    "ocrText": "Çıkarılan Metin",
+    "yourNote": "Notunuz (opsiyonel)",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "photoRequired": "Fotoğraf gerekli"
+  },
+  "momentDetail": {
+    "ocrText": "Çıkarılan Metin",
+    "yourNote": "Notunuz",
+    "delete": "Sil",
+    "deleteConfirm": "Bu anı silmek istediğinizden emin misiniz?",
+    "deleteSuccess": "An silindi"
+  },
+  "profile": {
+    "title": "Profil",
+    "stats": "İstatistikler",
+    "totalBooks": "Kitap",
+    "totalMoments": "An",
+    "language": "Dil",
+    "settings": "Ayarlar",
+    "about": "PALIMPS Hakkında"
+  },
+  "chat": {
+    "title": "Sohbet",
+    "placeholder": "Okumalarınız hakkında sorun...",
+    "send": "Gönder",
+    "exampleQuestions": "Örnek Sorular",
+    "example1": "Son zamanlarda hangi kitapları okudum?",
+    "example2": "... hakkındaki notlarımı göster",
+    "example3": "... konusundaki okumalarımı özetle"
+  },
+  "languages": {
+    "en": "English",
+    "tr": "Türkçe",
+    "de": "Deutsch",
+    "es": "Español"
+  },
+  "common": {
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "retry": "Tekrar Dene",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "done": "Tamam",
+    "yes": "Evet",
+    "no": "Hayır"
+  }
+}

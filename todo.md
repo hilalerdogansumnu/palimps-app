@@ -76,6 +76,7 @@
 - [x] Checkpoint oluştur (v1.1 - 16b7b2bb - Giriş/Çıkış Sistemi)
 - [x] Checkpoint oluştur (v1.2 - 8dfd8b83 - OAuth Giriş Sorunu Düzeltildi)
 - [x] Checkpoint oluştur (v2.0 - 00af517e - Arama, Silme ve AI Chatbot)
+- [x] Checkpoint oluştur (v3.0 - 44054c1e - PALIMPS Rebranding & Tasarım Sistemi)
 - [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
@@ -164,6 +165,11 @@
 - [x] Okuma anı detay ekranı (mevcut)
 
 ### Çoklu Dil Desteği
-- [x] İngilizce (default, global hedef)
-- [ ] Türkçe (gelecek versiyon)
-- [ ] i18n sistemi (gelecek versiyon)
+- [x] i18n sistemi kurulumu (i18next + react-i18next)
+- [x] İngilizce dil dosyası (en.json)
+- [x] Türkçe dil dosyası (tr.json)
+- [x] Almanca dil dosyası (de.json)
+- [x] İspanyolca dil dosyası (es.json)
+- [x] Kritik ekranları i18n'e geçir (login, profile)
+- [x] Profil ekranına dil seçim özelliği ekle
+- [x] Dil tercihini AsyncStorage'da sakla
