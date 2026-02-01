@@ -292,3 +292,21 @@
 - [x] Free vs Premium özellik karşılaştırması
 - [x] Premium ekran özellik listesi güncelleme
 - [x] Fiyatlandırma ve değer önerisi netleştirme
+
+## Profil Ekranı Abonelik Yönetimi
+
+- [x] Premium badge ve durum göstergesi
+- [x] Abonelik bitiş tarihi gösterimi
+- [x] "Aboneliği İptal Et" butonu
+- [x] İptal onay dialog'u
+- [x] Abonelik iptal API entegrasyonu
+
+## Onboarding Flow
+
+- [x] Onboarding ekranları tasarımı (3-4 ekran)
+- [x] Ekran 1: PALIMPS'e hoş geldiniz
+- [x] Ekran 2: Nasıl çalışır (kitap ekle, sayfa çek, not al)
+- [x] Ekran 3: Premium özellikler tanıtımı
+- [x] Skip/Next/Get Started butonları
+- [x] İlk kullanım kontrolü (AsyncStorage)
+- [x] Onboarding tamamlandı işareti

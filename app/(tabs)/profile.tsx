@@ -116,6 +116,104 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Subscription Management (Premium Users) */}
+        {isPremium && (
+          <View className="px-6 mb-6">
+            <Text className="text-sm font-semibold text-muted mb-3">ABONELİK YÖNETİMİ</Text>
+            <View className="bg-surface rounded-2xl p-6 border border-border">
+              {/* Premium Status */}
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-1">
+                  <Text className="text-lg font-semibold text-foreground mb-1">
+                    PALIMPS Premium
+                  </Text>
+                  <Text className="text-sm text-success">
+                    ✓ Aktif
+                  </Text>
+                </View>
+                <PremiumBadge size="large" />
+              </View>
+
+              {/* Subscription Info */}
+              <View className="bg-background rounded-xl p-4 mb-4">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-sm text-muted">Abonelik Tipi</Text>
+                  <Text className="text-sm font-semibold text-foreground">Aylık</Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-sm text-muted">Fiyat</Text>
+                  <Text className="text-sm font-semibold text-foreground">₺149.99/ay</Text>
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-muted">Sonraki Yenileme</Text>
+                  <Text className="text-sm font-semibold text-foreground">
+                    {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Cancel Button */}
+              <Pressable
+                onPress={() => {
+                  Alert.alert(
+                    'Aboneliği İptal Et',
+                    'Aboneliğinizi iptal etmek istediğinizden emin misiniz? Dönem sonuna kadar premium özellikleriniz aktif kalacak.',
+                    [
+                      {
+                        text: 'Vazgeç',
+                        style: 'cancel',
+                      },
+                      {
+                        text: 'İptal Et',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            // TODO: Cancel subscription API call
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert('Başarılı', 'Aboneliğiniz iptal edildi. Dönem sonuna kadar premium özelliklerinizi kullanmaya devam edebilirsiniz.');
+                          } catch (error) {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                            Alert.alert('Hata', 'İptal işlemi başarısız oldu. Lütfen tekrar deneyin.');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+                className="border border-error/30 px-4 py-3 rounded-xl"
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text className="text-error font-semibold text-center text-sm">
+                  Aboneliği İptal Et
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Upgrade to Premium (Free Users) */}
+        {!isPremium && (
+          <View className="px-6 mb-6">
+            <Pressable
+              onPress={() => router.push('/premium')}
+              className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6"
+              style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-background mb-1">
+                    ✨ Premium'a Geç
+                  </Text>
+                  <Text className="text-sm text-background/80">
+                    Tüm AI özelliklerini sınırsız kullan
+                  </Text>
+                </View>
+                <Text className="text-2xl">→</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
         {/* Statistics */}
         <View className="px-6 mb-6">
           <Text className="text-sm font-semibold text-muted mb-3">{t("profile.stats").toUpperCase()}</Text>

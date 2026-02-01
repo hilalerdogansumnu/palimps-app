@@ -21,6 +21,9 @@ import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { useAuth } from "@/hooks/use-auth";
 import { router, useSegments } from "expo-router";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import { OnboardingScreens } from "@/components/onboarding-screens";
+import { View, ActivityIndicator } from "react-native";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -32,6 +35,7 @@ export const unstable_settings = {
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const segments = useSegments();
+  const { isOnboardingCompleted, isLoading: onboardingLoading, completeOnboarding } = useOnboarding();
 
   useEffect(() => {
     if (loading) return;
@@ -47,6 +51,20 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace("/");
     }
   }, [isAuthenticated, loading, segments]);
+
+  // Show loading while checking onboarding status
+  if (onboardingLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
+        <ActivityIndicator size="large" color="#0a7ea4" />
+      </View>
+    );
+  }
+
+  // Show onboarding for authenticated users who haven't completed it
+  if (isAuthenticated && !isOnboardingCompleted) {
+    return <OnboardingScreens onComplete={completeOnboarding} />;
+  }
 
   return <>{children}</>;
 }
