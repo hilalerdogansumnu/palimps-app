@@ -1,4 +1,5 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList } from "react-native";
+import React from "react";
+import { Text, View, Pressable, FlatList, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -31,9 +32,28 @@ export default function HomeScreen() {
     router.push("/add-book");
   };
 
+  const [bookToDelete, setBookToDelete] = React.useState<number | null>(null);
+  const deleteBookMutation = trpc.books.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+      setBookToDelete(null);
+    },
+  });
+
   const handleBookPress = (bookId: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/book/${bookId}` as any);
+  };
+
+  const handleBookLongPress = (bookId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBookToDelete(bookId);
+  };
+
+  const handleDeleteBook = () => {
+    if (bookToDelete) {
+      deleteBookMutation.mutate({ id: bookToDelete });
+    }
   };
 
   if (authLoading || isLoading) {
@@ -126,6 +146,7 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => handleBookPress(item.id)}
+            onLongPress={() => handleBookLongPress(item.id)}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
             <View>
@@ -151,6 +172,76 @@ export default function HomeScreen() {
           </Pressable>
         )}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {bookToDelete !== null && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              padding: 24,
+              width: "80%",
+              maxWidth: 400,
+            }}
+          >
+            <Text className="text-lg text-foreground font-medium mb-4">
+              Delete book?
+            </Text>
+            <Text className="text-sm text-muted mb-6">
+              This will delete the book and all its moments. This action cannot be undone.
+            </Text>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => setBookToDelete(null)}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    borderRadius: 8,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text className="text-base text-foreground text-center">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleDeleteBook}
+                disabled={deleteBookMutation.isPending}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    borderRadius: 8,
+                    backgroundColor: "#EF4444",
+                    opacity: pressed || deleteBookMutation.isPending ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text className="text-base text-white text-center font-medium">
+                  {deleteBookMutation.isPending ? "..." : "Delete"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }

@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, ActivityIndicator, Image, Pressable, Alert } from "react-native";
+import React from "react";
+import { Text, View, Pressable, ScrollView, Image, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -11,21 +12,31 @@ export default function MomentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const momentId = parseInt(id, 10);
 
-  const { data: moment, isLoading } = trpc.readingMoments.getById.useQuery({ id: momentId });
+  const [isEditModalVisible, setIsEditModalVisible] = React.useState(false);
+  const [editedNote, setEditedNote] = React.useState("");
+
+  const { data: moment, isLoading, refetch } = trpc.readingMoments.getById.useQuery({ id: momentId });
   const deleteMutation = trpc.readingMoments.delete.useMutation();
+  const updateMutation = trpc.readingMoments.update.useMutation({
+    onSuccess: () => {
+      refetch();
+      setIsEditModalVisible(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+  });
 
   const handleDelete = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      "Okuma Anını Sil",
-      "Bu okuma anını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "Delete Moment",
+      "Are you sure you want to delete this moment? This action cannot be undone.",
       [
         {
-          text: "İptal",
+          text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Sil",
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
@@ -34,12 +45,19 @@ export default function MomentDetailScreen() {
               router.back();
             } catch (error) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert("Hata", "Okuma anı silinirken bir hata oluştu.");
+              Alert.alert("Error", "Failed to delete moment.");
             }
           },
         },
       ]
     );
+  };
+
+  const handleSaveEdit = () => {
+    updateMutation.mutate({
+      id: momentId,
+      userNote: editedNote.trim() || undefined,
+    });
   };
 
   if (isLoading) {
@@ -53,7 +71,7 @@ export default function MomentDetailScreen() {
   if (!moment) {
     return (
       <ScreenContainer className="items-center justify-center p-6">
-        <Text className="text-xl font-semibold text-foreground mb-3">Okuma anı bulunamadı</Text>
+        <Text className="text-xl font-semibold text-foreground mb-3">Moment not found</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-primary px-6 py-3 rounded-full"
@@ -61,14 +79,14 @@ export default function MomentDetailScreen() {
             { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
           ]}
         >
-          <Text className="text-background font-semibold">Geri Dön</Text>
+          <Text className="text-background font-semibold">Go Back</Text>
         </Pressable>
       </ScreenContainer>
     );
   }
 
   const createdDate = new Date(moment.createdAt);
-  const formattedDate = createdDate.toLocaleDateString("tr-TR", {
+  const formattedDate = createdDate.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -80,17 +98,27 @@ export default function MomentDetailScreen() {
     <ScreenContainer>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="p-6 pb-4">
+        <View className="p-6 pb-4 flex-row items-center justify-between">
           <Pressable
             onPress={() => router.back()}
-            className="mb-4 p-2 self-start"
+            className="p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">← Geri</Text>
+            <Text className="text-primary text-base">← Back</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setEditedNote(moment?.userNote || "");
+              setIsEditModalVisible(true);
+            }}
+            className="p-2"
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text className="text-base text-foreground">Edit</Text>
           </Pressable>
         </View>
 
-        {/* Sayfa Fotoğrafı */}
+        {/* Page Image */}
         <View className="px-6 mb-6">
           <Image
             source={{ uri: moment.pageImageUrl }}
@@ -100,20 +128,20 @@ export default function MomentDetailScreen() {
           />
         </View>
 
-        {/* OCR Metni */}
+        {/* OCR Text */}
         {moment.ocrText && (
           <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">Çıkarılan Metin</Text>
+            <Text className="text-sm font-semibold text-muted mb-2">Extracted Text</Text>
             <View className="bg-surface rounded-xl p-4 border border-border">
               <Text className="text-base text-foreground leading-relaxed">{moment.ocrText}</Text>
             </View>
           </View>
         )}
 
-        {/* Kullanıcı Notu */}
+        {/* User Note */}
         {moment.userNote && (
           <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">Notunuz</Text>
+            <Text className="text-sm font-semibold text-muted mb-2">Your Note</Text>
             <View className="bg-primary/10 rounded-xl p-4 border border-primary/20">
               <Text className="text-base text-foreground italic leading-relaxed">
                 "{moment.userNote}"
@@ -122,25 +150,112 @@ export default function MomentDetailScreen() {
           </View>
         )}
 
-        {/* Zaman Damgası */}
+        {/* Timestamp */}
         <View className="px-6 mb-4">
           <Text className="text-xs text-muted text-center">{formattedDate}</Text>
         </View>
 
-        {/* Silme Butonu */}
+        {/* Delete Button */}
         <View className="px-6 pb-8">
           <Pressable
             onPress={handleDelete}
             disabled={deleteMutation.isPending}
-            className="bg-error/10 border border-error/30 rounded-xl py-4 items-center"
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [
+              {
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                backgroundColor: "#EF4444",
+                opacity: pressed || deleteMutation.isPending ? 0.6 : 1,
+              },
+            ]}
           >
-            <Text className="text-error font-semibold text-base">
-              {deleteMutation.isPending ? "Siliniyor..." : "Okuma Anını Sil"}
+            <Text className="text-base text-white text-center font-medium">
+              {deleteMutation.isPending ? "Deleting..." : "Delete Moment"}
             </Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Edit Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "flex-end",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.background,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                padding: 24,
+                minHeight: 300,
+              }}
+            >
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg text-foreground font-medium">Edit Note</Text>
+                <Pressable
+                  onPress={() => setIsEditModalVisible(false)}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Text className="text-base text-muted">Cancel</Text>
+                </Pressable>
+              </View>
+
+              <TextInput
+                value={editedNote}
+                onChangeText={setEditedNote}
+                placeholder="Add your thoughts..."
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={6}
+                style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  padding: 16,
+                  color: colors.foreground,
+                  fontSize: 16,
+                  minHeight: 150,
+                  textAlignVertical: "top",
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              />
+
+              <Pressable
+                onPress={handleSaveEdit}
+                disabled={updateMutation.isPending}
+                style={({ pressed }) => [
+                  {
+                    marginTop: 16,
+                    paddingVertical: 14,
+                    paddingHorizontal: 24,
+                    borderRadius: 12,
+                    backgroundColor: colors.primary,
+                    opacity: pressed || updateMutation.isPending ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text className="text-base text-white text-center font-medium">
+                  {updateMutation.isPending ? "Saving..." : "Save"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScreenContainer>
   );
 }

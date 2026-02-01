@@ -78,6 +78,7 @@
 - [x] Checkpoint oluştur (v2.0 - 00af517e - Arama, Silme ve AI Chatbot)
 - [x] Checkpoint oluştur (v3.0 - 44054c1e - PALIMPS Rebranding & Tasarım Sistemi)
 - [x] Checkpoint oluştur (v3.1 - 46fb9917 - Çoklu Dil Desteği)
+- [x] Checkpoint oluştur (v3.2 - b42ef2b4 - i18n Tüm Ekranlar & Export Özelliği)
 - [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
@@ -189,3 +190,25 @@
 - [x] Export format seçim dialogu (PDF/Markdown)
 - [x] Export işlemi loading ve başarı bildirimi
 - [x] Mobil ve web platformları için export
+
+
+## Kitap Silme Özelliği
+
+- [x] Backend delete book API'si (zaten mevcut)
+- [x] Ana ekranda kitap kartına uzun basma (long press)
+- [x] Silme onay dialogu
+- [x] Silme sonrası liste güncelleme
+
+## Okuma Anı Düzenleme Özelliği
+
+- [x] Okuma anı detay ekranına Edit butonu
+- [x] Not düzenleme modal/ekranı
+- [x] Backend update API'si (zaten var, frontend entegre et)
+- [x] Güncelleme sonrası detay ekranını yenile
+
+## Okuma İstatistikleri
+
+- [ ] Backend stats API'si (toplam kitap, moment, aylık grafik verisi)
+- [ ] Profil ekranına istatistik kartları
+- [ ] Aylık okuma grafiği (basit bar chart)
+- [ ] En çok okunan yazar/kitap
