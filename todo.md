@@ -229,3 +229,20 @@
 - [x] Yazara göre sıralama (alfabetik)
 - [x] Alaka düzeyine göre sıralama (varsayılan)
 - [x] Sıralama algoritmaları test et
+
+## Premium Abonelik Sistemi
+
+- [x] Veritabanı şemasına subscription tablosu ekle (userId, plan, status, expiresAt)
+- [x] Backend API: subscription status kontrolü
+- [x] Frontend: useSubscription hook oluştur
+- [x] Premium badge/indicator UI bileşeni
+- [x] Upgrade to Premium ekranı tasarla ve uygula
+- [x] Premium duvarı (paywall) bileşeni
+
+## AI Özellikleri (Premium)
+
+- [x] AI destekli otomatik not oluşturma (OCR metninden)
+- [x] Backend LLM entegrasyonu - not oluşturma endpoint'i
+- [ ] Frontend: AI not oluşturma loading durumu
+- [ ] Premium olmayan kullanıcılar için AI özelliği kilidi
+- [ ] "Upgrade to use AI" mesajı ve butonu

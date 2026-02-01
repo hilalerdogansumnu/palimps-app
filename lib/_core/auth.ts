@@ -8,6 +8,7 @@ export type User = {
   name: string | null;
   email: string | null;
   loginMethod: string | null;
+  isPremium: number; // 0 = free, 1 = premium
   lastSignedIn: Date;
 };
 

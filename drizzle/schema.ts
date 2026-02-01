@@ -17,6 +17,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  isPremium: int("isPremium").default(0).notNull(), // 0 = free, 1 = premium
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -57,3 +58,20 @@ export type InsertBook = typeof books.$inferInsert;
 
 export type ReadingMoment = typeof readingMoments.$inferSelect;
 export type InsertReadingMoment = typeof readingMoments.$inferInsert;
+
+/**
+ * Subscriptions table - Premium abonelik bilgileri
+ */
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  plan: mysqlEnum("plan", ["free", "premium"]).default("free").notNull(),
+  status: mysqlEnum("status", ["active", "expired", "cancelled"]).default("active").notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"), // null = lifetime premium
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;

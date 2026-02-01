@@ -130,6 +130,7 @@ export async function getMe(): Promise<{
   name: string | null;
   email: string | null;
   loginMethod: string | null;
+  isPremium: number;
   lastSignedIn: string;
 } | null> {
   try {

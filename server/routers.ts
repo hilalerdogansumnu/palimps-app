@@ -231,6 +231,50 @@ export const appRouter = router({
   }),
 
   // ============================================
+  // AI (PREMIUM)
+  // ============================================
+  ai: router({
+    /**
+     * OCR metninden otomatik not oluştur (Premium özelliği)
+     */
+    generateNote: protectedProcedure
+      .input(z.object({ ocrText: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        // Premium kontrolü
+        if (ctx.user.isPremium !== 1) {
+          throw new Error("This feature requires premium subscription");
+        }
+
+        try {
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: "Sen bir okuma asistanısın. Kullanıcının okuduğu kitap sayfasından çıkarılan metni analiz edip, önemli noktaları vurgulayan kısa ve öz bir not oluştur. Notu 2-3 cümle ile sınırla. Türkçe yaz.",
+              },
+              {
+                role: "user",
+                content: `Bu metinden önemli noktaları çıkar ve kısa bir not oluştur:\n\n${input.ocrText}`,
+              },
+            ],
+          });
+
+          const firstChoice = response.choices[0];
+          if (firstChoice && firstChoice.message) {
+            const content = firstChoice.message.content;
+            const generatedNote = typeof content === 'string' ? content : JSON.stringify(content);
+            return { note: generatedNote };
+          }
+
+          throw new Error("AI response is empty");
+        } catch (error) {
+          console.error("AI note generation failed:", error);
+          throw new Error("Failed to generate note");
+        }
+      }),
+  }),
+
+  // ============================================
   // SEARCH
   // ============================================
   search: router({
