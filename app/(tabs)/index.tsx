@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, Alert } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -26,6 +26,15 @@ export default function HomeScreen() {
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  // Backend search API
+  const { data: searchResults, isLoading: searchLoading } = trpc.search.all.useQuery(
+    { query: searchQuery },
+    { enabled: searchQuery.length > 0 }
+  );
 
   const handleAddBook = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -54,6 +63,11 @@ export default function HomeScreen() {
     if (bookToDelete) {
       deleteBookMutation.mutate({ id: bookToDelete });
     }
+  };
+
+  const handleMomentPress = (momentId: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/moment/${momentId}` as any);
   };
 
   if (authLoading || isLoading) {
@@ -121,10 +135,14 @@ export default function HomeScreen() {
     return `${Math.floor(diffDays / 365)} years ago`;
   };
 
+  // Determine what to display
+  const showSearchResults = searchQuery.length > 0;
+  const hasSearchResults = searchResults && (searchResults.books.length > 0 || searchResults.moments.length > 0);
+
   return (
     <ScreenContainer className="px-6">
       {/* Header */}
-      <View className="pt-4 pb-6 flex-row items-center justify-between">
+      <View className="pt-4 pb-4 flex-row items-center justify-between">
         <Text className="text-sm text-muted">Library</Text>
         <Pressable
           onPress={handleAddBook}
@@ -134,44 +152,166 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Book List */}
-      <FlatList
-        data={books}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 24 }} />
-        )}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => handleBookPress(item.id)}
-            onLongPress={() => handleBookLongPress(item.id)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <View>
-              {/* Book title */}
-              <Text className="text-base text-foreground mb-1 font-medium">
-                {item.title}
-              </Text>
-              
-              {/* Author (if exists) */}
-              {item.author && (
-                <Text className="text-sm text-muted mb-2">
-                  {item.author}
-                </Text>
-              )}
-              
-              {/* Last moment date */}
-              {item.momentCount > 0 && (
-                <Text className="text-xs text-muted">
-                  {item.momentCount} {item.momentCount === 1 ? "moment" : "moments"}
-                </Text>
-              )}
+      {/* Search Bar */}
+      <View className="mb-6">
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search books and moments..."
+          placeholderTextColor={colors.muted}
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            fontSize: 15,
+            color: colors.foreground,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        />
+      </View>
+
+      {/* Search Results or Book List */}
+      {showSearchResults ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+          {searchLoading ? (
+            <View className="py-8 items-center">
+              <ActivityIndicator size="small" color={colors.foreground} />
             </View>
-          </Pressable>
-        )}
-      />
+          ) : hasSearchResults ? (
+            <>
+              {/* Books Section */}
+              {searchResults.books.length > 0 && (
+                <View className="mb-8">
+                  <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
+                    Books ({searchResults.books.length})
+                  </Text>
+                  {searchResults.books.map((book, index) => (
+                    <View key={book.id}>
+                      {index > 0 && (
+                        <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+                      )}
+                      <Pressable
+                        onPress={() => handleBookPress(book.id)}
+                        style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                      >
+                        <View>
+                          <Text className="text-base text-foreground mb-1 font-medium">
+                            {book.title}
+                          </Text>
+                          {book.author && (
+                            <Text className="text-sm text-muted">
+                              {book.author}
+                            </Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Moments Section */}
+              {searchResults.moments.length > 0 && (
+                <View>
+                  <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
+                    Moments ({searchResults.moments.length})
+                  </Text>
+                  {searchResults.moments.map((moment, index) => {
+                    const book = books?.find((b) => b.id === moment.bookId);
+                    return (
+                      <View key={moment.id}>
+                        {index > 0 && (
+                          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
+                        )}
+                        <Pressable
+                          onPress={() => handleMomentPress(moment.id)}
+                          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                        >
+                          <View>
+                            {/* Book title (small) */}
+                            <Text className="text-xs text-muted mb-2">
+                              {book?.title || "Unknown Book"}
+                            </Text>
+                            
+                            {/* OCR text preview */}
+                            {moment.ocrText && (
+                              <Text 
+                                className="text-sm text-foreground mb-2" 
+                                numberOfLines={3}
+                              >
+                                {moment.ocrText}
+                              </Text>
+                            )}
+                            
+                            {/* User note preview */}
+                            {moment.userNote && (
+                              <Text 
+                                className="text-sm text-muted italic" 
+                                numberOfLines={2}
+                              >
+                                "{moment.userNote}"
+                              </Text>
+                            )}
+                            
+                            {/* Date */}
+                            <Text className="text-xs text-muted mt-2">
+                              {formatDate(moment.createdAt)}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
+          ) : (
+            <View className="py-8 items-center">
+              <Text className="text-base text-muted">No results found</Text>
+            </View>
+          )}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={books}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          ItemSeparatorComponent={() => (
+            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 24 }} />
+          )}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => handleBookPress(item.id)}
+              onLongPress={() => handleBookLongPress(item.id)}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <View>
+                {/* Book title */}
+                <Text className="text-base text-foreground mb-1 font-medium">
+                  {item.title}
+                </Text>
+                
+                {/* Author (if exists) */}
+                {item.author && (
+                  <Text className="text-sm text-muted mb-2">
+                    {item.author}
+                  </Text>
+                )}
+                
+                {/* Last moment date */}
+                {item.momentCount > 0 && (
+                  <Text className="text-xs text-muted">
+                    {item.momentCount} {item.momentCount === 1 ? "moment" : "moments"}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       {bookToDelete !== null && (

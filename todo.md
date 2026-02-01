@@ -212,3 +212,11 @@
 - [ ] Profil ekranına istatistik kartları
 - [ ] Aylık okuma grafiği (basit bar chart)
 - [ ] En çok okunan yazar/kitap
+
+## OCR Metinlerinde Arama Özelliği
+
+- [x] Backend search API'sini analiz et (books + moments)
+- [x] Ana ekran arama çubuğunu backend API'sine bağla
+- [x] OCR metinlerinde arama sonuçlarını göster
+- [x] Arama sonuçlarında moment detayına yönlendirme
+- [x] Loading ve boş sonuç durumları

@@ -23,4 +23,8 @@ describe("API Router Structure", () => {
     const hasSystemRouter = procedures.some(key => key.startsWith("system."));
     expect(hasSystemRouter).toBe(true);
   });
+
+  it("should have search router with all method", () => {
+    expect(appRouter._def.procedures).toHaveProperty("search.all");
+  });
 });
