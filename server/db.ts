@@ -280,3 +280,16 @@ export async function searchReadingMoments(userId: number, query: string) {
     return ocrMatch || noteMatch;
   });
 }
+
+/**
+ * Kullanıcının premium durumunu güncelle
+ */
+export async function updateUserPremiumStatus(userId: number, isPremium: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(users)
+    .set({ isPremium: isPremium ? 1 : 0 })
+    .where(eq(users.id, userId));
+}

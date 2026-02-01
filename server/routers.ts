@@ -441,6 +441,79 @@ Tarih: ${m.createdAt}
         };
       }),
   }),
+
+  // ============================================
+  // SUBSCRIPTIONS (PAYMENT)
+  // ============================================
+  subscriptions: router({
+    /**
+     * Webhook endpoint - Ödeme sağlayıcısından gelen event'leri işle
+     * RevenueCat veya Stripe webhook'ları için
+     */
+    webhook: publicProcedure
+      .input(z.object({ 
+        event: z.any(), // Event payload (RevenueCat veya Stripe formatında)
+        provider: z.enum(["revenuecat", "stripe"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const { event, provider = "revenuecat" } = input;
+
+          if (provider === "revenuecat") {
+            // RevenueCat webhook formatı
+            const { event_type, app_user_id, entitlements } = event;
+            const userId = parseInt(app_user_id, 10);
+
+            if (event_type === "INITIAL_PURCHASE" || event_type === "RENEWAL") {
+              // Premium aktif et
+              await db.updateUserPremiumStatus(userId, true);
+              console.log(`[Webhook] User ${userId} premium activated`);
+            } else if (event_type === "CANCELLATION" || event_type === "EXPIRATION") {
+              // Premium iptal et
+              await db.updateUserPremiumStatus(userId, false);
+              console.log(`[Webhook] User ${userId} premium cancelled`);
+            }
+          } else if (provider === "stripe") {
+            // Stripe webhook formatı
+            const { type, data } = event;
+            const userId = data.object.metadata?.userId;
+
+            if (type === "payment_intent.succeeded" && userId) {
+              await db.updateUserPremiumStatus(parseInt(userId), true);
+              console.log(`[Webhook] User ${userId} premium activated via Stripe`);
+            } else if (type === "customer.subscription.deleted" && userId) {
+              await db.updateUserPremiumStatus(parseInt(userId), false);
+              console.log(`[Webhook] User ${userId} premium cancelled via Stripe`);
+            }
+          }
+
+          return { success: true };
+        } catch (error) {
+          console.error("[Webhook] Error:", error);
+          throw new Error("Webhook processing failed");
+        }
+      }),
+
+    /**
+     * Manuel premium aktifleştirme (test/admin için)
+     */
+    activatePremium: protectedProcedure
+      .input(z.object({ userId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const targetUserId = input.userId || ctx.user.id;
+        await db.updateUserPremiumStatus(targetUserId, true);
+        return { success: true };
+      }),
+
+    /**
+     * Premium iptal et
+     */
+    cancelPremium: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        await db.updateUserPremiumStatus(ctx.user.id, false);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

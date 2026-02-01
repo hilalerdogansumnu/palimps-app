@@ -8,6 +8,8 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "react-i18next";
+import { useSubscription } from "@/hooks/use-subscription";
+import { PremiumBadge } from "@/components/premium-badge";
 
 type BookWithCount = {
   id: number;
@@ -25,6 +27,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const { t } = useTranslation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { isPremium } = useSubscription();
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -243,7 +246,10 @@ export default function HomeScreen() {
     <ScreenContainer className="px-6">
       {/* Header */}
       <View className="pt-4 pb-4 flex-row items-center justify-between">
-        <Text className="text-sm text-muted">Library</Text>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-sm text-muted">Library</Text>
+          {isPremium && <PremiumBadge size="small" />}
+        </View>
         <Pressable
           onPress={handleAddBook}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}

@@ -246,3 +246,24 @@
 - [ ] Frontend: AI not oluşturma loading durumu
 - [ ] Premium olmayan kullanıcılar için AI özelliği kilidi
 - [ ] "Upgrade to use AI" mesajı ve butonu
+
+## AI Not Oluşturma UI
+
+- [x] Okuma anı ekleme ekranına "Generate Note with AI" butonu ekle
+- [x] AI not oluşturma loading durumu (spinner/skeleton)
+- [x] Premium olmayan kullanıcılar için premium gate göster
+- [x] AI'nin oluşturduğu notu düzenlenebilir text area'ya doldur
+- [x] Hata durumları için fallback UI
+
+## Premium Badge Göstergesi
+
+- [x] Profil ekranına premium badge ekle
+- [x] Ana ekran header'ına premium indicator
+- [ ] Premium kullanıcı için özel tema/renk vurgusu (opsiyonel)
+
+## Ödeme Entegrasyonu Altyapısı
+
+- [x] Backend: subscription oluşturma/güncelleme API'leri
+- [x] Frontend: ödeme akışı placeholder'ları
+- [x] Ödeme entegrasyonu dokümantasyonu (Stripe/RevenueCat)
+- [x] Webhook handler altyapısı (ödeme başarılı/iptal)

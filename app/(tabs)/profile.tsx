@@ -10,6 +10,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
+import { useSubscription } from "@/hooks/use-subscription";
+import { PremiumBadge } from "@/components/premium-badge";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -22,6 +24,7 @@ export default function ProfileScreen() {
   const colors = useColors();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const { isPremium } = useSubscription();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
@@ -103,7 +106,12 @@ export default function ProfileScreen() {
               <Text className="text-lg font-semibold text-foreground mb-1">
                 {user.name || "User"}
               </Text>
-              <Text className="text-sm text-muted">{user.email}</Text>
+              <Text className="text-sm text-muted mb-2">{user.email}</Text>
+              {isPremium && (
+                <View className="mt-2">
+                  <PremiumBadge size="medium" />
+                </View>
+              )}
             </View>
           </View>
         </View>

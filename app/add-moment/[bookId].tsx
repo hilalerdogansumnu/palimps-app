@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { useSubscription } from "@/hooks/use-subscription";
 
 export default function AddMomentScreen() {
   const colors = useColors();
@@ -17,6 +18,8 @@ export default function AddMomentScreen() {
   const [userNote, setUserNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ocrText, setOcrText] = useState<string | null>(null);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const { isPremium } = useSubscription();
 
   const createMomentMutation = trpc.readingMoments.create.useMutation({
     onSuccess: (data) => {
@@ -32,6 +35,45 @@ export default function AddMomentScreen() {
       Alert.alert("Hata", error.message || "Okuma anı eklenirken bir hata oluştu.");
     },
   });
+
+  const generateNoteMutation = trpc.ai.generateNote.useMutation({
+    onSuccess: (data) => {
+      setUserNote(data.note);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsGeneratingAI(false);
+    },
+    onError: (error) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Hata", error.message || "AI not oluşturma başarısız oldu.");
+      setIsGeneratingAI(false);
+    },
+  });
+
+  const handleGenerateAINote = async () => {
+    if (!ocrText) {
+      Alert.alert("Uyarı", "Önce fotoğrafı kaydedin, OCR metni çıkarıldıktan sonra AI not oluşturabilirsiniz.");
+      return;
+    }
+
+    if (!isPremium) {
+      Alert.alert(
+        "Premium Özellik",
+        "AI destekli not oluşturma premium bir özelliktir. Premium'a yükseltmek ister misiniz?",
+        [
+          { text: "İptal", style: "cancel" },
+          { text: "Premium'a Geç", onPress: () => alert("Ödeme entegrasyonu yakında!") },
+        ]
+      );
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      await generateNoteMutation.mutateAsync({ ocrText });
+    } catch (error) {
+      // Error handled in onError
+    }
+  };
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -141,7 +183,22 @@ export default function AddMomentScreen() {
 
         {/* Not Alanı */}
         <View className="mb-6">
-          <Text className="text-sm font-semibold text-foreground mb-2">Notunuz (Opsiyonel)</Text>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-sm font-semibold text-foreground">Notunuz (Opsiyonel)</Text>
+            {ocrText && (
+              <Pressable
+                onPress={handleGenerateAINote}
+                disabled={isGeneratingAI}
+                className="flex-row items-center px-3 py-1 rounded-full bg-primary/10"
+                style={({ pressed }) => [{ opacity: pressed || isGeneratingAI ? 0.6 : 1 }]}
+              >
+                <Text className="text-xs font-semibold text-primary">
+                  {isGeneratingAI ? "✨ Oluşturuluyor..." : "✨ AI ile Oluştur"}
+                  {!isPremium && " 👑"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
           <TextInput
             value={userNote}
             onChangeText={setUserNote}
@@ -152,6 +209,7 @@ export default function AddMomentScreen() {
             numberOfLines={4}
             textAlignVertical="top"
             returnKeyType="done"
+            editable={!isGeneratingAI}
           />
         </View>
 
