@@ -278,3 +278,17 @@
 - [x] Frontend: 3D Secure akışı
 - [ ] Test kartları ile test (iyzico hesabı onaylanmalı)
 - [ ] Canlıya alma (iyzico hesabı onaylanmalı)
+
+## Ödeme Başarı/Hata Ekranları
+
+- [x] Ödeme başarılı ekranı (success screen)
+- [x] Ödeme başarısız ekranı (error screen)
+- [x] Ödeme işlemi iptal edildi ekranı
+- [x] Loading/processing durumu göstergesi
+
+## Premium Model Netleştirme
+
+- [x] Tek premium plan modeli dokümantasyonu
+- [x] Free vs Premium özellik karşılaştırması
+- [x] Premium ekran özellik listesi güncelleme
+- [x] Fiyatlandırma ve değer önerisi netleştirme

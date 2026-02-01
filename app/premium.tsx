@@ -21,28 +21,51 @@ export default function PremiumScreen() {
   const features = [
     {
       icon: "✨",
-      title: "AI Note Generation",
-      description: "Automatically generate smart notes from your reading moments",
+      title: "AI Not Oluşturma",
+      description: "Okuma anlarınızdan otomatik olarak akıllı notlar oluşturun",
+      badge: "Sınırsız",
+    },
+    {
+      icon: "🧠",
+      title: "AI Özet Çıkarma",
+      description: "Kitaplarınızın kapsamlı özetlerini AI ile oluşturun",
+      badge: "Sınırsız",
+    },
+    {
+      icon: "🎨",
+      title: "AI Tematik Analiz",
+      description: "Okuma anlarınızı tematik olarak gruplandırın ve bağlantılar keşfedin",
+      badge: "Sınırsız",
     },
     {
       icon: "🔍",
-      title: "Advanced Search",
-      description: "Search across all your books and notes with powerful filters",
+      title: "Gelişmiş Arama",
+      description: "Tüm kitaplarınızda ve notlarınızda güçlü filtrelerle arama yapın",
+      badge: null,
     },
     {
       icon: "📊",
-      title: "Reading Analytics",
-      description: "Track your reading progress with detailed statistics",
-    },
-    {
-      icon: "☁️",
-      title: "Cloud Sync",
-      description: "Access your library from any device, anytime",
+      title: "Okuma İstatistikleri",
+      description: "Detaylı grafikler ve analizlerle okuma ilerlemenizi takip edin",
+      badge: null,
     },
     {
       icon: "📤",
-      title: "Export Options",
-      description: "Export your notes as PDF, Markdown, or plain text",
+      title: "Export Seçenekleri",
+      description: "Notlarınızı PDF, Markdown veya düz metin olarak dışa aktarın",
+      badge: "Sınırsız",
+    },
+    {
+      icon: "🌍",
+      title: "Çoklu Dil Desteği",
+      description: "Türkçe, İngilizce, Almanca ve İspanyolca dillerinde kullanın",
+      badge: null,
+    },
+    {
+      icon: "☁️",
+      title: "Sınırsız Depolama",
+      description: "Tüm okuma anlarınızı ve fotoğraflarınızı sınırsız saklayın",
+      badge: "Sınırsız",
     },
   ];
 
@@ -55,22 +78,27 @@ export default function PremiumScreen() {
             onPress={() => router.back()}
             className="mb-6"
           >
-            <Text className="text-primary text-base">← Back</Text>
+            <Text className="text-primary text-base">← Geri</Text>
           </TouchableOpacity>
 
           {/* Title */}
           <Text className="text-4xl font-bold text-foreground mb-2">
             PALIMPS Premium
           </Text>
-          <Text className="text-base text-muted mb-8">
-            Unlock the full power of your reading memory
+          <Text className="text-base text-muted mb-2">
+            Okuma hafızanızın tüm gücünü açığa çıkarın
           </Text>
+          <View className="bg-primary/10 rounded-xl px-4 py-2 self-start mb-8">
+            <Text className="text-primary font-semibold text-sm">
+              🚫 Kredi sistemi yok - Tüm özellikler sınırsız
+            </Text>
+          </View>
 
           {/* Current Status */}
           {isPremium && (
-            <View className="bg-primary/10 rounded-2xl p-4 mb-6">
-              <Text className="text-primary font-semibold text-center">
-                ✓ You're already a Premium member
+            <View className="bg-success/10 rounded-2xl p-4 mb-6">
+              <Text className="text-success font-semibold text-center">
+                ✓ Zaten Premium üyesiniz
               </Text>
             </View>
           )}
@@ -84,9 +112,18 @@ export default function PremiumScreen() {
               >
                 <Text className="text-3xl mr-3">{feature.icon}</Text>
                 <View className="flex-1">
-                  <Text className="text-lg font-semibold text-foreground mb-1">
-                    {feature.title}
-                  </Text>
+                  <View className="flex-row items-center gap-2 mb-1">
+                    <Text className="text-lg font-semibold text-foreground">
+                      {feature.title}
+                    </Text>
+                    {feature.badge && (
+                      <View className="bg-primary/20 rounded-full px-2 py-0.5">
+                        <Text className="text-primary text-xs font-semibold">
+                          {feature.badge}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text className="text-sm text-muted">
                     {feature.description}
                   </Text>
@@ -110,8 +147,17 @@ export default function PremiumScreen() {
 
           {/* Terms */}
           <Text className="text-xs text-muted text-center">
-            Cancel anytime. Terms and conditions apply.
+            İstediğiniz zaman iptal edebilirsiniz. Şartlar ve koşullar geçerlidir.
           </Text>
+          
+          {/* Value Proposition */}
+          {!isPremium && (
+            <View className="mt-4 bg-surface/50 rounded-xl p-4">
+              <Text className="text-xs text-muted text-center">
+                🔒 iyzico güvenli ödeme | 💳 3D Secure | 🧾 Otomatik fatura
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
 

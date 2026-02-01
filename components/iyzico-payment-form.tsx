@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { trpc } from '@/lib/trpc';
 import * as Haptics from 'expo-haptics';
+import { PaymentSuccessScreen } from './payment-success-screen';
+import { PaymentErrorScreen } from './payment-error-screen';
 
 interface IyzicoPaymentFormProps {
   onSuccess: () => void;
@@ -12,6 +14,8 @@ interface IyzicoPaymentFormProps {
 export function IyzicoPaymentForm({ onSuccess, onCancel }: IyzicoPaymentFormProps) {
   const colors = useColors();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'form' | 'success' | 'error'>('form');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Form state
   const [cardNumber, setCardNumber] = useState('');
@@ -25,26 +29,27 @@ export function IyzicoPaymentForm({ onSuccess, onCancel }: IyzicoPaymentFormProp
 
   const createSubscriptionMutation = trpc.subscriptions.createIyzicoSubscription.useMutation({
     onSuccess: () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Başarılı!', 'Premium üyeliğiniz aktif edildi.');
-      onSuccess();
+      setIsProcessing(false);
+      setPaymentStatus('success');
     },
     onError: (error: any) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Hata', error.message || 'Ödeme işlemi başarısız oldu.');
       setIsProcessing(false);
+      setErrorMessage(error.message || 'Ödeme işlemi başarısız oldu. Lütfen kart bilgilerinizi kontrol edin.');
+      setPaymentStatus('error');
     },
   });
 
   const handleSubmit = async () => {
     // Validasyon
     if (!cardNumber || !cardHolderName || !expireMonth || !expireYear || !cvc) {
-      Alert.alert('Uyarı', 'Lütfen tüm kart bilgilerini doldurun.');
+      setErrorMessage('Lütfen tüm kart bilgilerini doldurun.');
+      setPaymentStatus('error');
       return;
     }
 
     if (!phone || !address || !city) {
-      Alert.alert('Uyarı', 'Lütfen iletişim bilgilerini doldurun.');
+      setErrorMessage('Lütfen iletişim bilgilerini doldurun.');
+      setPaymentStatus('error');
       return;
     }
 
@@ -73,6 +78,26 @@ export function IyzicoPaymentForm({ onSuccess, onCancel }: IyzicoPaymentFormProp
     setCardNumber(formatted);
   };
 
+  // Başarı ekranı göster
+  if (paymentStatus === 'success') {
+    return <PaymentSuccessScreen onClose={onSuccess} />;
+  }
+
+  // Hata ekranı göster
+  if (paymentStatus === 'error') {
+    return (
+      <PaymentErrorScreen
+        errorMessage={errorMessage}
+        onRetry={() => {
+          setPaymentStatus('form');
+          setErrorMessage('');
+        }}
+        onCancel={onCancel}
+      />
+    );
+  }
+
+  // Form ekranı
   return (
     <View className="flex-1 bg-background">
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
