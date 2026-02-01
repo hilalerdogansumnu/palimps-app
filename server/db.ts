@@ -293,3 +293,48 @@ export async function updateUserPremiumStatus(userId: number, isPremium: boolean
     .set({ isPremium: isPremium ? 1 : 0 })
     .where(eq(users.id, userId));
 }
+
+/**
+ * iyzico subscription ref ile kullanıcı bul
+ */
+export async function getUserByIyzicoSubscriptionRef(subscriptionRef: string) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.iyzicoSubscriptionRef, subscriptionRef))
+    .limit(1);
+
+  return user || null;
+}
+
+/**
+ * Kullanıcı bilgilerini güncelle (partial update)
+ */
+export async function updateUser(userId: number, data: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(users)
+    .set(data)
+    .where(eq(users.id, userId));
+}
+
+/**
+ * ID ile kullanıcı bul
+ */
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user || null;
+}

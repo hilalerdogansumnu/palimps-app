@@ -513,6 +513,126 @@ Tarih: ${m.createdAt}
         await db.updateUserPremiumStatus(ctx.user.id, false);
         return { success: true };
       }),
+
+    /**
+     * iyzico abonelik başlatma
+     */
+    createIyzicoSubscription: protectedProcedure
+      .input(z.object({
+        cardHolderName: z.string(),
+        cardNumber: z.string(),
+        expireMonth: z.string(),
+        expireYear: z.string(),
+        cvc: z.string(),
+        userPhone: z.string(),
+        userAddress: z.string(),
+        userCity: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createSubscription } = await import('./iyzico');
+        
+        try {
+          const result: any = await createSubscription({
+            userId: ctx.user.id,
+            userEmail: ctx.user.email || '',
+            userName: ctx.user.name || 'User',
+            userPhone: input.userPhone,
+            userAddress: input.userAddress,
+            userCity: input.userCity,
+            userCountry: 'Turkey',
+            cardHolderName: input.cardHolderName,
+            cardNumber: input.cardNumber,
+            expireMonth: input.expireMonth,
+            expireYear: input.expireYear,
+            cvc: input.cvc,
+          });
+
+          if (result.status === 'success') {
+            // Premium aktif et
+            await db.updateUserPremiumStatus(ctx.user.id, true);
+            
+            // iyzico subscription ref'i kaydet
+            await db.updateUser(ctx.user.id, {
+              iyzicoSubscriptionRef: result.subscriptionReferenceCode,
+            });
+
+            return { success: true, subscriptionRef: result.subscriptionReferenceCode };
+          } else {
+            throw new Error(result.errorMessage || 'Ödeme başarısız');
+          }
+        } catch (error: any) {
+          console.error('[iyzico] Subscription error:', error);
+          throw new Error(error.message || 'Ödeme işlemi başarısız oldu');
+        }
+      }),
+
+    /**
+     * iyzico abonelik iptal etme
+     */
+    cancelIyzicoSubscription: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const { cancelSubscription } = await import('./iyzico');
+        
+        try {
+          const user = await db.getUserById(ctx.user.id);
+          if (!user?.iyzicoSubscriptionRef) {
+            throw new Error('Aktif abonelik bulunamadı');
+          }
+
+          const result: any = await cancelSubscription(user.iyzicoSubscriptionRef);
+
+          if (result.status === 'success') {
+            // Premium iptal et
+            await db.updateUserPremiumStatus(ctx.user.id, false);
+            
+            return { success: true };
+          } else {
+            throw new Error(result.errorMessage || 'İptal işlemi başarısız');
+          }
+        } catch (error: any) {
+          console.error('[iyzico] Cancel error:', error);
+          throw new Error(error.message || 'İptal işlemi başarısız oldu');
+        }
+      }),
+
+    /**
+     * iyzico webhook handler
+     */
+    iyzicoWebhook: publicProcedure
+      .input(z.object({ 
+        token: z.string(),
+        subscriptionReferenceCode: z.string(),
+        status: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          // Webhook güvenlik kontrolü (iyzico token doğrulama)
+          // TODO: Token doğrulama ekleyin
+          
+          const { subscriptionReferenceCode, status } = input;
+          
+          // Kullanıcıyı bul
+          const user = await db.getUserByIyzicoSubscriptionRef(subscriptionReferenceCode);
+          if (!user) {
+            console.error('[iyzico] User not found for subscription:', subscriptionReferenceCode);
+            return { success: false };
+          }
+
+          // Status'e göre premium durumunu güncelle
+          if (status === 'ACTIVE') {
+            await db.updateUserPremiumStatus(user.id, true);
+            console.log(`[iyzico] User ${user.id} premium activated`);
+          } else if (status === 'CANCELED' || status === 'EXPIRED') {
+            await db.updateUserPremiumStatus(user.id, false);
+            console.log(`[iyzico] User ${user.id} premium cancelled`);
+          }
+
+          return { success: true };
+        } catch (error) {
+          console.error('[iyzico] Webhook error:', error);
+          return { success: false };
+        }
+      }),
   }),
 });
 

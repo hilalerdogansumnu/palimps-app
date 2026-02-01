@@ -18,6 +18,8 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   isPremium: int("isPremium").default(0).notNull(), // 0 = free, 1 = premium
+  iyzicoCustomerId: varchar("iyzicoCustomerId", { length: 255 }),
+  iyzicoSubscriptionRef: varchar("iyzicoSubscriptionRef", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

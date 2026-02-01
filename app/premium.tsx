@@ -1,10 +1,22 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { router } from "expo-router";
 import { useSubscription } from "@/hooks/use-subscription";
+import { IyzicoPaymentForm } from "@/components/iyzico-payment-form";
 
 export default function PremiumScreen() {
   const { isPremium } = useSubscription();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  const handleUpgrade = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    router.back();
+  };
 
   const features = [
     {
@@ -86,15 +98,12 @@ export default function PremiumScreen() {
           {/* CTA Button */}
           {!isPremium && (
             <TouchableOpacity
-              onPress={() => {
-                // TODO: Implement payment flow
-                alert("Payment integration coming soon!");
-              }}
+              onPress={handleUpgrade}
               className="bg-primary rounded-full py-4 mb-4"
               activeOpacity={0.8}
             >
               <Text className="text-background font-bold text-center text-lg">
-                Upgrade to Premium - $4.99/month
+                Premium'a Geç - ₺149.99/ay
               </Text>
             </TouchableOpacity>
           )}
@@ -105,6 +114,19 @@ export default function PremiumScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Ödeme Modal */}
+      <Modal
+        visible={showPaymentModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <IyzicoPaymentForm
+          onSuccess={handlePaymentSuccess}
+          onCancel={() => setShowPaymentModal(false)}
+        />
+      </Modal>
     </ScreenContainer>
   );
 }

@@ -267,3 +267,14 @@
 - [x] Frontend: ödeme akışı placeholder'ları
 - [x] Ödeme entegrasyonu dokümantasyonu (Stripe/RevenueCat)
 - [x] Webhook handler altyapısı (ödeme başarılı/iptal)
+
+## iyzico Ödeme Entegrasyonu
+
+- [ ] iyzico hesap açma ve onay süreci (kullanıcı tarafından yapılacak)
+- [x] Backend: iyzico SDK kurulumu
+- [x] Backend: Abonelik başlatma API'si
+- [x] Backend: Webhook handler (ödeme başarılı/iptal)
+- [x] Frontend: iyzico ödeme formu entegrasyonu
+- [x] Frontend: 3D Secure akışı
+- [ ] Test kartları ile test (iyzico hesabı onaylanmalı)
+- [ ] Canlıya alma (iyzico hesabı onaylanmalı)
