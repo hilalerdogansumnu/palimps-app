@@ -19,6 +19,8 @@ type BookWithCount = {
   lastMomentDate: Date | null;
 };
 
+type SortOption = "relevance" | "date-newest" | "date-oldest" | "author";
+
 export default function HomeScreen() {
   const colors = useColors();
   const { t } = useTranslation();
@@ -28,7 +30,7 @@ export default function HomeScreen() {
   });
 
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [isSearching, setIsSearching] = React.useState(false);
+  const [sortBy, setSortBy] = React.useState<SortOption>("relevance");
 
   // Backend search API
   const { data: searchResults, isLoading: searchLoading } = trpc.search.all.useQuery(
@@ -69,6 +71,97 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/moment/${momentId}` as any);
   };
+
+  const handleSortChange = (option: SortOption) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSortBy(option);
+  };
+
+  // Sort search results based on selected option
+  const sortedSearchResults = React.useMemo(() => {
+    if (!searchResults) return null;
+
+    const sortedBooks = [...searchResults.books];
+    const sortedMoments = [...searchResults.moments];
+
+    switch (sortBy) {
+      case "date-newest":
+        sortedBooks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        sortedMoments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case "date-oldest":
+        sortedBooks.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        sortedMoments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+      case "author":
+        sortedBooks.sort((a, b) => {
+          const authorA = a.author?.toLowerCase() || "";
+          const authorB = b.author?.toLowerCase() || "";
+          return authorA.localeCompare(authorB);
+        });
+        // For moments, sort by book author
+        sortedMoments.sort((a, b) => {
+          const bookA = books?.find((book) => book.id === a.bookId);
+          const bookB = books?.find((book) => book.id === b.bookId);
+          const authorA = bookA?.author?.toLowerCase() || "";
+          const authorB = bookB?.author?.toLowerCase() || "";
+          return authorA.localeCompare(authorB);
+        });
+        break;
+      case "relevance":
+      default:
+        // Calculate relevance score based on query match
+        const calculateRelevance = (text: string | null | undefined, query: string): number => {
+          if (!text) return 0;
+          const lowerText = text.toLowerCase();
+          const lowerQuery = query.toLowerCase();
+          
+          // Exact match gets highest score
+          if (lowerText === lowerQuery) return 100;
+          
+          // Match at start of text
+          if (lowerText.startsWith(lowerQuery)) return 80;
+          
+          // Match as whole word
+          const wordMatch = new RegExp(`\\b${lowerQuery}\\b`, "i").test(text);
+          if (wordMatch) return 60;
+          
+          // Partial match - count occurrences
+          const occurrences = (lowerText.match(new RegExp(lowerQuery, "g")) || []).length;
+          return Math.min(40 + occurrences * 10, 50);
+        };
+
+        sortedBooks.sort((a, b) => {
+          const scoreA = Math.max(
+            calculateRelevance(a.title, searchQuery),
+            calculateRelevance(a.author, searchQuery)
+          );
+          const scoreB = Math.max(
+            calculateRelevance(b.title, searchQuery),
+            calculateRelevance(b.author, searchQuery)
+          );
+          return scoreB - scoreA;
+        });
+
+        sortedMoments.sort((a, b) => {
+          const scoreA = Math.max(
+            calculateRelevance(a.ocrText, searchQuery),
+            calculateRelevance(a.userNote, searchQuery)
+          );
+          const scoreB = Math.max(
+            calculateRelevance(b.ocrText, searchQuery),
+            calculateRelevance(b.userNote, searchQuery)
+          );
+          return scoreB - scoreA;
+        });
+        break;
+    }
+
+    return {
+      books: sortedBooks,
+      moments: sortedMoments,
+    };
+  }, [searchResults, sortBy, searchQuery, books]);
 
   if (authLoading || isLoading) {
     return (
@@ -137,7 +230,14 @@ export default function HomeScreen() {
 
   // Determine what to display
   const showSearchResults = searchQuery.length > 0;
-  const hasSearchResults = searchResults && (searchResults.books.length > 0 || searchResults.moments.length > 0);
+  const hasSearchResults = sortedSearchResults && (sortedSearchResults.books.length > 0 || sortedSearchResults.moments.length > 0);
+
+  const sortOptions: { value: SortOption; label: string }[] = [
+    { value: "relevance", label: "Relevance" },
+    { value: "date-newest", label: "Newest" },
+    { value: "date-oldest", label: "Oldest" },
+    { value: "author", label: "Author" },
+  ];
 
   return (
     <ScreenContainer className="px-6">
@@ -153,7 +253,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Search Bar */}
-      <View className="mb-6">
+      <View className="mb-4">
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -172,6 +272,45 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* Sort Options (only show when searching) */}
+      {showSearchResults && (
+        <View className="mb-6">
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {sortOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => handleSortChange(option.value)}
+                style={({ pressed }) => [
+                  {
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    backgroundColor: sortBy === option.value ? colors.foreground : colors.surface,
+                    borderWidth: 1,
+                    borderColor: sortBy === option.value ? colors.foreground : colors.border,
+                    opacity: pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: sortBy === option.value ? colors.background : colors.foreground,
+                    fontWeight: sortBy === option.value ? "600" : "400",
+                  }}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* Search Results or Book List */}
       {showSearchResults ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
@@ -182,12 +321,12 @@ export default function HomeScreen() {
           ) : hasSearchResults ? (
             <>
               {/* Books Section */}
-              {searchResults.books.length > 0 && (
+              {sortedSearchResults.books.length > 0 && (
                 <View className="mb-8">
                   <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Books ({searchResults.books.length})
+                    Books ({sortedSearchResults.books.length})
                   </Text>
-                  {searchResults.books.map((book, index) => (
+                  {sortedSearchResults.books.map((book, index) => (
                     <View key={book.id}>
                       {index > 0 && (
                         <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
@@ -213,12 +352,12 @@ export default function HomeScreen() {
               )}
 
               {/* Moments Section */}
-              {searchResults.moments.length > 0 && (
+              {sortedSearchResults.moments.length > 0 && (
                 <View>
                   <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Moments ({searchResults.moments.length})
+                    Moments ({sortedSearchResults.moments.length})
                   </Text>
-                  {searchResults.moments.map((moment, index) => {
+                  {sortedSearchResults.moments.map((moment, index) => {
                     const book = books?.find((b) => b.id === moment.bookId);
                     return (
                       <View key={moment.id}>

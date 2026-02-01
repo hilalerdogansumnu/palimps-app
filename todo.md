@@ -220,3 +220,12 @@
 - [x] OCR metinlerinde arama sonuçlarını göster
 - [x] Arama sonuçlarında moment detayına yönlendirme
 - [x] Loading ve boş sonuç durumları
+
+## Arama Sonuçları Sıralama Özelliği
+
+- [x] Sıralama seçenekleri UI tasarımı (dropdown/segmented control)
+- [x] State yönetimi (seçili sıralama türü)
+- [x] Tarihe göre sıralama (en yeni/en eski)
+- [x] Yazara göre sıralama (alfabetik)
+- [x] Alaka düzeyine göre sıralama (varsayılan)
+- [x] Sıralama algoritmaları test et
