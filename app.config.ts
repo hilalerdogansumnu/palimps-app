@@ -44,7 +44,7 @@ const config: ExpoConfig = {
   version: "1.0.0",
   extra: {
     eas: {
-      projectId: "okuma-hafizasi-mvp"
+      projectId: "f64f8212-7a0a-47f9-bb64-b2d4d6870ccd"
     }
   },
   orientation: "portrait",
