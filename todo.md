@@ -75,6 +75,7 @@
 - [x] Checkpoint oluştur (v1.0 - 86ee4179)
 - [x] Checkpoint oluştur (v1.1 - 16b7b2bb - Giriş/Çıkış Sistemi)
 - [x] Checkpoint oluştur (v1.2 - 8dfd8b83 - OAuth Giriş Sorunu Düzeltildi)
+- [x] Checkpoint oluştur (v2.0 - 00af517e - Arama, Silme ve AI Chatbot)
 - [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
@@ -123,3 +124,46 @@
 - [x] Mesaj gönderme input alanı
 - [x] Loading ve hata durumları
 - [x] Örnek sorular (quick replies)
+
+
+## PALIMPS Rebranding ve Tasarım Yenileme
+
+### Marka Kimliği
+- [x] Uygulama adını PALIMPS olarak güncelle
+- [x] Tagline: "Personal Reading Memory System"
+- [x] Yeni logo tasarımı (P monogram, sessiz, zamansız)
+
+### Tasarım Sistemi
+- [x] Renk sistemi (near-white #F8F8F7, near-black #1C1C1E, muted accent)
+- [x] Tipografi sistemi (SF Pro Display/Text)
+- [x] Layout kuralları (geniş boşluklar, minimal)
+- [x] Logo entegrasyonu (app icon + branding)
+
+### Giriş Ekranı (Login Screen)
+- [x] Sessiz, premium giriş ekranı (Apple Notes seviyesi)
+- [x] OAuth butonları (minimal, temiz)
+- [x] PALIMPS branding (logo + tagline)
+- [x] Privacy note (subtle)
+
+### Ana Ekran (Home/Library)
+- [x] Liste bazlı yapı (dashboard YOK, grafik YOK)
+- [x] Kitap adı + yazar + moment sayısı (minimal bilgi)
+- [x] Geniş boşluklar, az öğe
+- [x] İnce ayırıcı çizgiler
+
+### Kitap Detay Ekranı (CORE)
+- [x] Kronolojik izler (zaman çizgisi)
+- [x] Her iz: tarih + OCR metin + kullanıcı notu
+- [x] Satır bazlı gösterim (kart değil)
+- [x] Minimal header (kitap adı küçük, sakin)
+
+### Diğer Ekranlar
+- [x] Okuma anı ekleme ekranı (mevcut, minimal)
+- [x] Profil ekranı (mevcut, sessiz)
+- [x] Chatbot ekranı (mevcut, metin merkezli)
+- [x] Okuma anı detay ekranı (mevcut)
+
+### Çoklu Dil Desteği
+- [x] İngilizce (default, global hedef)
+- [ ] Türkçe (gelecek versiyon)
+- [ ] i18n sistemi (gelecek versiyon)

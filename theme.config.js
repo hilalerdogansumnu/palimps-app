@@ -1,14 +1,28 @@
 /** @type {const} */
 const themeColors = {
-  primary: { light: '#0a7ea4', dark: '#0a7ea4' },
-  background: { light: '#ffffff', dark: '#151718' },
-  surface: { light: '#f5f5f5', dark: '#1e2022' },
-  foreground: { light: '#11181C', dark: '#ECEDEE' },
-  muted: { light: '#687076', dark: '#9BA1A6' },
-  border: { light: '#E5E7EB', dark: '#334155' },
-  success: { light: '#22C55E', dark: '#4ADE80' },
-  warning: { light: '#F59E0B', dark: '#FBBF24' },
-  error: { light: '#EF4444', dark: '#F87171' },
+  // PALIMPS Design System
+  // Near-white background (not pure white)
+  background: { light: '#F8F8F7', dark: '#F8F8F7' },
+  
+  // Near-black text (not pure black)
+  foreground: { light: '#1C1C1E', dark: '#1C1C1E' },
+  
+  // System gray for secondary text
+  muted: { light: '#8E8E93', dark: '#8E8E93' },
+  
+  // Muted accent color (single, not saturated)
+  primary: { light: '#6B7280', dark: '#6B7280' },
+  
+  // Surface for subtle elevation
+  surface: { light: '#FAFAF9', dark: '#FAFAF9' },
+  
+  // Minimal border (very subtle)
+  border: { light: '#E5E5E5', dark: '#E5E5E5' },
+  
+  // Success, warning, error (muted, not vibrant)
+  success: { light: '#10B981', dark: '#10B981' },
+  warning: { light: '#F59E0B', dark: '#F59E0B' },
+  error: { light: '#EF4444', dark: '#EF4444' },
 };
 
 module.exports = { themeColors };

@@ -1,13 +1,11 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Pressable, TextInput } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { useState } from "react";
 
 type BookWithCount = {
   id: number;
@@ -16,12 +14,12 @@ type BookWithCount = {
   coverImageUrl: string | null;
   momentCount: number;
   createdAt: Date;
+  lastMomentDate: Date | null;
 };
 
 export default function HomeScreen() {
   const colors = useColors();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -39,155 +37,117 @@ export default function HomeScreen() {
   if (authLoading || isLoading) {
     return (
       <ScreenContainer className="items-center justify-center">
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.foreground} />
       </ScreenContainer>
     );
   }
 
   if (!isAuthenticated || !user) {
     return (
-      <ScreenContainer className="items-center justify-center p-6">
-        <Text className="text-2xl font-bold text-foreground mb-4">Okuma Hafızası</Text>
-        <Text className="text-base text-muted text-center mb-6">
-          Kitaplarınızı ve okuma anılarınızı kaydetmek için giriş yapın.
+      <ScreenContainer className="items-center justify-center px-8">
+        <Text className="text-lg text-foreground mb-2 text-center font-medium">PALIMPS</Text>
+        <Text className="text-sm text-muted text-center mb-8">
+          Personal Reading Memory System
         </Text>
         <Pressable
           onPress={() => router.push("/login" as any)}
-          className="bg-primary px-8 py-4 rounded-full"
-          style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-background font-semibold text-base">Giriş Yap</Text>
+          <Text className="text-base text-foreground">Sign in</Text>
         </Pressable>
       </ScreenContainer>
     );
   }
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}` as any);
-    }
-  };
-
-  // Arama varsa filtreleme yap
-  const filteredBooks = books?.filter((book) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    const titleMatch = book.title.toLowerCase().includes(query);
-    const authorMatch = book.author?.toLowerCase().includes(query) ?? false;
-    return titleMatch || authorMatch;
-  });
-
+  // Empty state
   if (!books || books.length === 0) {
     return (
-      <ScreenContainer className="p-6">
-        <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-3xl font-bold text-foreground">Kitaplarım</Text>
-          <Pressable
-            onPress={handleAddBook}
-            className="bg-primary w-12 h-12 rounded-full items-center justify-center"
-            style={({ pressed }) => [
-              { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-            ]}
-          >
-            <Text className="text-background text-2xl font-bold">+</Text>
-          </Pressable>
+      <ScreenContainer className="px-6">
+        {/* Header */}
+        <View className="pt-4 pb-6">
+          <Text className="text-sm text-muted">Library</Text>
         </View>
 
+        {/* Empty state */}
         <View className="flex-1 items-center justify-center">
-          <Text className="text-xl font-semibold text-foreground mb-3 text-center">
-            Henüz kitap eklemediniz
-          </Text>
-          <Text className="text-base text-muted text-center mb-6">
-            İlk kitabınızı ekleyerek okuma hafızanızı oluşturmaya başlayın.
+          <Text className="text-base text-muted mb-8 text-center">
+            No books yet
           </Text>
           <Pressable
             onPress={handleAddBook}
-            className="bg-primary px-8 py-4 rounded-full"
-            style={({ pressed }) => [
-              { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-            ]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-background font-semibold text-base">Kitap Ekle</Text>
+            <Text className="text-base text-foreground">Add your first book</Text>
           </Pressable>
         </View>
       </ScreenContainer>
     );
   }
 
+  // Format date helper
+  const formatDate = (date: Date | null) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  };
+
   return (
-    <ScreenContainer className="p-6">
-      <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-3xl font-bold text-foreground">Kitaplarım</Text>
+    <ScreenContainer className="px-6">
+      {/* Header */}
+      <View className="pt-4 pb-6 flex-row items-center justify-between">
+        <Text className="text-sm text-muted">Library</Text>
         <Pressable
           onPress={handleAddBook}
-          className="bg-primary w-12 h-12 rounded-full items-center justify-center"
-          style={({ pressed }) => [
-            { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-          ]}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-background text-2xl font-bold">+</Text>
+          <Text className="text-2xl text-foreground">+</Text>
         </Pressable>
       </View>
 
-      {/* Arama Çubuğu */}
-      <View className="mb-4">
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Kitap veya yazar ara..."
-          placeholderTextColor={colors.muted}
-          returnKeyType="search"
-          onSubmitEditing={handleSearch}
-          className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground"
-          style={{ color: colors.foreground }}
-        />
-      </View>
-
+      {/* Book List */}
       <FlatList
-        data={filteredBooks}
+        data={books}
         keyExtractor={(item) => item.id.toString()}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 24 }} />
+        )}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => handleBookPress(item.id)}
-            className="bg-surface rounded-2xl p-4 mb-4 border border-border"
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <View className="flex-row">
-              {item.coverImageUrl ? (
-                <Image
-                  source={{ uri: item.coverImageUrl }}
-                  className="w-20 h-28 rounded-lg mr-4"
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="w-20 h-28 rounded-lg mr-4 bg-border items-center justify-center">
-                  <IconSymbol name="house.fill" size={32} color={colors.muted} />
-                </View>
+            <View>
+              {/* Book title */}
+              <Text className="text-base text-foreground mb-1 font-medium">
+                {item.title}
+              </Text>
+              
+              {/* Author (if exists) */}
+              {item.author && (
+                <Text className="text-sm text-muted mb-2">
+                  {item.author}
+                </Text>
               )}
-
-              <View className="flex-1 justify-center">
-                <Text className="text-lg font-semibold text-foreground mb-1" numberOfLines={2}>
-                  {item.title}
-                </Text>
-                {item.author && (
-                  <Text className="text-sm text-muted mb-2" numberOfLines={1}>
-                    {item.author}
-                  </Text>
-                )}
+              
+              {/* Last moment date */}
+              {item.momentCount > 0 && (
                 <Text className="text-xs text-muted">
-                  {item.momentCount} okuma anı
+                  {item.momentCount} {item.momentCount === 1 ? "moment" : "moments"}
                 </Text>
-              </View>
-
-              <View className="justify-center">
-                <IconSymbol name="chevron.right" size={20} color={colors.muted} />
-              </View>
+              )}
             </View>
           </Pressable>
         )}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
       />
     </ScreenContainer>
   );

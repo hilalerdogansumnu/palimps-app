@@ -1,11 +1,10 @@
-import { View, Text, FlatList, ActivityIndicator, Image, Pressable } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function BookDetailScreen() {
   const colors = useColors();
@@ -30,150 +29,141 @@ export default function BookDetailScreen() {
   if (bookLoading || momentsLoading) {
     return (
       <ScreenContainer className="items-center justify-center">
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="small" color={colors.foreground} />
       </ScreenContainer>
     );
   }
 
   if (!book) {
     return (
-      <ScreenContainer className="items-center justify-center p-6">
-        <Text className="text-xl font-semibold text-foreground mb-3">Kitap bulunamadı</Text>
+      <ScreenContainer className="items-center justify-center px-8">
+        <Text className="text-base text-muted mb-8">Book not found</Text>
         <Pressable
           onPress={() => router.back()}
-          className="bg-primary px-6 py-3 rounded-full"
-          style={({ pressed }) => [
-            { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-          ]}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-background font-semibold">Geri Dön</Text>
+          <Text className="text-base text-foreground">Go back</Text>
         </Pressable>
       </ScreenContainer>
     );
   }
 
-  return (
-    <ScreenContainer>
-      {/* Header */}
-      <View className="p-6 pb-4 border-b border-border">
-        <Pressable
-          onPress={() => router.back()}
-          className="mb-4 p-2 self-start"
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text className="text-primary text-base">← Geri</Text>
-        </Pressable>
+  // Format date helper
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  };
 
-        <View className="flex-row">
-          {book.coverImageUrl ? (
-            <Image
-              source={{ uri: book.coverImageUrl }}
-              className="w-16 h-24 rounded-lg mr-4"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-16 h-24 rounded-lg mr-4 bg-border items-center justify-center">
-              <IconSymbol name="house.fill" size={24} color={colors.muted} />
-            </View>
-          )}
-
-          <View className="flex-1 justify-center">
-            <Text className="text-2xl font-bold text-foreground mb-1">{book.title}</Text>
-            {book.author && <Text className="text-sm text-muted mb-2">{book.author}</Text>}
-            <Text className="text-xs text-muted">{moments?.length || 0} okuma anı</Text>
-          </View>
+  // Empty state
+  if (!moments || moments.length === 0) {
+    return (
+      <ScreenContainer className="px-6">
+        {/* Header */}
+        <View className="pt-4 pb-6 flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text className="text-base text-foreground">←</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleAddMoment}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text className="text-2xl text-foreground">+</Text>
+          </Pressable>
         </View>
-      </View>
 
-      {/* Okuma Anları Listesi */}
-      {!moments || moments.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-xl font-semibold text-foreground mb-3 text-center">
-            Henüz okuma anı eklemediniz
-          </Text>
-          <Text className="text-base text-muted text-center mb-6">
-            Bu kitaptan ilk okuma anınızı ekleyerek başlayın.
+        {/* Book title (small, quiet) */}
+        <View className="mb-8">
+          <Text className="text-base text-foreground font-medium mb-1">{book.title}</Text>
+          {book.author && (
+            <Text className="text-sm text-muted">{book.author}</Text>
+          )}
+        </View>
+
+        {/* Empty state */}
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-base text-muted mb-8 text-center">
+            No moments yet
           </Text>
           <Pressable
             onPress={handleAddMoment}
-            className="bg-primary px-8 py-4 rounded-full"
-            style={({ pressed }) => [
-              { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-            ]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-background font-semibold text-base">Okuma Anı Ekle</Text>
+            <Text className="text-base text-foreground">Add your first moment</Text>
           </Pressable>
         </View>
-      ) : (
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between p-6 pb-3">
-            <Text className="text-lg font-semibold text-foreground">Zaman Çizgisi</Text>
-            <Pressable
-              onPress={handleAddMoment}
-              className="bg-primary w-10 h-10 rounded-full items-center justify-center"
-              style={({ pressed }) => [
-                { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
-              ]}
-            >
-              <Text className="text-background text-xl font-bold">+</Text>
-            </Pressable>
-          </View>
+      </ScreenContainer>
+    );
+  }
 
-          <FlatList
-            data={moments}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => {
-              const createdDate = new Date(item.createdAt);
-              const now = new Date();
-              const diffMs = now.getTime() - createdDate.getTime();
-              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-              
-              let timeText = "";
-              if (diffDays === 0) {
-                timeText = "Bugün";
-              } else if (diffDays === 1) {
-                timeText = "Dün";
-              } else if (diffDays < 7) {
-                timeText = `${diffDays} gün önce`;
-              } else {
-                timeText = createdDate.toLocaleDateString("tr-TR");
-              }
+  return (
+    <ScreenContainer className="px-6">
+      {/* Header */}
+      <View className="pt-4 pb-6 flex-row items-center justify-between">
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text className="text-base text-foreground">←</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleAddMoment}
+          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Text className="text-2xl text-foreground">+</Text>
+        </Pressable>
+      </View>
 
-              return (
-                <Pressable
-                  onPress={() => handleMomentPress(item.id)}
-                  className="mx-6 mb-4 bg-surface rounded-2xl p-4 border border-border"
-                  style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <View className="flex-row">
-                    <Image
-                      source={{ uri: item.pageImageUrl }}
-                      className="w-20 h-28 rounded-lg mr-4"
-                      resizeMode="cover"
-                    />
+      {/* Book title (small, quiet) */}
+      <View className="mb-8">
+        <Text className="text-base text-foreground font-medium mb-1">{book.title}</Text>
+        {book.author && (
+          <Text className="text-sm text-muted">{book.author}</Text>
+        )}
+      </View>
 
-                    <View className="flex-1">
-                      {item.ocrText && (
-                        <Text className="text-sm text-foreground mb-2" numberOfLines={3}>
-                          {item.ocrText}
-                        </Text>
-                      )}
-                      {item.userNote && (
-                        <Text className="text-xs text-muted italic mb-2" numberOfLines={2}>
-                          "{item.userNote}"
-                        </Text>
-                      )}
-                      <Text className="text-xs text-muted">{timeText}</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            }}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      )}
+      {/* Chronological moments (timeline) */}
+      <FlatList
+        data={moments}
+        keyExtractor={(item) => item.id.toString()}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        ItemSeparatorComponent={() => <View style={{ height: 32 }} />}
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() => handleMomentPress(item.id)}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <View>
+              {/* Date (system gray) */}
+              <Text className="text-xs text-muted mb-2">
+                {formatDate(item.createdAt)}
+              </Text>
+
+              {/* OCR text (main content) */}
+              {item.ocrText && (
+                <Text className="text-base text-foreground mb-2 leading-6">
+                  {item.ocrText.length > 200
+                    ? item.ocrText.substring(0, 200) + "..."
+                    : item.ocrText}
+                </Text>
+              )}
+
+              {/* User note (lighter tone) */}
+              {item.userNote && (
+                <Text className="text-sm text-muted leading-5">
+                  {item.userNote}
+                </Text>
+              )}
+
+
+            </View>
+          </Pressable>
+        )}
+      />
     </ScreenContainer>
   );
 }

@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Image } from "react-native";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -22,23 +22,11 @@ export default function LoginScreen() {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
       const authUrl = `${apiUrl}/auth/login/${authProvider}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
       
-      console.log("[Login] Starting OAuth flow...");
-      console.log("[Login] Redirect URL:", redirectUrl);
-      console.log("[Login] Auth URL:", authUrl);
-      
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-      
-      console.log("[Login] OAuth result:", result);
       
       if (result.type === "success") {
         // OAuth callback handler will handle the redirect
-        console.log("[Login] OAuth success, waiting for callback handler...");
-        // Give callback handler time to process
         await new Promise(resolve => setTimeout(resolve, 2000));
-      } else if (result.type === "cancel") {
-        console.log("[Login] User cancelled OAuth flow");
-      } else {
-        console.log("[Login] OAuth flow dismissed");
       }
     } catch (error) {
       console.error("[Login] Login error:", error);
@@ -49,73 +37,78 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScreenContainer className="items-center justify-center p-6">
-      {/* Logo ve Başlık */}
-      <View className="items-center mb-12">
-        <View className="w-24 h-24 rounded-3xl bg-primary items-center justify-center mb-6">
-          <Text className="text-5xl">📚</Text>
-        </View>
-        <Text className="text-4xl font-bold text-foreground mb-3">Okuma Hafızası</Text>
-        <Text className="text-base text-muted text-center leading-relaxed px-4">
-          Basılı kitaplarınızdan sayfa fotoğrafı çekerek{"\n"}okuma anılarınızı kaydedin ve saklayın.
+    <ScreenContainer className="items-center justify-center px-8">
+      {/* Logo and tagline (quiet, minimal) */}
+      <View className="items-center mb-16">
+        <Text className="text-lg text-foreground mb-2 font-medium tracking-wide">
+          PALIMPS
+        </Text>
+        <Text className="text-sm text-muted text-center">
+          Personal Reading Memory System
         </Text>
       </View>
 
-      {/* OAuth Butonları */}
-      <View className="w-full max-w-sm gap-4">
-        {/* Google ile Giriş */}
+      {/* OAuth buttons (minimal, clean) */}
+      <View className="w-full max-w-xs gap-4">
+        {/* Google Sign In */}
         <Pressable
           onPress={() => handleLogin("google")}
           disabled={isLoading}
-          className="bg-background border-2 border-border px-6 py-4 rounded-2xl flex-row items-center justify-center"
           style={({ pressed }) => [
             {
-              opacity: isLoading ? 0.5 : pressed ? 0.9 : 1,
-              transform: [{ scale: pressed && !isLoading ? 0.98 : 1 }],
+              opacity: isLoading ? 0.5 : pressed ? 0.6 : 1,
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+              alignItems: "center",
             },
           ]}
         >
           {isLoading && provider === "google" ? (
             <ActivityIndicator size="small" color={colors.foreground} />
           ) : (
-            <>
-              <Text className="text-2xl mr-3">🔍</Text>
-              <Text className="text-foreground font-semibold text-base">
-                Google ile Giriş Yap
-              </Text>
-            </>
+            <Text style={{ fontSize: 15, color: colors.foreground }}>
+              Continue with Google
+            </Text>
           )}
         </Pressable>
 
-        {/* Apple ile Giriş */}
+        {/* Apple Sign In */}
         <Pressable
           onPress={() => handleLogin("apple")}
           disabled={isLoading}
-          className="bg-foreground px-6 py-4 rounded-2xl flex-row items-center justify-center"
           style={({ pressed }) => [
             {
-              opacity: isLoading ? 0.5 : pressed ? 0.9 : 1,
-              transform: [{ scale: pressed && !isLoading ? 0.98 : 1 }],
+              opacity: isLoading ? 0.5 : pressed ? 0.6 : 1,
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+              alignItems: "center",
             },
           ]}
         >
           {isLoading && provider === "apple" ? (
-            <ActivityIndicator size="small" color={colors.background} />
+            <ActivityIndicator size="small" color={colors.foreground} />
           ) : (
-            <>
-              <Text className="text-2xl mr-3">🍎</Text>
-              <Text className="text-background font-semibold text-base">
-                Apple ile Giriş Yap
-              </Text>
-            </>
+            <Text style={{ fontSize: 15, color: colors.foreground }}>
+              Continue with Apple
+            </Text>
           )}
         </Pressable>
       </View>
 
-      {/* Bilgilendirme */}
-      <Text className="text-xs text-muted text-center mt-8 px-8 leading-relaxed">
-        Giriş yaparak Kullanım Koşulları ve Gizlilik Politikası'nı kabul etmiş olursunuz.
-      </Text>
+      {/* Privacy note (subtle) */}
+      <View className="mt-16">
+        <Text className="text-xs text-muted text-center">
+          Your reading data stays private
+        </Text>
+      </View>
     </ScreenContainer>
   );
 }
