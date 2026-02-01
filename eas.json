@@ -19,8 +19,7 @@
     "production": {
       "distribution": "store",
       "ios": {
-        "simulator": false,
-        "bundleIdentifier": "space.manus.okuma.hafizasi.mvp.t20260130232125"
+        "simulator": false
       },
       "android": {
         "buildType": "apk"
@@ -30,9 +29,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID_EMAIL",
-        "ascAppId": "YOUR_ASC_APP_ID",
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleId": "hilalsumnu@gmail.com",
+        "ascAppId": "6758565358",
+        "appleTeamId": "S456GRHXU8"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
