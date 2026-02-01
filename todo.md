@@ -64,7 +64,8 @@
 - [x] Uygulama logosu tasarımı (AI ile)
 - [x] Logo dosyalarını proje klasörlerine ekleme
 - [x] app.config.ts güncellemesi (uygulama adı, logo URL)
-#### Test ve İyileştirme
+
+## Test ve İyileştirme
 
 - [x] API router yapısını test et
 - [x] TypeScript tip kontrolleri
@@ -318,3 +319,30 @@
 - [x] Profil ekranındaki "Premium'a Geç" CTA kartını güncelle
 - [x] AI not oluşturma butonunu devre dışı bırak
 - [x] Tüm premium özellik butonlarına "Yakında" badge'i ekle
+
+## iOS App Store Yayını
+
+### Hazırlık
+- [ ] Privacy Policy sayfası oluştur ve landing page'e ekle
+- [ ] App Store metadata hazırla (açıklama, keywords, kategori)
+- [ ] App Store ekran görüntüleri oluştur (6.7", 6.5", 5.5")
+- [ ] App Preview video hazırla (opsiyonel)
+- [ ] App Store icon kontrol (1024x1024)
+
+### Apple Developer Account
+- [ ] Apple Developer hesabı oluştur ($99/yıl)
+- [ ] App Store Connect'e giriş yap
+- [ ] Yeni uygulama kaydı oluştur (PALIMPS)
+- [ ] Bundle ID kaydet
+
+### Build ve Yükleme
+- [ ] EAS Build yapılandırması (eas.json)
+- [ ] iOS production build oluştur (.ipa)
+- [ ] TestFlight'a yükle (beta test)
+- [ ] App Store Review için gönder
+
+### App Store Review
+- [ ] Review notes hazırla
+- [ ] Test hesabı bilgileri sağla
+- [ ] Demo video/screenshot hazırla
+- [ ] Review sürecini takip et
