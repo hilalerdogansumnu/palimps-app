@@ -6,6 +6,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
+import { useTranslation } from "react-i18next";
 
 type BookWithCount = {
   id: number;
@@ -19,6 +20,7 @@ type BookWithCount = {
 
 export default function HomeScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -45,15 +47,15 @@ export default function HomeScreen() {
   if (!isAuthenticated || !user) {
     return (
       <ScreenContainer className="items-center justify-center px-8">
-        <Text className="text-lg text-foreground mb-2 text-center font-medium">PALIMPS</Text>
+        <Text className="text-lg text-foreground mb-2 text-center font-medium">{t("app.name")}</Text>
         <Text className="text-sm text-muted text-center mb-8">
-          Personal Reading Memory System
+          {t("app.tagline")}
         </Text>
         <Pressable
           onPress={() => router.push("/login" as any)}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-base text-foreground">Sign in</Text>
+          <Text className="text-base text-foreground">{t("auth.signOut")}</Text>
         </Pressable>
       </ScreenContainer>
     );
@@ -65,19 +67,19 @@ export default function HomeScreen() {
       <ScreenContainer className="px-6">
         {/* Header */}
         <View className="pt-4 pb-6">
-          <Text className="text-sm text-muted">Library</Text>
+          <Text className="text-sm text-muted">{t("home.title")}</Text>
         </View>
 
         {/* Empty state */}
         <View className="flex-1 items-center justify-center">
           <Text className="text-base text-muted mb-8 text-center">
-            No books yet
+            {t("home.emptyState")}
           </Text>
           <Pressable
             onPress={handleAddBook}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-base text-foreground">Add your first book</Text>
+            <Text className="text-base text-foreground">{t("home.emptyStateAction")}</Text>
           </Pressable>
         </View>
       </ScreenContainer>

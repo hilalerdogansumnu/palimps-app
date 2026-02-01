@@ -1,6 +1,9 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { useState } from "react";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -10,6 +13,7 @@ export default function BookDetailScreen() {
   const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const bookId = parseInt(id, 10);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: book, isLoading: bookLoading } = trpc.books.getById.useQuery({ id: bookId });
   const { data: moments, isLoading: momentsLoading, refetch } = trpc.readingMoments.listByBook.useQuery(
@@ -24,6 +28,67 @@ export default function BookDetailScreen() {
   const handleMomentPress = (momentId: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/moment/${momentId}` as any);
+  };
+
+  const exportMutation = trpc.export.book.useMutation();
+
+  const handleExport = () => {
+    Alert.alert(
+      "Export Format",
+      "Choose export format",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Markdown",
+          onPress: () => performExport("markdown"),
+        },
+        {
+          text: "PDF",
+          onPress: () => performExport("pdf"),
+        },
+      ]
+    );
+  };
+
+  const performExport = async (format: "pdf" | "markdown") => {
+    setIsExporting(true);
+    try {
+      const result = await exportMutation.mutateAsync({ bookId, format });
+      
+      // Web platformunda direkt download
+      if (Platform.OS === "web") {
+        const blob = new Blob([result.content], { type: result.mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        Alert.alert("Success", "Exported successfully");
+      } else {
+        // Mobil platformlarda dosyaya yaz ve paylaş
+        const fileUri = `${FileSystem.documentDirectory}${result.filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, result.content, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          Alert.alert("Success", `Saved to ${fileUri}`);
+        }
+      }
+      
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error("Export error:", error);
+      Alert.alert("Error", "Export failed");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (bookLoading || momentsLoading) {
@@ -67,12 +132,21 @@ export default function BookDetailScreen() {
           >
             <Text className="text-base text-foreground">←</Text>
           </Pressable>
-          <Pressable
-            onPress={handleAddMoment}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text className="text-2xl text-foreground">+</Text>
-          </Pressable>
+          <View className="flex-row gap-4">
+            <Pressable
+              onPress={handleExport}
+              disabled={isExporting}
+              style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
+            >
+              <Text className="text-base text-foreground">{isExporting ? "..." : "↓"}</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleAddMoment}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text className="text-2xl text-foreground">+</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Book title (small, quiet) */}
@@ -109,12 +183,21 @@ export default function BookDetailScreen() {
         >
           <Text className="text-base text-foreground">←</Text>
         </Pressable>
-        <Pressable
-          onPress={handleAddMoment}
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text className="text-2xl text-foreground">+</Text>
-        </Pressable>
+        <View className="flex-row gap-4">
+          <Pressable
+            onPress={handleExport}
+            disabled={isExporting}
+            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
+          >
+            <Text className="text-base text-foreground">{isExporting ? "..." : "↓"}</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleAddMoment}
+            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text className="text-2xl text-foreground">+</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Book title (small, quiet) */}

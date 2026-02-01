@@ -23,7 +23,13 @@
   "bookDetail": {
     "noMomentsYet": "Henüz an yok",
     "addFirstMoment": "İlk anınızı ekleyin",
-    "back": "Geri"
+    "back": "Geri",
+    "export": "Dışa Aktar",
+    "exportFormat": "Dışa Aktarma Formatı",
+    "exportPDF": "PDF olarak dışa aktar",
+    "exportMarkdown": "Markdown olarak dışa aktar",
+    "exportSuccess": "Başarıyla dışa aktarıldı",
+    "exportError": "Dışa aktarma başarısız"
   },
   "addBook": {
     "title": "Kitap Ekle",

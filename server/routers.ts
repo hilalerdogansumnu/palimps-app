@@ -253,6 +253,80 @@ export const appRouter = router({
   }),
 
   // ============================================
+  // EXPORT
+  // ============================================
+  export: router({
+    /**
+     * Kitabın tüm okuma anlarını export et (PDF veya Markdown)
+     */
+    book: protectedProcedure
+      .input(
+        z.object({
+          bookId: z.number(),
+          format: z.enum(["pdf", "markdown"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Kitap bilgilerini al
+        const book = await db.getBookById(input.bookId);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found or unauthorized");
+        }
+
+        // Okuma anlarını al
+        const moments = await db.getReadingMomentsByBook(input.bookId);
+
+        // Markdown formatında içerik oluştur
+        let content = `# ${book.title}\n\n`;
+        if (book.author) {
+          content += `**Author:** ${book.author}\n\n`;
+        }
+        content += `**Total Moments:** ${moments.length}\n\n`;
+        content += `---\n\n`;
+
+        moments.forEach((moment, index) => {
+          content += `## Moment ${index + 1}\n\n`;
+          content += `**Date:** ${new Date(moment.createdAt).toLocaleDateString()}\n\n`;
+          
+          if (moment.ocrText) {
+            content += `### Extracted Text\n\n`;
+            content += `${moment.ocrText}\n\n`;
+          }
+          
+          if (moment.userNote) {
+            content += `### Your Note\n\n`;
+            content += `${moment.userNote}\n\n`;
+          }
+          
+          content += `---\n\n`;
+        });
+
+        if (input.format === "markdown") {
+          return {
+            content,
+            filename: `${book.title.replace(/[^a-z0-9]/gi, "_")}.md`,
+            mimeType: "text/markdown",
+          };
+        } else {
+          // PDF format için basit bir HTML'e çevir (tarayıcıda PDF'e dönüştürülecek)
+          const htmlContent = content
+            .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+            .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+            .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+            .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\n\n/g, "<br><br>")
+            .replace(/---/g, "<hr>");
+          
+          return {
+            content: htmlContent,
+            filename: `${book.title.replace(/[^a-z0-9]/gi, "_")}.html`,
+            mimeType: "text/html",
+          };
+        }
+      }),
+  }),
+
+  // ============================================
   // AI CHATBOT
   // ============================================
   chat: router({

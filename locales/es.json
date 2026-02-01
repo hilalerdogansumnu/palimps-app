@@ -23,7 +23,13 @@
   "bookDetail": {
     "noMomentsYet": "Aún no hay momentos",
     "addFirstMoment": "Agrega tu primer momento",
-    "back": "Atrás"
+    "back": "Atrás",
+    "export": "Exportar",
+    "exportFormat": "Formato de exportación",
+    "exportPDF": "Exportar como PDF",
+    "exportMarkdown": "Exportar como Markdown",
+    "exportSuccess": "Exportado exitosamente",
+    "exportError": "Error al exportar"
   },
   "addBook": {
     "title": "Agregar Libro",

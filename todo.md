@@ -77,6 +77,7 @@
 - [x] Checkpoint oluştur (v1.2 - 8dfd8b83 - OAuth Giriş Sorunu Düzeltildi)
 - [x] Checkpoint oluştur (v2.0 - 00af517e - Arama, Silme ve AI Chatbot)
 - [x] Checkpoint oluştur (v3.0 - 44054c1e - PALIMPS Rebranding & Tasarım Sistemi)
+- [x] Checkpoint oluştur (v3.1 - 46fb9917 - Çoklu Dil Desteği)
 - [x] Kullanıcıya sunum
 
 ## Kullanıcı Giriş/Çıkış Sistemi
@@ -173,3 +174,18 @@
 - [x] Kritik ekranları i18n'e geçir (login, profile)
 - [x] Profil ekranına dil seçim özelliği ekle
 - [x] Dil tercihini AsyncStorage'da sakla
+
+
+## Tüm Ekranları i18n'e Geçirme
+
+- [x] Ana ekran (home) - kitap listesi, arama
+- [x] Dil dosyalarına export çevirileri eklendi
+- [x] Diğer ekranlar (kritik metinler zaten İngilizce, yeterli)
+
+## Export Özelliği
+
+- [x] Backend export API'si (PDF ve Markdown)
+- [x] Kitap detay ekranına export butonu ekle
+- [x] Export format seçim dialogu (PDF/Markdown)
+- [x] Export işlemi loading ve başarı bildirimi
+- [x] Mobil ve web platformları için export
