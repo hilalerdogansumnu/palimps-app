@@ -186,17 +186,11 @@ export default function AddMomentScreen() {
           <View className="flex-row items-center justify-between mb-2">
             <Text className="text-sm font-semibold text-foreground">Notunuz (Opsiyonel)</Text>
             {ocrText && (
-              <Pressable
-                onPress={handleGenerateAINote}
-                disabled={isGeneratingAI}
-                className="flex-row items-center px-3 py-1 rounded-full bg-primary/10"
-                style={({ pressed }) => [{ opacity: pressed || isGeneratingAI ? 0.6 : 1 }]}
-              >
-                <Text className="text-xs font-semibold text-primary">
-                  {isGeneratingAI ? "✨ Oluşturuluyor..." : "✨ AI ile Oluştur"}
-                  {!isPremium && " 👑"}
+              <View className="flex-row items-center px-3 py-1 rounded-full bg-muted/20">
+                <Text className="text-xs font-semibold text-muted">
+                  🕒 AI Yakında
                 </Text>
-              </Pressable>
+              </View>
             )}
           </View>
           <TextInput

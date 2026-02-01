@@ -310,3 +310,11 @@
 - [x] Skip/Next/Get Started butonları
 - [x] İlk kullanım kontrolü (AsyncStorage)
 - [x] Onboarding tamamlandı işareti
+
+## Premium Butonlarını Geçici Devre Dışı Bırakma
+
+- [x] Premium ekranındaki "Premium'a Geç" butonunu devre dışı bırak
+- [x] Buton metnini "Yakında Aktif Olacak" olarak değiştir
+- [x] Profil ekranındaki "Premium'a Geç" CTA kartını güncelle
+- [x] AI not oluşturma butonunu devre dışı bırak
+- [x] Tüm premium özellik butonlarına "Yakında" badge'i ekle

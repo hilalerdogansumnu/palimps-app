@@ -194,23 +194,18 @@ export default function ProfileScreen() {
         {/* Upgrade to Premium (Free Users) */}
         {!isPremium && (
           <View className="px-6 mb-6">
-            <Pressable
-              onPress={() => router.push('/premium')}
-              className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6"
-              style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
-            >
+            <View className="bg-muted/20 rounded-2xl p-6 border border-muted/30">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-lg font-bold text-background mb-1">
-                    ✨ Premium'a Geç
+                  <Text className="text-lg font-bold text-muted mb-1">
+                    🕒 Premium Yakında
                   </Text>
-                  <Text className="text-sm text-background/80">
-                    Tüm AI özelliklerini sınırsız kullan
+                  <Text className="text-sm text-muted">
+                    AI özellikleri çok yakında aktif olacak
                   </Text>
                 </View>
-                <Text className="text-2xl">→</Text>
               </View>
-            </Pressable>
+            </View>
           </View>
         )}
 

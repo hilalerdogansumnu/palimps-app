@@ -134,15 +134,11 @@ export default function PremiumScreen() {
 
           {/* CTA Button */}
           {!isPremium && (
-            <TouchableOpacity
-              onPress={handleUpgrade}
-              className="bg-primary rounded-full py-4 mb-4"
-              activeOpacity={0.8}
-            >
-              <Text className="text-background font-bold text-center text-lg">
-                Premium'a Geç - ₺149.99/ay
+            <View className="bg-muted/30 rounded-full py-4 mb-4">
+              <Text className="text-muted font-bold text-center text-lg">
+                🕒 Yakında Aktif Olacak
               </Text>
-            </TouchableOpacity>
+            </View>
           )}
 
           {/* Terms */}
@@ -150,11 +146,14 @@ export default function PremiumScreen() {
             İstediğiniz zaman iptal edebilirsiniz. Şartlar ve koşullar geçerlidir.
           </Text>
           
-          {/* Value Proposition */}
+          {/* Coming Soon Notice */}
           {!isPremium && (
-            <View className="mt-4 bg-surface/50 rounded-xl p-4">
+            <View className="mt-4 bg-primary/10 rounded-xl p-4">
+              <Text className="text-sm text-primary text-center font-semibold mb-1">
+                🚀 Çok Yakında!
+              </Text>
               <Text className="text-xs text-muted text-center">
-                🔒 iyzico güvenli ödeme | 💳 3D Secure | 🧾 Otomatik fatura
+                Premium özellikler çok yakında aktif olacak. Şimdilik ücretsiz özellikleri kullanabilirsiniz.
               </Text>
             </View>
           )}
