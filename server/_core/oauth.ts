@@ -66,6 +66,7 @@ export function registerOAuthRoutes(app: Express) {
   app.get("/auth/login/:provider", async (req: Request, res: Response) => {
     const provider = req.params.provider;
     const redirectUri = getQueryParam(req, "redirect_uri");
+    const platform = getQueryParam(req, "platform") || "web"; // mobile or web
 
     if (!redirectUri) {
       res.status(400).json({ error: "redirect_uri is required" });
@@ -83,9 +84,26 @@ export function registerOAuthRoutes(app: Express) {
       
       // Build OAuth URL with provider and callback
       const callbackUrl = `${req.protocol}://${req.get("host")}/api/oauth/callback`;
-      const loginUrl = `${oauthBaseUrl}/authorize?provider=${provider}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(redirectUri)}`;
+      
+      // Generate a random OAuth state for security
+      const oauthState = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      // Store app redirect URI and platform in a signed cookie (expires in 10 minutes)
+      const stateData = JSON.stringify({ redirectUri, platform });
+      res.cookie(`oauth_state_${oauthState}`, stateData, {
+        httpOnly: true,
+        secure: req.protocol === "https",
+        sameSite: "lax",
+        maxAge: 10 * 60 * 1000, // 10 minutes
+      });
+      
+      const loginUrl = `${oauthBaseUrl}/authorize?provider=${provider}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(oauthState)}`;
 
       console.log("[OAuth] Redirecting to login URL:", loginUrl);
+      console.log("[OAuth] OAuth state:", oauthState);
+      console.log("[OAuth] App redirect URI:", redirectUri);
+      console.log("[OAuth] Platform:", platform);
+      
       // Redirect user to Manus OAuth
       res.redirect(302, loginUrl);
     } catch (error) {
@@ -96,17 +114,37 @@ export function registerOAuthRoutes(app: Express) {
 
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
+    const oauthState = getQueryParam(req, "state");
 
-    if (!code || !state) {
+    if (!code || !oauthState) {
       res.status(400).json({ error: "code and state are required" });
       return;
     }
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+      // Retrieve stored state data from cookie
+      const stateCookieName = `oauth_state_${oauthState}`;
+      const stateDataStr = req.cookies[stateCookieName];
+      
+      if (!stateDataStr) {
+        console.error("[OAuth] State cookie not found:", stateCookieName);
+        res.status(400).json({ error: "Invalid or expired OAuth state" });
+        return;
+      }
+      
+      const stateData = JSON.parse(stateDataStr);
+      const { redirectUri, platform } = stateData;
+      
+      console.log("[OAuth] State data retrieved:", { redirectUri, platform, oauthState });
+      
+      // Clear the state cookie
+      res.clearCookie(stateCookieName);
+      
+      // Exchange code for token
+      const tokenResponse = await sdk.exchangeCodeForToken(code, oauthState);
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      await syncUser(userInfo);
+      const user = await syncUser(userInfo);
+      
       const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
         name: userInfo.name || "",
         expiresInMs: ONE_YEAR_MS,
@@ -114,14 +152,29 @@ export function registerOAuthRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      // Redirect to the frontend URL (Expo web on port 8081)
-      // Cookie is set with parent domain so it works across both 3000 and 8081 subdomains
-      const frontendUrl =
-        process.env.EXPO_WEB_PREVIEW_URL ||
-        process.env.EXPO_PACKAGER_PROXY_URL ||
-        "http://localhost:8081";
-      res.redirect(302, frontendUrl);
+      
+      // Build user response
+      const userResponse = buildUserResponse(user);
+      
+      // Redirect based on platform
+      if (platform === "mobile") {
+        // For mobile: redirect to deep link with sessionToken and user data
+        const userDataEncoded = Buffer.from(JSON.stringify(userResponse)).toString("base64");
+        const separator = redirectUri.includes("?") ? "&" : "?";
+        const mobileRedirectUrl = `${redirectUri}${separator}sessionToken=${encodeURIComponent(sessionToken)}&user=${encodeURIComponent(userDataEncoded)}`;
+        
+        console.log("[OAuth] Redirecting to mobile deep link:", mobileRedirectUrl);
+        res.redirect(302, mobileRedirectUrl);
+      } else {
+        // For web: redirect to frontend URL (cookie-based auth)
+        const frontendUrl =
+          process.env.EXPO_WEB_PREVIEW_URL ||
+          process.env.EXPO_PACKAGER_PROXY_URL ||
+          "http://localhost:8081";
+        
+        console.log("[OAuth] Redirecting to web frontend:", frontendUrl);
+        res.redirect(302, frontendUrl);
+      }
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });

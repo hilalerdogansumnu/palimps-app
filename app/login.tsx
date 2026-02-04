@@ -22,13 +22,26 @@ export default function LoginScreen() {
     try {
       const redirectUrl = Linking.createURL("/oauth/callback");
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-      const authUrl = `${apiUrl}/auth/login/${authProvider}?redirect_uri=${encodeURIComponent(redirectUrl)}`;
+      const authUrl = `${apiUrl}/auth/login/${authProvider}?redirect_uri=${encodeURIComponent(redirectUrl)}&platform=mobile`;
+      
+      console.log("[Login] Starting OAuth flow:", {
+        provider: authProvider,
+        redirectUrl,
+        authUrl,
+      });
       
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
       
+      console.log("[Login] WebBrowser result:", result);
+      
       if (result.type === "success") {
+        console.log("[Login] OAuth success, waiting for callback...");
         // OAuth callback handler will handle the redirect
         await new Promise(resolve => setTimeout(resolve, 2000));
+      } else if (result.type === "cancel") {
+        console.log("[Login] User cancelled OAuth");
+      } else {
+        console.log("[Login] OAuth failed:", result);
       }
     } catch (error) {
       console.error("[Login] Login error:", error);

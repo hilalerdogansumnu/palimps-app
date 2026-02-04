@@ -346,3 +346,15 @@
 - [ ] Test hesabı bilgileri sağla
 - [ ] Demo video/screenshot hazırla
 - [ ] Review sürecini takip et
+
+## 🚨 URGENT: Apple Review Rejection Fix (Feb 3, 2026)
+
+- [x] Fix Apple Sign In authentication bug (App Store rejection)
+- [x] Fix OAuth state handling (was using redirect URI as state)
+- [x] Add platform parameter to distinguish mobile vs web
+- [x] Implement deep link redirect for mobile OAuth
+- [x] Add cookie-parser middleware for state storage
+- [x] Update login.tsx to send platform=mobile
+- [x] Write and run OAuth flow tests (7/7 passed)
+- [ ] Create new build with fix
+- [ ] Resubmit to App Store Review
