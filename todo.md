@@ -358,3 +358,13 @@
 - [x] Write and run OAuth flow tests (7/7 passed)
 - [ ] Create new build with fix
 - [ ] Resubmit to App Store Review
+
+
+## 🚨 URGENT: EAS Build Configuration Fix (Feb 6, 2026)
+
+- [x] Fix eas.json configuration (cli.appVersionSource missing)
+- [x] Fix metro.config.js loading error (syntax OK)
+- [x] Ensure OAuth authentication still works after build fixes
+- [x] Test build configuration locally
+- [x] Push fixes to GitHub (commit 915a0a5)
+- [ ] Trigger new EAS Build
