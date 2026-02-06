@@ -366,5 +366,5 @@
 - [x] Fix metro.config.js loading error (syntax OK)
 - [x] Ensure OAuth authentication still works after build fixes
 - [x] Test build configuration locally
-- [x] Push fixes to GitHub (commit 915a0a5)
+- [x] Push fixes to GitHub (commit 915a0a5 + 3045164)
 - [ ] Trigger new EAS Build
