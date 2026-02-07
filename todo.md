@@ -375,6 +375,6 @@
 - [x] Diagnose metro.config.js syntax error in EAS Build environment
 - [x] Fix metro.config.js to be compatible with Node.js loading (removed forceWriteFileSystem option)
 - [x] Test metro.config.js locally (dev server running successfully)
-- [ ] Push fix to GitHub
+- [x] Push fix to GitHub (commit 2a1393b)
 - [ ] Trigger new EAS Build
 - [ ] Monitor build success
