@@ -11,15 +11,26 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  /**
+   * Stable, namespaced auth identifier returned by the native sign-in flow.
+   * Format: "apple:<apple sub>" or "google:<google sub>". Unique per user.
+   */
+  openId: varchar("openId", { length: 128 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   isPremium: int("isPremium").default(0).notNull(), // 0 = free, 1 = premium
-  iyzicoCustomerId: varchar("iyzicoCustomerId", { length: 255 }),
-  iyzicoSubscriptionRef: varchar("iyzicoSubscriptionRef", { length: 255 }),
+  /**
+   * RevenueCat product identifier of the currently active entitlement.
+   * Set by the webhook on activation events, cleared on cancellation.
+   */
+  revenuecatProductId: varchar("revenuecatProductId", { length: 255 }),
+  /**
+   * Unix epoch (ms) when the current entitlement expires. Used to short-circuit
+   * premium gates without having to call RevenueCat on every request.
+   */
+  revenuecatExpiresAt: timestamp("revenuecatExpiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
