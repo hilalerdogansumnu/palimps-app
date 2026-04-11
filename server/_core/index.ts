@@ -52,6 +52,9 @@ async function startServer() {
     next();
   });
 
+  // Trust proxy headers so req.protocol returns "https" when behind a reverse proxy
+  app.set("trust proxy", 1);
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   app.use(cookieParser());

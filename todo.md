@@ -387,3 +387,13 @@
 - [x] Test locally (dev server running successfully)
 - [x] Push to GitHub (commit 5695e76)
 - [ ] Verify EAS Build success
+
+
+## 🚨 BUG: Login Sistemi Çalışmıyor (Apr 11, 2026)
+
+- [x] OAuth route'larını ve server loglarını incele
+- [x] Auth flow'u teşhis et: callback URL http:// yerine https:// olmalıydı
+- [x] server/_core/index.ts: "trust proxy" 1 eklendi (https protokol tespiti)
+- [x] app/login.tsx: hardcoded localhost yerine getApiBaseUrl() kullanıldı
+- [x] Login flow'u test et (OAuth https:// ile çalışıyor, tüm testler geçti)
+- [ ] GitHub'a push et

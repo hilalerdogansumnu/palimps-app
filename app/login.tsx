@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { getApiBaseUrl } from "@/constants/oauth";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -21,7 +22,7 @@ export default function LoginScreen() {
     setProvider(authProvider);
     try {
       const redirectUrl = Linking.createURL("/oauth/callback");
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const apiUrl = getApiBaseUrl() || "http://localhost:3000";
       const authUrl = `${apiUrl}/auth/login/${authProvider}?redirect_uri=${encodeURIComponent(redirectUrl)}&platform=mobile`;
       
       console.log("[Login] Starting OAuth flow:", {
