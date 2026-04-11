@@ -31,7 +31,8 @@ const env = {
   appName: "PALIMPS",
   appSlug: "okuma-hafizasi-mvp",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
-  logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663273515313/9HN5rUaT2BHGYT9CyX5HHo/palimps-icon_19077d09.png",
+  // Leave empty to use the default icon from assets/images/icon.png
+  logoUrl: "https://s3.us-west-2.amazonaws.com/manus-prod-user-files/okuma-hafizasi-mvp/assets/images/icon.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -54,6 +55,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
+    buildNumber: "50302",
     "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
