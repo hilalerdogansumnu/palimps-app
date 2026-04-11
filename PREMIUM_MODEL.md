@@ -90,16 +90,16 @@ AI özellikleri tüm dillerde çalışır.
 
 ## Ödeme Yöntemi
 
-- **iyzico** ile güvenli ödeme
-- Tüm Türk bankaları kabul edilir
-- 3D Secure ile korumalı
-- Otomatik fatura kesimi
+- **Apple App Store** üzerinden Apple kimliğinizle güvenli ödeme (In-App Purchase)
+- Apple'ın desteklediği tüm ödeme yöntemleri kullanılabilir (kredi/banka kartı, Apple Pay, hediye kartı)
+- Tüm işlemler Apple'ın güvenli altyapısında gerçekleşir; kart bilgileriniz PALIMPS sunucularında saklanmaz
+- Abonelik yönetimi (yenileme, iptal, geri ödeme) Apple üzerinden yapılır
 
 ## Abonelik Yönetimi
 
 - **Profil Ekranı**: Abonelik durumunuzu görün
-- **İptal**: İstediğiniz zaman iptal edin, dönem sonuna kadar premium kalın
-- **Yenileme**: Otomatik yenileme (istediğiniz zaman kapatabilirsiniz)
+- **İptal**: iPhone'da **Ayarlar → Apple ID → Abonelikler** yolundan istediğiniz zaman iptal edebilirsiniz; dönem sonuna kadar premium kalırsınız
+- **Yenileme**: Apple otomatik yenileme yapar (istediğiniz zaman kapatabilirsiniz)
 
 ## Neden Kredi Sistemi Yok?
 
@@ -110,13 +110,10 @@ Kredi sistemleri kullanıcıları strese sokar:
 
 PALIMPS'te premium kullanıcılar **hiçbir sınırlama olmadan** tüm özellikleri kullanabilir. Basit, net, stressiz.
 
-## Platform Bağımsızlığı
+## Platform
 
-- **iOS**: App Store'dan indirebilirsiniz
-- **Android**: Play Store'dan indirebilirsiniz
-- **Web**: Tarayıcınızdan erişebilirsiniz (yakında)
-
-Aboneliğiniz tüm platformlarda geçerlidir.
+- **iOS**: App Store'dan indirebilirsiniz (şu an desteklenen tek platform)
+- Android ve Web desteği yol haritasında; bu platformlarda ayrı mağaza ödemesi olarak eklenecek
 
 ## SSS
 
@@ -133,10 +130,10 @@ Abonelik dönem sonuna kadar aktif kalır. Sonrasında free plana geçersiniz, v
 Evet, [email protected] adresinden iletişime geçin.
 
 ### Ödeme güvenli mi?
-Evet, iyzico Türkiye'nin en güvenilir ödeme altyapısıdır. Kart bilgileriniz bizde saklanmaz.
+Evet, tüm ödemeler Apple App Store üzerinden gerçekleşir. Kart bilgileriniz Apple'ın altyapısında saklanır; PALIMPS sunucuları kart bilgilerinizi hiçbir zaman görmez.
 
 ### Fatura kesilir mi?
-Evet, her ödeme için otomatik olarak iyzico tarafından e-fatura kesilir.
+Evet, Apple her ödeme için otomatik olarak makbuz (receipt) üretir ve Apple ID'nize bağlı e-postaya gönderir. Türkiye için e-fatura Apple Distribution International tarafından kesilir.
 
 ---
 
