@@ -4,12 +4,14 @@
     "tagline": "Personal Reading Memory System"
   },
   "auth": {
-    "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
     "privacyNote": "Your reading data stays private",
     "loggingIn": "Signing in...",
     "signOut": "Sign Out",
-    "signOutConfirm": "Are you sure you want to sign out?"
+    "signOutConfirm": "Are you sure you want to sign out?",
+    "errorTitle": "Sign In Error",
+    "appleError": "Sign in with Apple couldn't complete. Please try again.",
+    "iosOnly": "PALIMPS only supports signing in with Apple on iOS devices."
   },
   "home": {
     "title": "Library",
