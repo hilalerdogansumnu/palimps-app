@@ -55,10 +55,11 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50302",
-    "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+    buildNumber: "50303",
+    usesAppleSignIn: true,
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
     adaptiveIcon: {
@@ -92,6 +93,7 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    "expo-apple-authentication",
     [
       "expo-audio",
       {
