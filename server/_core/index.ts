@@ -5,6 +5,7 @@ import net from "net";
 import cookieParser from "cookie-parser";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerRevenueCatRoutes } from "./revenuecat";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -60,6 +61,7 @@ async function startServer() {
   app.use(cookieParser());
 
   registerOAuthRoutes(app);
+  registerRevenueCatRoutes(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
