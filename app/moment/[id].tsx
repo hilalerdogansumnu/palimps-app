@@ -144,7 +144,7 @@ export default function MomentDetailScreen() {
             <Text className="text-sm font-semibold text-muted mb-2">Your Note</Text>
             <View className="bg-primary/10 rounded-xl p-4 border border-primary/20">
               <Text className="text-base text-foreground italic leading-relaxed">
-                "{moment.userNote}"
+                &ldquo;{moment.userNote}&rdquo;
               </Text>
             </View>
           </View>
