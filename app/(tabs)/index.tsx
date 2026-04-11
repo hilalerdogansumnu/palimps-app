@@ -396,7 +396,7 @@ export default function HomeScreen() {
                                 className="text-sm text-muted italic" 
                                 numberOfLines={2}
                               >
-                                "{moment.userNote}"
+                                &ldquo;{moment.userNote}&rdquo;
                               </Text>
                             )}
                             
