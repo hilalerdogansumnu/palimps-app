@@ -4,12 +4,14 @@
     "tagline": "Persönliches Lese-Gedächtnis-System"
   },
   "auth": {
-    "continueWithGoogle": "Mit Google fortfahren",
     "continueWithApple": "Mit Apple fortfahren",
     "privacyNote": "Ihre Lesedaten bleiben privat",
     "loggingIn": "Anmeldung läuft...",
     "signOut": "Abmelden",
-    "signOutConfirm": "Möchten Sie sich wirklich abmelden?"
+    "signOutConfirm": "Möchten Sie sich wirklich abmelden?",
+    "errorTitle": "Anmeldefehler",
+    "appleError": "Die Anmeldung mit Apple konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+    "iosOnly": "PALIMPS unterstützt die Anmeldung mit Apple nur auf iOS-Geräten."
   },
   "home": {
     "title": "Bibliothek",
