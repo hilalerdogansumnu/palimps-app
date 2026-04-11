@@ -1,58 +1,47 @@
+/**
+ * Native authentication routes — Apple Sign In only.
+ *
+ * The mobile client performs the Apple Sign In flow natively (with the
+ * system Apple Sign In sheet) and POSTs the resulting identity token to
+ * /api/auth/apple. The server verifies the token against Apple's JWKS,
+ * upserts the user, and mints a session JWT (cookie + bearer).
+ *
+ * Endpoints:
+ *   POST /api/auth/apple   { identityToken, fullName?, email?, nonce? }
+ *   POST /api/auth/logout
+ *   GET  /api/auth/me
+ *   POST /api/auth/session         (Bearer → cookie bridge for web preview)
+ */
+
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
 import { getUserByOpenId, upsertUser } from "../db";
+import { verifyAppleIdentityToken } from "./appleAuth";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
-function getQueryParam(req: Request, key: string): string | undefined {
-  const value = req.query[key];
-  return typeof value === "string" ? value : undefined;
-}
+type SyncedUser = Awaited<ReturnType<typeof getUserByOpenId>>;
 
-async function syncUser(userInfo: {
-  openId?: string | null;
+async function syncUser(args: {
+  openId: string;
   name?: string | null;
   email?: string | null;
-  loginMethod?: string | null;
-  platform?: string | null;
-}) {
-  if (!userInfo.openId) {
-    throw new Error("openId missing from user info");
-  }
-
+  loginMethod: "apple";
+}): Promise<SyncedUser> {
   const lastSignedIn = new Date();
   await upsertUser({
-    openId: userInfo.openId,
-    name: userInfo.name || null,
-    email: userInfo.email ?? null,
-    loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+    openId: args.openId,
+    name: args.name ?? null,
+    email: args.email ?? null,
+    loginMethod: args.loginMethod,
     lastSignedIn,
   });
-  const saved = await getUserByOpenId(userInfo.openId);
-  return (
-    saved ?? {
-      openId: userInfo.openId,
-      name: userInfo.name,
-      email: userInfo.email,
-      loginMethod: userInfo.loginMethod ?? null,
-      lastSignedIn,
-    }
-  );
+  return getUserByOpenId(args.openId);
 }
 
-function buildUserResponse(
-  user:
-    | Awaited<ReturnType<typeof getUserByOpenId>>
-    | {
-        openId: string;
-        name?: string | null;
-        email?: string | null;
-        loginMethod?: string | null;
-        lastSignedIn?: Date | null;
-      },
-) {
+function buildUserResponse(user: SyncedUser) {
   return {
-    id: (user as any)?.id ?? null,
+    id: user?.id ?? null,
     openId: user?.openId ?? null,
     name: user?.name ?? null,
     email: user?.email ?? null,
@@ -61,184 +50,120 @@ function buildUserResponse(
   };
 }
 
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+/**
+ * Build a display name from `{ givenName, familyName }` or a flat string.
+ * Apple only sends the name on the FIRST sign-in, via the client SDK
+ * (it's not in the JWT), so the client posts it alongside the token.
+ */
+function readFullName(input: unknown): string | null {
+  if (typeof input === "string") return readString(input);
+  if (input && typeof input === "object") {
+    const obj = input as Record<string, unknown>;
+    const given = readString(obj.givenName);
+    const family = readString(obj.familyName);
+    const joined = [given, family].filter(Boolean).join(" ").trim();
+    return joined.length > 0 ? joined : null;
+  }
+  return null;
+}
+
+async function issueSession(
+  res: Response,
+  req: Request,
+  user: SyncedUser,
+  openId: string,
+  displayName: string,
+) {
+  const sessionToken = await sdk.signSession(
+    {
+      openId,
+      appId: process.env.APP_ID ?? "palimps",
+      name: displayName,
+    },
+    { expiresInMs: ONE_YEAR_MS },
+  );
+
+  const cookieOptions = getSessionCookieOptions(req);
+  res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+  return {
+    sessionToken,
+    user: buildUserResponse(user),
+  };
+}
+
 export function registerOAuthRoutes(app: Express) {
-  // Login endpoint - redirects to Manus OAuth
-  app.get("/auth/login/:provider", async (req: Request, res: Response) => {
-    const provider = req.params.provider;
-    const redirectUri = getQueryParam(req, "redirect_uri");
-    const platform = getQueryParam(req, "platform") || "web"; // mobile or web
-
-    if (!redirectUri) {
-      res.status(400).json({ error: "redirect_uri is required" });
-      return;
-    }
-
-    if (provider !== "google" && provider !== "apple") {
-      res.status(400).json({ error: "Invalid provider. Must be 'google' or 'apple'" });
-      return;
-    }
-
+  // ────────────────────────────────────────────────────────────────────────
+  // Apple Sign In
+  // ────────────────────────────────────────────────────────────────────────
+  app.post("/api/auth/apple", async (req: Request, res: Response) => {
     try {
-      // Manus OAuth base URL
-      const oauthBaseUrl = process.env.MANUS_OAUTH_URL || "https://oauth.manus.space";
-      
-      // Build OAuth URL with provider and callback
-      const callbackUrl = `${req.protocol}://${req.get("host")}/api/oauth/callback`;
-      
-      // Generate a random OAuth state for security
-      const oauthState = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
-      // Store app redirect URI and platform in a signed cookie (expires in 10 minutes)
-      const stateData = JSON.stringify({ redirectUri, platform });
-      res.cookie(`oauth_state_${oauthState}`, stateData, {
-        httpOnly: true,
-        secure: req.protocol === "https",
-        sameSite: "lax",
-        maxAge: 10 * 60 * 1000, // 10 minutes
-      });
-      
-      const loginUrl = `${oauthBaseUrl}/authorize?provider=${provider}&redirect_uri=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(oauthState)}`;
-
-      console.log("[OAuth] Redirecting to login URL:", loginUrl);
-      console.log("[OAuth] OAuth state:", oauthState);
-      console.log("[OAuth] App redirect URI:", redirectUri);
-      console.log("[OAuth] Platform:", platform);
-      
-      // Redirect user to Manus OAuth
-      res.redirect(302, loginUrl);
-    } catch (error) {
-      console.error("[OAuth] Login URL generation failed", error);
-      res.status(500).json({ error: "Failed to generate login URL" });
-    }
-  });
-
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const oauthState = getQueryParam(req, "state");
-
-    if (!code || !oauthState) {
-      res.status(400).json({ error: "code and state are required" });
-      return;
-    }
-
-    try {
-      // Retrieve stored state data from cookie
-      const stateCookieName = `oauth_state_${oauthState}`;
-      const stateDataStr = req.cookies[stateCookieName];
-      
-      if (!stateDataStr) {
-        console.error("[OAuth] State cookie not found:", stateCookieName);
-        res.status(400).json({ error: "Invalid or expired OAuth state" });
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const identityToken = readString(body.identityToken);
+      if (!identityToken) {
+        res.status(400).json({ error: "identityToken is required" });
         return;
       }
-      
-      const stateData = JSON.parse(stateDataStr);
-      const { redirectUri, platform } = stateData;
-      
-      console.log("[OAuth] State data retrieved:", { redirectUri, platform, oauthState });
-      
-      // Clear the state cookie
-      res.clearCookie(stateCookieName);
-      
-      // Exchange code for token
-      const tokenResponse = await sdk.exchangeCodeForToken(code, oauthState);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
-      
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
+
+      const claims = await verifyAppleIdentityToken(identityToken);
+
+      // Apple only ships the user's name on the FIRST sign-in via the client
+      // SDK. The token never contains it. So the client must pass the name
+      // alongside the token, and we only persist it if we don't already have
+      // one stored.
+      const clientName = readFullName(body.fullName);
+      const clientEmail = readString(body.email);
+
+      const openId = `apple:${claims.sub}`;
+      const existing = await getUserByOpenId(openId);
+
+      const finalName = existing?.name || clientName || null;
+      const finalEmail = existing?.email || claims.email || clientEmail || null;
+
+      const user = await syncUser({
+        openId,
+        name: finalName,
+        email: finalEmail,
+        loginMethod: "apple",
       });
 
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-      
-      // Build user response
-      const userResponse = buildUserResponse(user);
-      
-      // Redirect based on platform
-      if (platform === "mobile") {
-        // For mobile: redirect to deep link with sessionToken and user data
-        const userDataEncoded = Buffer.from(JSON.stringify(userResponse)).toString("base64");
-        const separator = redirectUri.includes("?") ? "&" : "?";
-        const mobileRedirectUrl = `${redirectUri}${separator}sessionToken=${encodeURIComponent(sessionToken)}&user=${encodeURIComponent(userDataEncoded)}`;
-        
-        console.log("[OAuth] Redirecting to mobile deep link:", mobileRedirectUrl);
-        res.redirect(302, mobileRedirectUrl);
-      } else {
-        // For web: redirect to frontend URL (cookie-based auth)
-        const frontendUrl =
-          process.env.EXPO_WEB_PREVIEW_URL ||
-          process.env.EXPO_PACKAGER_PROXY_URL ||
-          "http://localhost:8081";
-        
-        console.log("[OAuth] Redirecting to web frontend:", frontendUrl);
-        res.redirect(302, frontendUrl);
-      }
+      const result = await issueSession(res, req, user, openId, finalName ?? "");
+      res.json(result);
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      console.error("[Auth/Apple] verification failed:", error);
+      res.status(401).json({ error: "Apple sign-in verification failed" });
     }
   });
 
-  app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
-
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
-      return;
-    }
-
-    try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
-
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
-
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      res.json({
-        app_session_id: sessionToken,
-        user: buildUserResponse(user),
-      });
-    } catch (error) {
-      console.error("[OAuth] Mobile exchange failed", error);
-      res.status(500).json({ error: "OAuth mobile exchange failed" });
-    }
-  });
-
+  // ────────────────────────────────────────────────────────────────────────
+  // Session lifecycle
+  // ────────────────────────────────────────────────────────────────────────
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     const cookieOptions = getSessionCookieOptions(req);
     res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
     res.json({ success: true });
   });
 
-  // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
       res.json({ user: buildUserResponse(user) });
     } catch (error) {
-      console.error("[Auth] /api/auth/me failed:", error);
+      console.warn("[Auth] /api/auth/me failed:", String(error));
       res.status(401).json({ error: "Not authenticated", user: null });
     }
   });
 
-  // Establish session cookie from Bearer token
-  // Used by iframe preview: frontend receives token via postMessage, then calls this endpoint
-  // to get a proper Set-Cookie response from the backend (3000-xxx domain)
+  // Bearer → cookie bridge. The web preview gets the token via postMessage
+  // and calls this endpoint so the backend domain receives a Set-Cookie.
   app.post("/api/auth/session", async (req: Request, res: Response) => {
     try {
-      // Authenticate using Bearer token from Authorization header
       const user = await sdk.authenticateRequest(req);
 
-      // Get the token from the Authorization header to set as cookie
       const authHeader = req.headers.authorization || req.headers.Authorization;
       if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
         res.status(400).json({ error: "Bearer token required" });
@@ -246,13 +171,12 @@ export function registerOAuthRoutes(app: Express) {
       }
       const token = authHeader.slice("Bearer ".length).trim();
 
-      // Set cookie for this domain (3000-xxx)
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
       res.json({ success: true, user: buildUserResponse(user) });
     } catch (error) {
-      console.error("[Auth] /api/auth/session failed:", error);
+      console.warn("[Auth] /api/auth/session failed:", String(error));
       res.status(401).json({ error: "Invalid token" });
     }
   });
