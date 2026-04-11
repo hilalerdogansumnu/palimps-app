@@ -4,12 +4,14 @@
     "tagline": "Kişisel Okuma Hafıza Sistemi"
   },
   "auth": {
-    "continueWithGoogle": "Google ile Devam Et",
     "continueWithApple": "Apple ile Devam Et",
     "privacyNote": "Okuma verileriniz gizli kalır",
     "loggingIn": "Giriş yapılıyor...",
     "signOut": "Çıkış Yap",
-    "signOutConfirm": "Çıkış yapmak istediğinizden emin misiniz?"
+    "signOutConfirm": "Çıkış yapmak istediğinizden emin misiniz?",
+    "errorTitle": "Giriş Hatası",
+    "appleError": "Apple ile giriş tamamlanamadı. Lütfen tekrar deneyin.",
+    "iosOnly": "PALIMPS yalnızca iOS cihazlarda Apple hesabınızla giriş yapmayı destekler."
   },
   "home": {
     "title": "Kütüphane",
