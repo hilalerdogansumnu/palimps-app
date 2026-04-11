@@ -4,12 +4,14 @@
     "tagline": "Sistema Personal de Memoria de Lectura"
   },
   "auth": {
-    "continueWithGoogle": "Continuar con Google",
     "continueWithApple": "Continuar con Apple",
     "privacyNote": "Tus datos de lectura permanecen privados",
     "loggingIn": "Iniciando sesión...",
     "signOut": "Cerrar sesión",
-    "signOutConfirm": "¿Estás seguro de que quieres cerrar sesión?"
+    "signOutConfirm": "¿Estás seguro de que quieres cerrar sesión?",
+    "errorTitle": "Error al iniciar sesión",
+    "appleError": "No se pudo iniciar sesión con Apple. Por favor, inténtalo de nuevo.",
+    "iosOnly": "PALIMPS solo admite iniciar sesión con Apple en dispositivos iOS."
   },
   "home": {
     "title": "Biblioteca",
