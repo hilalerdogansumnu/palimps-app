@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Alert, ScrollView } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, Alert, ScrollView, Modal } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
@@ -11,7 +11,6 @@ import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { useSubscription } from "@/hooks/use-subscription";
-import { PremiumBadge } from "@/components/premium-badge";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -27,19 +26,23 @@ export default function ProfileScreen() {
   const { isPremium } = useSubscription();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   const { data: books } = trpc.books.list.useQuery();
   const bookCount = books?.length || 0;
   const momentCount = books?.reduce((sum, book) => sum + (book.momentCount || 0), 0) || 0;
+
+  const currentLanguageName = LANGUAGES.find((l) => l.code === currentLanguage)?.name || "English";
 
   const handleLanguageChange = async (languageCode: string) => {
     try {
       await i18n.changeLanguage(languageCode);
       await saveLanguage(languageCode);
       setCurrentLanguage(languageCode);
+      setShowLanguagePicker(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
-      console.error("Language change error:", error);
+      // silently fail
     }
   };
 
@@ -48,10 +51,7 @@ export default function ProfileScreen() {
       t("auth.signOut"),
       t("auth.signOutConfirm"),
       [
-        {
-          text: t("common.cancel"),
-          style: "cancel",
-        },
+        { text: t("common.cancel"), style: "cancel" },
         {
           text: t("auth.signOut"),
           style: "destructive",
@@ -62,7 +62,6 @@ export default function ProfileScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               router.replace("/login");
             } catch (error) {
-              console.error("Logout error:", error);
               Alert.alert(t("common.error"), t("auth.logoutError"));
             } finally {
               setIsLoggingOut(false);
@@ -81,223 +80,167 @@ export default function ProfileScreen() {
     );
   }
 
+  // Display name: use Apple name if available, otherwise extract from email, fallback to "Reader"
+  const displayName = user.name || t("profile.reader");
+  const initial = (user.name?.charAt(0) || user.email?.charAt(0) || "?").toUpperCase();
+
   return (
     <ScreenContainer>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="p-6 pb-4">
-          <Text className="text-3xl font-bold text-foreground">{t("profile.title")}</Text>
-        </View>
-
-        {/* User Info */}
-        <View className="px-6 mb-6">
-          <View className="bg-surface rounded-2xl p-6 border border-border">
-            {/* Avatar */}
-            <View className="items-center mb-4">
-              <View className="w-20 h-20 rounded-full bg-primary items-center justify-center">
-                <Text className="text-4xl text-background font-bold">
-                  {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "?"}
-                </Text>
-              </View>
+        {/* Header — compact, personal */}
+        <View className="px-6 pt-6 pb-8">
+          <View className="flex-row items-center">
+            {/* Small avatar */}
+            <View
+              className="w-14 h-14 rounded-full items-center justify-center mr-4"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Text className="text-2xl font-bold" style={{ color: colors.background }}>
+                {initial}
+              </Text>
             </View>
 
-            {/* Email */}
-            <View className="items-center mb-2">
-              <Text className="text-lg font-semibold text-foreground mb-1">
-                {user.name || t("profile.reader")}
+            {/* Name + status */}
+            <View className="flex-1">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xl font-semibold text-foreground">
+                  {displayName}
+                </Text>
+                {isPremium && (
+                  <View
+                    className="px-2 py-0.5 rounded-full"
+                    style={{ backgroundColor: colors.primary + "20" }}
+                  >
+                    <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
+                      Premium
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {/* Reading stats inline — subtle, not a whole card */}
+              <Text className="text-sm text-muted mt-1">
+                {bookCount} {t("profile.totalBooks").toLowerCase()} · {momentCount} {t("profile.totalMoments").toLowerCase()}
               </Text>
-              <Text className="text-sm text-muted mb-2">{user.email}</Text>
-              {isPremium && (
-                <View className="mt-2">
-                  <PremiumBadge size="medium" />
-                </View>
-              )}
             </View>
           </View>
         </View>
 
-        {/* Subscription Management (Premium Users) */}
-        {isPremium && (
-          <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-3">{t("subscription.management").toUpperCase()}</Text>
-            <View className="bg-surface rounded-2xl p-6 border border-border">
-              {/* Premium Status */}
-              <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-1">
-                  <Text className="text-lg font-semibold text-foreground mb-1">
-                    PALIMPS Premium
-                  </Text>
-                  <Text className="text-sm text-success">
-                    ✓ {t("subscription.active")}
-                  </Text>
-                </View>
-                <PremiumBadge size="large" />
+        {/* Settings list — iOS Settings style */}
+        <View className="px-6 mb-6">
+          <Text className="text-xs font-semibold text-muted mb-2 ml-1">
+            {t("profile.settings").toUpperCase()}
+          </Text>
+          <View className="rounded-2xl overflow-hidden border border-border" style={{ backgroundColor: colors.surface }}>
+            {/* Language row */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowLanguagePicker(true);
+              }}
+              className="px-4 py-3.5 flex-row items-center justify-between border-b border-border"
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text className="text-base text-foreground">{t("profile.language")}</Text>
+              <View className="flex-row items-center">
+                <Text className="text-base text-muted mr-1">{currentLanguageName}</Text>
+                <Text className="text-sm text-muted">›</Text>
               </View>
+            </Pressable>
 
-              {/* Subscription Info */}
-              <View className="bg-background rounded-xl p-4 mb-4">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm text-muted">{t("subscription.type")}</Text>
-                  <Text className="text-sm font-semibold text-foreground">{t("subscription.monthly")}</Text>
-                </View>
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm text-muted">{t("subscription.price")}</Text>
-                  <Text className="text-sm font-semibold text-foreground">₺149.99/ay</Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-muted">{t("subscription.nextRenewal")}</Text>
-                  <Text className="text-sm font-semibold text-foreground">
-                    {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR')}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Cancel Button */}
+            {/* Premium row (only for free users) */}
+            {!isPremium && (
               <Pressable
                 onPress={() => {
-                  Alert.alert(
-                    t("subscription.cancel"),
-                    t("subscription.cancelConfirm"),
-                    [
-                      {
-                        text: t("subscription.giveUp"),
-                        style: 'cancel',
-                      },
-                      {
-                        text: t("common.cancel"),
-                        style: 'destructive',
-                        onPress: async () => {
-                          try {
-                            // TODO: Cancel subscription API call
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            Alert.alert(t("common.success"), t("subscription.cancelSuccess"));
-                          } catch (error) {
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                            Alert.alert(t("common.error"), t("subscription.cancelFailed"));
-                          }
-                        },
-                      },
-                    ]
-                  );
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/premium");
                 }}
-                className="border border-error/30 px-4 py-3 rounded-xl"
-                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+                className="px-4 py-3.5 flex-row items-center justify-between border-b border-border"
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
               >
-                <Text className="text-error font-semibold text-center text-sm">
-                  {t("subscription.cancel")}
-                </Text>
+                <Text className="text-base text-foreground">Premium</Text>
+                <Text className="text-sm text-muted">›</Text>
               </Pressable>
-            </View>
-          </View>
-        )}
+            )}
 
-        {/* Upgrade to Premium (Free Users) */}
-        {!isPremium && (
-          <View className="px-6 mb-6">
-            <View className="bg-muted/20 rounded-2xl p-6 border border-muted/30">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className="text-lg font-bold text-muted mb-1">
-                    🕒 {t("profile.premiumComingSoon")}
-                  </Text>
-                  <Text className="text-sm text-muted">
-                    {t("profile.premiumComingSoonDesc")}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Statistics */}
-        <View className="px-6 mb-6">
-          <Text className="text-sm font-semibold text-muted mb-3">{t("profile.stats").toUpperCase()}</Text>
-          <View className="bg-surface rounded-2xl p-6 border border-border">
-            <View className="flex-row items-center justify-between">
-              <View className="items-center flex-1">
-                <Text className="text-3xl font-bold text-primary mb-1">{bookCount}</Text>
-                <Text className="text-sm text-muted">{t("profile.totalBooks")}</Text>
-              </View>
-              <View className="w-px h-12 bg-border" />
-              <View className="items-center flex-1">
-                <Text className="text-3xl font-bold text-primary mb-1">{momentCount}</Text>
-                <Text className="text-sm text-muted">{t("profile.totalMoments")}</Text>
-              </View>
-            </View>
+            {/* Sign out row */}
+            <Pressable
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+              className="px-4 py-3.5 flex-row items-center justify-between"
+              style={({ pressed }) => [{ opacity: isLoggingOut ? 0.5 : pressed ? 0.6 : 1 }]}
+            >
+              {isLoggingOut ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Text className="text-base" style={{ color: colors.error }}>
+                  {t("auth.signOut")}
+                </Text>
+              )}
+            </Pressable>
           </View>
         </View>
 
-        {/* Settings */}
-        <View className="px-6 mb-6">
-          <Text className="text-sm font-semibold text-muted mb-3">{t("profile.settings").toUpperCase()}</Text>
+        {/* App Version — bottom */}
+        <View className="px-6 pb-8">
+          <Text className="text-xs text-muted text-center">
+            {t("app.name")} v3.0
+          </Text>
+        </View>
+      </ScrollView>
 
-          {/* Language Selection */}
-          <View className="bg-surface rounded-2xl border border-border overflow-hidden mb-3">
-            <View className="px-6 py-4 border-b border-border">
-              <Text className="text-sm text-muted">{t("profile.language")}</Text>
+      {/* Language Picker Modal */}
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <Pressable
+          className="flex-1 items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          onPress={() => setShowLanguagePicker(false)}
+        >
+          <Pressable
+            className="w-72 rounded-2xl overflow-hidden"
+            style={{ backgroundColor: colors.background }}
+            onPress={() => {}} // prevent close on inner press
+          >
+            <View className="px-5 py-4 border-b border-border">
+              <Text className="text-lg font-semibold text-foreground">
+                {t("profile.language")}
+              </Text>
             </View>
             {LANGUAGES.map((lang, index) => (
               <Pressable
                 key={lang.code}
                 onPress={() => handleLanguageChange(lang.code)}
+                className="px-5 py-3.5 flex-row items-center justify-between"
                 style={({ pressed }) => [
                   {
                     opacity: pressed ? 0.6 : 1,
                     backgroundColor: currentLanguage === lang.code ? colors.primary + "10" : "transparent",
+                    borderBottomWidth: index < LANGUAGES.length - 1 ? 0.5 : 0,
+                    borderBottomColor: colors.border,
                   },
                 ]}
-                className="px-6 py-4 flex-row items-center justify-between"
               >
                 <Text
                   className="text-base"
                   style={{
                     color: currentLanguage === lang.code ? colors.primary : colors.foreground,
-                    fontWeight: currentLanguage === lang.code ? "600" : "normal",
+                    fontWeight: currentLanguage === lang.code ? "600" : "400",
                   }}
                 >
                   {lang.name}
                 </Text>
                 {currentLanguage === lang.code && (
-                  <Text style={{ color: colors.primary }}>✓</Text>
-                )}
-                {index < LANGUAGES.length - 1 && (
-                  <View
-                    className="absolute bottom-0 left-6 right-6 h-px"
-                    style={{ backgroundColor: colors.border }}
-                  />
+                  <Text style={{ color: colors.primary, fontSize: 16 }}>✓</Text>
                 )}
               </Pressable>
             ))}
-          </View>
-
-          {/* Sign Out Button */}
-          <Pressable
-            onPress={handleLogout}
-            disabled={isLoggingOut}
-            className="bg-error/10 border border-error/20 px-6 py-4 rounded-2xl flex-row items-center justify-center"
-            style={({ pressed }) => [
-              {
-                opacity: isLoggingOut ? 0.5 : pressed ? 0.9 : 1,
-                transform: [{ scale: pressed && !isLoggingOut ? 0.98 : 1 }],
-              },
-            ]}
-          >
-            {isLoggingOut ? (
-              <ActivityIndicator size="small" color={colors.error} />
-            ) : (
-              <>
-                <Text className="text-xl mr-2">🚪</Text>
-                <Text className="text-error font-semibold text-base">{t("auth.signOut")}</Text>
-              </>
-            )}
           </Pressable>
-        </View>
-
-        {/* App Version */}
-        <View className="px-6 pb-8">
-          <Text className="text-xs text-muted text-center">{t("app.name")} v3.0</Text>
-        </View>
-      </ScrollView>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
