@@ -1,28 +1,15 @@
 /** @type {const} */
 const themeColors = {
-  // PALIMPS Design System
-  // Near-white background (not pure white)
-  background: { light: '#F8F8F7', dark: '#F8F8F7' },
-  
-  // Near-black text (not pure black)
-  foreground: { light: '#1C1C1E', dark: '#1C1C1E' },
-  
-  // System gray for secondary text
-  muted: { light: '#8E8E93', dark: '#8E8E93' },
-  
-  // Muted accent color (single, not saturated)
-  primary: { light: '#6B7280', dark: '#6B7280' },
-  
-  // Surface for subtle elevation
-  surface: { light: '#FAFAF9', dark: '#FAFAF9' },
-  
-  // Minimal border (very subtle)
-  border: { light: '#E5E5E5', dark: '#E5E5E5' },
-  
-  // Success, warning, error (muted, not vibrant)
-  success: { light: '#10B981', dark: '#10B981' },
-  warning: { light: '#F59E0B', dark: '#F59E0B' },
-  error: { light: '#EF4444', dark: '#EF4444' },
+  // PALIMPS Design System — Warm Literary Palette
+  background: { light: '#FAFAF8', dark: '#141414' },
+  foreground: { light: '#1A1A1A', dark: '#F0F0EE' },
+  muted: { light: '#8C8C8C', dark: '#6B6B6B' },
+  primary: { light: '#3D8B7A', dark: '#5BB5A2' },
+  surface: { light: '#F3F3F0', dark: '#1E1E1E' },
+  border: { light: '#E2E2DF', dark: '#2A2A2A' },
+  success: { light: '#2D9B6E', dark: '#3DBB85' },
+  warning: { light: '#D4940A', dark: '#E8AB1A' },
+  error: { light: '#D94040', dark: '#EF5555' },
 };
 
 module.exports = { themeColors };

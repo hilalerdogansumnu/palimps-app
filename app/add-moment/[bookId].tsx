@@ -3,6 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable,
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -11,6 +12,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 
 export default function AddMomentScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const bookIdNum = parseInt(bookId, 10);
 
@@ -32,7 +34,7 @@ export default function AddMomentScreen() {
     },
     onError: (error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Hata", error.message || "Okuma anı eklenirken bir hata oluştu.");
+      Alert.alert(t("addMoment.error"), error.message || t("addMoment.createError"));
     },
   });
 
@@ -44,24 +46,24 @@ export default function AddMomentScreen() {
     },
     onError: (error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Hata", error.message || "AI not oluşturma başarısız oldu.");
+      Alert.alert(t("addMoment.error"), error.message || t("common.error"));
       setIsGeneratingAI(false);
     },
   });
 
   const handleGenerateAINote = async () => {
     if (!ocrText) {
-      Alert.alert("Uyarı", "Önce fotoğrafı kaydedin, OCR metni çıkarıldıktan sonra AI not oluşturabilirsiniz.");
+      Alert.alert(t("addMoment.warning"), t("addMoment.ocrFirst"));
       return;
     }
 
     if (!isPremium) {
       Alert.alert(
-        "Premium Özellik",
-        "AI destekli not oluşturma premium bir özelliktir. Premium'a yükseltmek ister misiniz?",
+        t("premiumGate.title"),
+        t("premiumGate.premiumRequired"),
         [
-          { text: "İptal", style: "cancel" },
-          { text: "Premium'a Geç", onPress: () => alert("Ödeme entegrasyonu yakında!") },
+          { text: t("common.cancel"), style: "cancel" },
+          { text: t("premiumGate.upgrade"), onPress: () => router.push("/premium") },
         ]
       );
       return;
@@ -78,7 +80,7 @@ export default function AddMomentScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Fotoğraf seçmek için galeri erişim izni gereklidir.");
+      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.galleryPermission"));
       return;
     }
 
@@ -98,7 +100,7 @@ export default function AddMomentScreen() {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Fotoğraf çekmek için kamera erişim izni gereklidir.");
+      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.cameraPermission"));
       return;
     }
 
@@ -116,7 +118,7 @@ export default function AddMomentScreen() {
 
   const handleSubmit = async () => {
     if (!pageImage) {
-      Alert.alert("Uyarı", "Lütfen bir sayfa fotoğrafı çekin veya seçin.");
+      Alert.alert(t("addMoment.warning"), t("addMoment.photoRequired"));
       return;
     }
 
@@ -143,19 +145,19 @@ export default function AddMomentScreen() {
             className="mr-4 p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">← Geri</Text>
+            <Text className="text-primary text-base">{"← " + t("common.back")}</Text>
           </Pressable>
-          <Text className="text-2xl font-bold text-foreground">Yeni Okuma Anı</Text>
+          <Text className="text-2xl font-bold text-foreground">{t("addMoment.title")}</Text>
         </View>
 
         {/* Sayfa Fotoğrafı */}
         <View className="items-center mb-6">
           <Pressable
             onPress={() => {
-              Alert.alert("Fotoğraf Seç", "Sayfa fotoğrafını nereden seçmek istersiniz?", [
-                { text: "Galeri", onPress: handlePickImage },
-                { text: "Kamera", onPress: handleTakePhoto },
-                { text: "İptal", style: "cancel" },
+              Alert.alert(t("common.selectPhoto"), t("addMoment.selectPhotoSource"), [
+                { text: t("addMoment.chooseFromLibrary"), onPress: handlePickImage },
+                { text: t("addMoment.takePhoto"), onPress: handleTakePhoto },
+                { text: t("common.cancel"), style: "cancel" },
               ]);
             }}
             className="w-full h-96 rounded-xl border-2 border-dashed border-border items-center justify-center bg-surface"
@@ -171,10 +173,10 @@ export default function AddMomentScreen() {
               <View className="items-center">
                 <Text className="text-6xl text-muted mb-4">📸</Text>
                 <Text className="text-base text-foreground font-semibold text-center mb-2">
-                  Sayfa Fotoğrafı Çek
+                  {t("addMoment.pagePhotoTitle")}
                 </Text>
                 <Text className="text-sm text-muted text-center px-8">
-                  Altını çizili olsun veya olmasın, tüm sayfayı fotoğraflayabilirsiniz
+                  {t("addMoment.pagePhotoDesc")}
                 </Text>
               </View>
             )}
@@ -184,11 +186,11 @@ export default function AddMomentScreen() {
         {/* Not Alanı */}
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-foreground">Notunuz (Opsiyonel)</Text>
+            <Text className="text-sm font-semibold text-foreground">{t("addMoment.yourNote")}</Text>
             {ocrText && (
               <View className="flex-row items-center px-3 py-1 rounded-full bg-muted/20">
                 <Text className="text-xs font-semibold text-muted">
-                  🕒 AI Yakında
+                  {"🕒 " + t("addMoment.aiComingSoon")}
                 </Text>
               </View>
             )}
@@ -196,7 +198,7 @@ export default function AddMomentScreen() {
           <TextInput
             value={userNote}
             onChangeText={setUserNote}
-            placeholder="Bu sayfa hakkında düşüncelerinizi ekleyin..."
+            placeholder={t("addMoment.notePlaceholder")}
             placeholderTextColor={colors.muted}
             className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground text-base"
             multiline
@@ -210,7 +212,7 @@ export default function AddMomentScreen() {
         {/* OCR Bilgisi */}
         <View className="mb-6 bg-surface rounded-xl p-4 border border-border">
           <Text className="text-xs text-muted text-center">
-            💡 Fotoğrafı kaydettikten sonra, sayfadaki metin otomatik olarak çıkarılacaktır.
+            💡 {t("addMoment.ocrInfo")}
           </Text>
         </View>
 
@@ -230,19 +232,19 @@ export default function AddMomentScreen() {
             <View className="flex-row items-center">
               <ActivityIndicator color={colors.background} size="small" />
               <Text className="text-background font-semibold text-base ml-2">
-                OCR işleniyor...
+                {t("addMoment.ocrProcessing")}
               </Text>
             </View>
           ) : (
-            <Text className="text-background font-semibold text-base">Kaydet</Text>
+            <Text className="text-background font-semibold text-base">{t("addMoment.save")}</Text>
           )}
         </Pressable>
 
         {/* OCR Sonucu (Başarılı kayıt sonrası) */}
         {ocrText && (
           <View className="bg-success/10 rounded-xl p-4 border border-success">
-            <Text className="text-sm font-semibold text-success mb-2">✓ Başarıyla kaydedildi!</Text>
-            <Text className="text-xs text-muted">Çıkarılan metin:</Text>
+            <Text className="text-sm font-semibold text-success mb-2">{"✓ " + t("addMoment.savedSuccess")}</Text>
+            <Text className="text-xs text-muted">{t("addMoment.extractedText")}</Text>
             <Text className="text-sm text-foreground mt-2" numberOfLines={5}>
               {ocrText}
             </Text>

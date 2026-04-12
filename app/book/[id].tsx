@@ -4,6 +4,8 @@ import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -11,6 +13,7 @@ import { useColors } from "@/hooks/use-colors";
 
 export default function BookDetailScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const bookId = parseInt(id, 10);
   const [isExporting, setIsExporting] = useState(false);
@@ -34,19 +37,19 @@ export default function BookDetailScreen() {
 
   const handleExport = () => {
     Alert.alert(
-      "Export Format",
-      "Choose export format",
+      t("bookDetail.exportFormat"),
+      t("bookDetail.chooseFormat"),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
         },
         {
-          text: "Markdown",
+          text: t("bookDetail.exportMarkdown"),
           onPress: () => performExport("markdown"),
         },
         {
-          text: "PDF",
+          text: t("bookDetail.exportPDF"),
           onPress: () => performExport("pdf"),
         },
       ]
@@ -67,7 +70,7 @@ export default function BookDetailScreen() {
         a.download = result.filename;
         a.click();
         URL.revokeObjectURL(url);
-        Alert.alert("Success", "Exported successfully");
+        Alert.alert(t("common.success"), t("bookDetail.exportSuccess"));
       } else {
         // Mobil platformlarda dosyaya yaz ve paylaş
         const fileUri = `${FileSystem.documentDirectory}${result.filename}`;
@@ -85,7 +88,7 @@ export default function BookDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Export error:", error);
-      Alert.alert("Error", "Export failed");
+      Alert.alert(t("common.error"), t("bookDetail.exportError"));
     } finally {
       setIsExporting(false);
     }
@@ -102,12 +105,12 @@ export default function BookDetailScreen() {
   if (!book) {
     return (
       <ScreenContainer className="items-center justify-center px-8">
-        <Text className="text-base text-muted mb-8">Book not found</Text>
+        <Text className="text-base text-muted mb-8">{t("bookDetail.notFound")}</Text>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-base text-foreground">Go back</Text>
+          <Text className="text-base text-foreground">{t("bookDetail.goBack")}</Text>
         </Pressable>
       </ScreenContainer>
     );
@@ -116,8 +119,9 @@ export default function BookDetailScreen() {
   // Format date helper
   const formatDate = (date: Date) => {
     const d = new Date(date);
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    const localeMap: Record<string, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES" };
+    const locale = localeMap[i18n.language] || "en-US";
+    return d.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
   };
 
   // Empty state
@@ -160,13 +164,13 @@ export default function BookDetailScreen() {
         {/* Empty state */}
         <View className="flex-1 items-center justify-center">
           <Text className="text-base text-muted mb-8 text-center">
-            No moments yet
+            {t("bookDetail.noMomentsYet")}
           </Text>
           <Pressable
             onPress={handleAddMoment}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-base text-foreground">Add your first moment</Text>
+            <Text className="text-base text-foreground">{t("bookDetail.addFirstMoment")}</Text>
           </Pressable>
         </View>
       </ScreenContainer>

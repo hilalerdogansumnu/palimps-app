@@ -3,6 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable,
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -10,6 +11,7 @@ import { useColors } from "@/hooks/use-colors";
 
 export default function AddBookScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
@@ -22,14 +24,14 @@ export default function AddBookScreen() {
     },
     onError: (error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Hata", error.message || "Kitap eklenirken bir hata oluştu.");
+      Alert.alert(t("addBook.error"), error.message || t("addBook.createError"));
     },
   });
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Fotoğraf seçmek için galeri erişim izni gereklidir.");
+      Alert.alert(t("addBook.permissionRequired"), t("addBook.galleryPermission"));
       return;
     }
 
@@ -50,7 +52,7 @@ export default function AddBookScreen() {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Fotoğraf çekmek için kamera erişim izni gereklidir.");
+      Alert.alert(t("addBook.permissionRequired"), t("addBook.cameraPermission"));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function AddBookScreen() {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert("Uyarı", "Kitap adı boş olamaz.");
+      Alert.alert(t("addBook.warning"), t("addBook.titleEmpty"));
       return;
     }
 
@@ -96,19 +98,19 @@ export default function AddBookScreen() {
             className="mr-4 p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">← Geri</Text>
+            <Text className="text-primary text-base">{"← " + t("common.back")}</Text>
           </Pressable>
-          <Text className="text-2xl font-bold text-foreground">Yeni Kitap Ekle</Text>
+          <Text className="text-2xl font-bold text-foreground">{t("addBook.title")}</Text>
         </View>
 
         {/* Kapak Fotoğrafı */}
         <View className="items-center mb-6">
           <Pressable
             onPress={() => {
-              Alert.alert("Fotoğraf Seç", "Kapak fotoğrafını nereden seçmek istersiniz?", [
-                { text: "Galeri", onPress: handlePickImage },
-                { text: "Kamera", onPress: handleTakePhoto },
-                { text: "İptal", style: "cancel" },
+              Alert.alert(t("common.selectPhoto"), t("addBook.selectPhotoSource"), [
+                { text: t("addBook.chooseFromLibrary"), onPress: handlePickImage },
+                { text: t("addBook.takePhoto"), onPress: handleTakePhoto },
+                { text: t("common.cancel"), style: "cancel" },
               ]);
             }}
             className="w-40 h-56 rounded-xl border-2 border-dashed border-border items-center justify-center bg-surface"
@@ -123,8 +125,8 @@ export default function AddBookScreen() {
             ) : (
               <View className="items-center">
                 <Text className="text-4xl text-muted mb-2">📷</Text>
-                <Text className="text-sm text-muted text-center">Kapak Fotoğrafı</Text>
-                <Text className="text-xs text-muted text-center">(Opsiyonel)</Text>
+                <Text className="text-sm text-muted text-center">{t("addBook.coverPhoto")}</Text>
+                <Text className="text-xs text-muted text-center">{t("addBook.optional")}</Text>
               </View>
             )}
           </Pressable>
@@ -132,11 +134,11 @@ export default function AddBookScreen() {
 
         {/* Kitap Adı */}
         <View className="mb-4">
-          <Text className="text-sm font-semibold text-foreground mb-2">Kitap Adı *</Text>
+          <Text className="text-sm font-semibold text-foreground mb-2">{t("addBook.bookTitle")}</Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Kitap adını girin"
+            placeholder={t("addBook.enterTitle")}
             placeholderTextColor={colors.muted}
             className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground text-base"
             returnKeyType="next"
@@ -145,11 +147,11 @@ export default function AddBookScreen() {
 
         {/* Yazar Adı */}
         <View className="mb-6">
-          <Text className="text-sm font-semibold text-foreground mb-2">Yazar Adı</Text>
+          <Text className="text-sm font-semibold text-foreground mb-2">{t("addBook.author")}</Text>
           <TextInput
             value={author}
             onChangeText={setAuthor}
-            placeholder="Yazar adını girin (opsiyonel)"
+            placeholder={t("addBook.enterAuthor")}
             placeholderTextColor={colors.muted}
             className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground text-base"
             returnKeyType="done"
@@ -172,7 +174,7 @@ export default function AddBookScreen() {
           {isSubmitting ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text className="text-background font-semibold text-base">Kaydet</Text>
+            <Text className="text-background font-semibold text-base">{t("addBook.save")}</Text>
           )}
         </Pressable>
       </ScrollView>

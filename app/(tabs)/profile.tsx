@@ -63,7 +63,7 @@ export default function ProfileScreen() {
               router.replace("/login");
             } catch (error) {
               console.error("Logout error:", error);
-              Alert.alert(t("common.error"), "An error occurred while signing out.");
+              Alert.alert(t("common.error"), t("auth.logoutError"));
             } finally {
               setIsLoggingOut(false);
             }
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
             <View className="items-center mb-4">
               <View className="w-20 h-20 rounded-full bg-primary items-center justify-center">
                 <Text className="text-4xl text-background font-bold">
-                  {user.email?.charAt(0).toUpperCase() || "?"}
+                  {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "?"}
                 </Text>
               </View>
             </View>
@@ -104,7 +104,7 @@ export default function ProfileScreen() {
             {/* Email */}
             <View className="items-center mb-2">
               <Text className="text-lg font-semibold text-foreground mb-1">
-                {user.name || "User"}
+                {user.name || t("profile.reader")}
               </Text>
               <Text className="text-sm text-muted mb-2">{user.email}</Text>
               {isPremium && (
@@ -119,7 +119,7 @@ export default function ProfileScreen() {
         {/* Subscription Management (Premium Users) */}
         {isPremium && (
           <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-3">ABONELİK YÖNETİMİ</Text>
+            <Text className="text-sm font-semibold text-muted mb-3">{t("subscription.management").toUpperCase()}</Text>
             <View className="bg-surface rounded-2xl p-6 border border-border">
               {/* Premium Status */}
               <View className="flex-row items-center justify-between mb-4">
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
                     PALIMPS Premium
                   </Text>
                   <Text className="text-sm text-success">
-                    ✓ Aktif
+                    ✓ {t("subscription.active")}
                   </Text>
                 </View>
                 <PremiumBadge size="large" />
@@ -137,15 +137,15 @@ export default function ProfileScreen() {
               {/* Subscription Info */}
               <View className="bg-background rounded-xl p-4 mb-4">
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm text-muted">Abonelik Tipi</Text>
-                  <Text className="text-sm font-semibold text-foreground">Aylık</Text>
+                  <Text className="text-sm text-muted">{t("subscription.type")}</Text>
+                  <Text className="text-sm font-semibold text-foreground">{t("subscription.monthly")}</Text>
                 </View>
                 <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-sm text-muted">Fiyat</Text>
+                  <Text className="text-sm text-muted">{t("subscription.price")}</Text>
                   <Text className="text-sm font-semibold text-foreground">₺149.99/ay</Text>
                 </View>
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-muted">Sonraki Yenileme</Text>
+                  <Text className="text-sm text-muted">{t("subscription.nextRenewal")}</Text>
                   <Text className="text-sm font-semibold text-foreground">
                     {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR')}
                   </Text>
@@ -156,24 +156,24 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={() => {
                   Alert.alert(
-                    'Aboneliği İptal Et',
-                    'Aboneliğinizi iptal etmek istediğinizden emin misiniz? Dönem sonuna kadar premium özellikleriniz aktif kalacak.',
+                    t("subscription.cancel"),
+                    t("subscription.cancelConfirm"),
                     [
                       {
-                        text: 'Vazgeç',
+                        text: t("subscription.giveUp"),
                         style: 'cancel',
                       },
                       {
-                        text: 'İptal Et',
+                        text: t("common.cancel"),
                         style: 'destructive',
                         onPress: async () => {
                           try {
                             // TODO: Cancel subscription API call
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            Alert.alert('Başarılı', 'Aboneliğiniz iptal edildi. Dönem sonuna kadar premium özelliklerinizi kullanmaya devam edebilirsiniz.');
+                            Alert.alert(t("common.success"), t("subscription.cancelSuccess"));
                           } catch (error) {
                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                            Alert.alert('Hata', 'İptal işlemi başarısız oldu. Lütfen tekrar deneyin.');
+                            Alert.alert(t("common.error"), t("subscription.cancelFailed"));
                           }
                         },
                       },
@@ -184,7 +184,7 @@ export default function ProfileScreen() {
                 style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
               >
                 <Text className="text-error font-semibold text-center text-sm">
-                  Aboneliği İptal Et
+                  {t("subscription.cancel")}
                 </Text>
               </Pressable>
             </View>
@@ -198,10 +198,10 @@ export default function ProfileScreen() {
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="text-lg font-bold text-muted mb-1">
-                    🕒 Premium Yakında
+                    🕒 {t("profile.premiumComingSoon")}
                   </Text>
                   <Text className="text-sm text-muted">
-                    AI özellikleri çok yakında aktif olacak
+                    {t("profile.premiumComingSoonDesc")}
                   </Text>
                 </View>
               </View>
@@ -227,10 +227,15 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Language Selection */}
+        {/* Settings */}
         <View className="px-6 mb-6">
-          <Text className="text-sm font-semibold text-muted mb-3">{t("profile.language").toUpperCase()}</Text>
-          <View className="bg-surface rounded-2xl border border-border overflow-hidden">
+          <Text className="text-sm font-semibold text-muted mb-3">{t("profile.settings").toUpperCase()}</Text>
+
+          {/* Language Selection */}
+          <View className="bg-surface rounded-2xl border border-border overflow-hidden mb-3">
+            <View className="px-6 py-4 border-b border-border">
+              <Text className="text-sm text-muted">{t("profile.language")}</Text>
+            </View>
             {LANGUAGES.map((lang, index) => (
               <Pressable
                 key={lang.code}
@@ -264,12 +269,7 @@ export default function ProfileScreen() {
               </Pressable>
             ))}
           </View>
-        </View>
 
-        {/* Settings */}
-        <View className="px-6 mb-6">
-          <Text className="text-sm font-semibold text-muted mb-3">{t("profile.settings").toUpperCase()}</Text>
-          
           {/* Sign Out Button */}
           <Pressable
             onPress={handleLogout}

@@ -1,6 +1,7 @@
 import { View, Text, FlatList, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -13,17 +14,18 @@ type Message = {
   timestamp: string;
 };
 
-const QUICK_REPLIES = [
-  "Hangi kitapları okudum?",
-  "En çok hangi konulardan not aldım?",
-  "Bana bir özet çıkar",
-  "Okuma alışkanlıklarım nasıl?",
-];
-
 export default function ChatScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
+
+  const QUICK_REPLIES = useMemo(() => [
+    t("chat.example1"),
+    t("chat.example2"),
+    t("chat.example3"),
+    t("chat.example4"),
+  ], [t]);
   
   const sendMutation = trpc.chat.send.useMutation();
 
@@ -60,7 +62,7 @@ export default function ChatScreen() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.",
+        content: t("chat.errorMessage"),
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -112,9 +114,9 @@ export default function ChatScreen() {
       >
         {/* Header */}
         <View className="p-6 pb-4 border-b border-border">
-          <Text className="text-3xl font-bold text-foreground">Okuma Asistanı</Text>
+          <Text className="text-3xl font-bold text-foreground">{t("chat.title")}</Text>
           <Text className="text-sm text-muted mt-1">
-            Okuma verileriniz hakkında sorular sorun
+            {t("chat.subtitle")}
           </Text>
         </View>
 
@@ -123,10 +125,10 @@ export default function ChatScreen() {
           <View className="flex-1 items-center justify-center p-6">
             <Text className="text-2xl mb-2">📚</Text>
             <Text className="text-xl font-semibold text-foreground mb-3 text-center">
-              Merhaba!
+              {t("chat.hello")}
             </Text>
             <Text className="text-base text-muted text-center mb-6">
-              Okuma verileriniz hakkında sorular sorabilirsiniz. Örneğin:
+              {t("chat.exampleIntro")}
             </Text>
             
             {/* Quick Replies */}
@@ -159,7 +161,7 @@ export default function ChatScreen() {
         {sendMutation.isPending && (
           <View className="items-center py-2">
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text className="text-xs text-muted mt-1">Düşünüyor...</Text>
+            <Text className="text-xs text-muted mt-1">{t("chat.thinking")}</Text>
           </View>
         )}
 
@@ -169,7 +171,7 @@ export default function ChatScreen() {
             <TextInput
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Mesajınızı yazın..."
+              placeholder={t("chat.placeholder")}
               placeholderTextColor={colors.muted}
               multiline
               maxLength={500}

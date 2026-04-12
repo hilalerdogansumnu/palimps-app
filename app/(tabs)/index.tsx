@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 import { useSubscription } from "@/hooks/use-subscription";
 import { PremiumBadge } from "@/components/premium-badge";
 
@@ -216,19 +217,19 @@ export default function HomeScreen() {
     );
   }
 
-  // Format date helper
+  // Format date helper with i18n
   const formatDate = (date: Date | null) => {
     if (!date) return "";
     const d = new Date(date);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-    return `${Math.floor(diffDays / 365)} years ago`;
+
+    if (diffDays === 0) return t("dates.today");
+    if (diffDays === 1) return t("dates.yesterday");
+    if (diffDays < 7) return t("dates.daysAgo", { count: diffDays });
+    if (diffDays < 30) return t("dates.weeksAgo", { count: Math.floor(diffDays / 7) });
+    if (diffDays < 365) return t("dates.monthsAgo", { count: Math.floor(diffDays / 30) });
+    return t("dates.yearsAgo", { count: Math.floor(diffDays / 365) });
   };
 
   // Determine what to display
@@ -236,10 +237,10 @@ export default function HomeScreen() {
   const hasSearchResults = sortedSearchResults && (sortedSearchResults.books.length > 0 || sortedSearchResults.moments.length > 0);
 
   const sortOptions: { value: SortOption; label: string }[] = [
-    { value: "relevance", label: "Relevance" },
-    { value: "date-newest", label: "Newest" },
-    { value: "date-oldest", label: "Oldest" },
-    { value: "author", label: "Author" },
+    { value: "relevance", label: t("sort.relevance") },
+    { value: "date-newest", label: t("sort.newest") },
+    { value: "date-oldest", label: t("sort.oldest") },
+    { value: "author", label: t("sort.author") },
   ];
 
   return (
@@ -247,7 +248,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View className="pt-4 pb-4 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Text className="text-sm text-muted">Library</Text>
+          <Text className="text-sm text-muted">{t("home.title")}</Text>
           {isPremium && <PremiumBadge size="small" />}
         </View>
         <Pressable
@@ -263,7 +264,7 @@ export default function HomeScreen() {
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search books and moments..."
+          placeholder={t("home.search")}
           placeholderTextColor={colors.muted}
           style={{
             backgroundColor: colors.surface,
@@ -330,7 +331,7 @@ export default function HomeScreen() {
               {sortedSearchResults.books.length > 0 && (
                 <View className="mb-8">
                   <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Books ({sortedSearchResults.books.length})
+                    {t("home.booksSection", { count: sortedSearchResults.books.length })}
                   </Text>
                   {sortedSearchResults.books.map((book, index) => (
                     <View key={book.id}>
@@ -361,7 +362,7 @@ export default function HomeScreen() {
               {sortedSearchResults.moments.length > 0 && (
                 <View>
                   <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Moments ({sortedSearchResults.moments.length})
+                    {t("home.momentsSection", { count: sortedSearchResults.moments.length })}
                   </Text>
                   {sortedSearchResults.moments.map((moment, index) => {
                     const book = books?.find((b) => b.id === moment.bookId);
@@ -377,7 +378,7 @@ export default function HomeScreen() {
                           <View>
                             {/* Book title (small) */}
                             <Text className="text-xs text-muted mb-2">
-                              {book?.title || "Unknown Book"}
+                              {book?.title || t("home.unknownBook")}
                             </Text>
                             
                             {/* OCR text preview */}
@@ -414,7 +415,7 @@ export default function HomeScreen() {
             </>
           ) : (
             <View className="py-8 items-center">
-              <Text className="text-base text-muted">No results found</Text>
+              <Text className="text-base text-muted">{t("home.noResults")}</Text>
             </View>
           )}
         </ScrollView>
@@ -449,7 +450,7 @@ export default function HomeScreen() {
                 {/* Last moment date */}
                 {item.momentCount > 0 && (
                   <Text className="text-xs text-muted">
-                    {item.momentCount} {item.momentCount === 1 ? "moment" : "moments"}
+                    {t("home.momentCount", { count: item.momentCount })}
                   </Text>
                 )}
               </View>
@@ -482,10 +483,10 @@ export default function HomeScreen() {
             }}
           >
             <Text className="text-lg text-foreground font-medium mb-4">
-              Delete book?
+              {t("home.deleteTitle")}
             </Text>
             <Text className="text-sm text-muted mb-6">
-              This will delete the book and all its moments. This action cannot be undone.
+              {t("home.deleteMessage")}
             </Text>
             <View className="flex-row gap-3">
               <Pressable
@@ -503,7 +504,7 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                <Text className="text-base text-foreground text-center">Cancel</Text>
+                <Text className="text-base text-foreground text-center">{t("common.cancel")}</Text>
               </Pressable>
               <Pressable
                 onPress={handleDeleteBook}
@@ -520,7 +521,7 @@ export default function HomeScreen() {
                 ]}
               >
                 <Text className="text-base text-white text-center font-medium">
-                  {deleteBookMutation.isPending ? "..." : "Delete"}
+                  {deleteBookMutation.isPending ? "..." : t("common.delete")}
                 </Text>
               </Pressable>
             </View>
