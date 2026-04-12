@@ -1,5 +1,6 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import { onAuthChange } from "@/lib/_core/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 
@@ -125,6 +126,15 @@ export function useAuth(options?: UseAuthOptions) {
   }, [autoFetch, fetchUser]);
 
   useEffect(() => {
+  // Re-fetch when auth state changes (e.g. after login)
+  useEffect(() => {
+    const unsubscribe = onAuthChange(() => {
+      console.log("[useAuth] Auth change detected, re-fetching...");
+      fetchUser();
+    });
+    return unsubscribe;
+  }, [fetchUser]);
+
     console.log("[useAuth] State updated:", {
       hasUser: !!user,
       loading,

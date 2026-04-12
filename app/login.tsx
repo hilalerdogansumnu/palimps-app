@@ -8,6 +8,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
+import { notifyAuthChange } from "@/lib/_core/auth";
 
 type ServerAuthResponse = {
   sessionToken: string;
@@ -93,7 +94,7 @@ export default function LoginScreen() {
       });
 
       await persistSession(result);
-      router.replace("/(tabs)");
+      notifyAuthChange();
     } catch (err: any) {
       if (err?.code === "ERR_REQUEST_CANCELED") {
         // User cancelled the sheet — quietly return.
