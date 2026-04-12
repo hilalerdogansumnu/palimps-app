@@ -125,7 +125,6 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [autoFetch, fetchUser]);
 
-  useEffect(() => {
   // Re-fetch when auth state changes (e.g. after login)
   useEffect(() => {
     const unsubscribe = onAuthChange(() => {
@@ -135,6 +134,7 @@ export function useAuth(options?: UseAuthOptions) {
     return unsubscribe;
   }, [fetchUser]);
 
+  useEffect(() => {
     console.log("[useAuth] State updated:", {
       hasUser: !!user,
       loading,
