@@ -12,7 +12,7 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     },
     "preview": {
@@ -22,7 +22,7 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     },
     "production": {
@@ -35,7 +35,7 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     }
   },
