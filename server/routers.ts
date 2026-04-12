@@ -50,8 +50,12 @@ export const appRouter = router({
      */
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getBookById(input.id);
+      .query(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
+        return book;
       }),
 
     /**
@@ -62,7 +66,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1).max(500),
           author: z.string().max(255).optional(),
-          coverImageBase64: z.string().optional(), // Base64 encoded image
+          coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -97,7 +101,11 @@ export const appRouter = router({
           author: z.string().max(255).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
         await db.updateBook(input.id, {
           title: input.title,
           author: input.author,
@@ -110,7 +118,11 @@ export const appRouter = router({
      */
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
         await db.deleteBook(input.id);
         return { success: true };
       }),
@@ -125,7 +137,11 @@ export const appRouter = router({
      */
     listByBook: protectedProcedure
       .input(z.object({ bookId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.bookId);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
         return db.getReadingMomentsByBook(input.bookId);
       }),
 
@@ -134,8 +150,12 @@ export const appRouter = router({
      */
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getReadingMomentById(input.id);
+      .query(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
+        return moment;
       }),
 
     /**
@@ -145,7 +165,7 @@ export const appRouter = router({
       .input(
         z.object({
           bookId: z.number(),
-          pageImageBase64: z.string(), // Base64 encoded image
+          pageImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)"),
           userNote: z.string().optional(),
         })
       )
@@ -209,10 +229,14 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-          userNote: z.string().optional(),
+          userNote: z.string().max(10000).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
         await db.updateReadingMoment(input.id, {
           userNote: input.userNote,
         });
@@ -224,7 +248,11 @@ export const appRouter = router({
      */
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
         await db.deleteReadingMoment(input.id);
         return { success: true };
       }),
@@ -380,10 +408,15 @@ export const appRouter = router({
     send: protectedProcedure
       .input(
         z.object({
-          message: z.string().min(1),
+          message: z.string().min(1).max(2000),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        // Premium kontrolü
+        if (ctx.user.isPremium !== 1) {
+          throw new Error("Chat requires premium subscription");
+        }
+
         // Kullanıcının tüm kitaplarını ve okuma anlarını al
         const books = await db.getUserBooks(ctx.user.id);
         const allMoments = await Promise.all(
@@ -465,10 +498,11 @@ Tarih: ${m.createdAt}
      * Production purchases flow through Apple IAP → RevenueCat → webhook.
      */
     activatePremium: protectedProcedure
-      .input(z.object({ userId: z.number().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        const targetUserId = input.userId || ctx.user.id;
-        await db.updateUserPremiumStatus(targetUserId, true);
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new Error("Premium activation only available via subscription purchase");
+        }
+        await db.updateUserPremiumStatus(ctx.user.id, true);
         return { success: true };
       }),
 
