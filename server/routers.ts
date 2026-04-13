@@ -99,6 +99,7 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().min(1).max(500).optional(),
           author: z.string().max(255).optional(),
+          coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -106,9 +107,17 @@ export const appRouter = router({
         if (!book || book.userId !== ctx.user.id) {
           throw new Error("Book not found");
         }
+        let coverImageUrl: string | undefined;
+        if (input.coverImageBase64) {
+          const buffer = Buffer.from(input.coverImageBase64, "base64");
+          const fileName = `covers/${ctx.user.id}/${Date.now()}.jpg`;
+          const result = await storagePut(fileName, buffer, "image/jpeg");
+          coverImageUrl = result.url;
+        }
         await db.updateBook(input.id, {
           title: input.title,
           author: input.author,
+          ...(coverImageUrl ? { coverImageUrl } : {}),
         });
         return { success: true };
       }),
@@ -219,7 +228,13 @@ export const appRouter = router({
           userNote: input.userNote,
         });
 
-        return { id: momentId, ocrText };
+        // 4. Kitabın kapak fotoğrafı yoksa, bu fotoğrafı kapak olarak ayarla
+        const book = await db.getBookById(input.bookId);
+        if (book && !book.coverImageUrl) {
+          await db.updateBook(input.bookId, { coverImageUrl: pageImageUrl });
+        }
+
+        return { id: momentId, ocrText, pageImageUrl };
       }),
 
     /**

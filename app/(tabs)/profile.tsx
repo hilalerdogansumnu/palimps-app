@@ -15,8 +15,6 @@ import { useSubscription } from "@/hooks/use-subscription";
 const LANGUAGES = [
   { code: "en", name: "English" },
   { code: "tr", name: "Türkçe" },
-  { code: "de", name: "Deutsch" },
-  { code: "es", name: "Español" },
 ];
 
 export default function ProfileScreen() {
@@ -87,103 +85,215 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header — compact, personal */}
-        <View className="px-6 pt-6 pb-8">
-          <View className="flex-row items-center">
-            {/* Small avatar */}
-            <View
-              className="w-14 h-14 rounded-full items-center justify-center mr-4"
-              style={{ backgroundColor: colors.primary }}
-            >
-              <Text className="text-2xl font-bold" style={{ color: colors.background }}>
-                {initial}
-              </Text>
-            </View>
+        {/* Header — iOS Large Title */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 }}>
+          <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.foreground }}>
+            Profil
+          </Text>
+        </View>
 
-            {/* Name + status */}
-            <View className="flex-1">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xl font-semibold text-foreground">
-                  {displayName}
-                </Text>
-                {isPremium && (
-                  <View
-                    className="px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: colors.primary + "20" }}
-                  >
-                    <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
-                      Premium
-                    </Text>
-                  </View>
-                )}
-              </View>
-              {/* Reading stats inline — subtle, not a whole card */}
-              <Text className="text-sm text-muted mt-1">
-                {bookCount} {t("profile.totalBooks").toLowerCase()} · {momentCount} {t("profile.totalMoments").toLowerCase()}
+        {/* User Card */}
+        <View
+          style={{
+            marginHorizontal: 24,
+            marginBottom: 32,
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
+        >
+          {/* Avatar */}
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: 12,
+            }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: "bold", color: "white" }}>
+              {initial}
+            </Text>
+          </View>
+
+          {/* Name + Stats */}
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+              <Text style={{ fontSize: 22, fontWeight: "600", color: colors.foreground, marginRight: 8 }}>
+                {displayName}
               </Text>
+              {isPremium && (
+                <View
+                  style={{
+                    backgroundColor: colors.accent + "33",
+                    borderRadius: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accent }}>
+                    Premium
+                  </Text>
+                </View>
+              )}
             </View>
+            <Text style={{ fontSize: 14, color: colors.muted }}>
+              {bookCount} kitap · {momentCount} an
+            </Text>
           </View>
         </View>
 
-        {/* Settings list — iOS Settings style */}
-        <View className="px-6 mb-6">
-          <Text className="text-xs font-semibold text-muted mb-2 ml-1">
-            {t("profile.settings").toUpperCase()}
+        {/* Settings Section */}
+        <View style={{ marginHorizontal: 24, marginBottom: 24 }}>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: colors.muted,
+              marginBottom: 8,
+              marginLeft: 4,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            AYARLAR
           </Text>
-          <View className="rounded-2xl overflow-hidden border border-border" style={{ backgroundColor: colors.surface }}>
-            {/* Language row */}
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              overflow: "hidden",
+              borderWidth: 0.5,
+              borderColor: colors.border,
+            }}
+          >
+            {/* Language Row */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setShowLanguagePicker(true);
               }}
-              className="px-4 py-3.5 flex-row items-center justify-between border-b border-border"
-              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
             >
-              <Text className="text-base text-foreground">{t("profile.language")}</Text>
-              <View className="flex-row items-center">
-                <Text className="text-base text-muted mr-1">{currentLanguageName}</Text>
-                <Text className="text-sm text-muted">›</Text>
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                Dil
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ fontSize: 14, color: colors.muted, marginRight: 4 }}>
+                  {currentLanguageName}
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
               </View>
             </Pressable>
 
-            {/* Premium row (only for free users) */}
+            {/* Premium Row (only for free users) */}
             {!isPremium && (
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   router.push("/premium");
                 }}
-                className="px-4 py-3.5 flex-row items-center justify-between border-b border-border"
-                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                style={({ pressed }) => [
+                  {
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: colors.border,
+                    opacity: pressed ? 0.6 : 1,
+                  },
+                ]}
               >
-                <Text className="text-base text-foreground">Premium</Text>
-                <Text className="text-sm text-muted">›</Text>
+                <Text style={{ fontSize: 16, color: colors.foreground }}>
+                  Premium
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.accent }}>
+                  Yükselt ›
+                </Text>
               </Pressable>
             )}
 
-            {/* Sign out row */}
+            {/* Subscription Row (only for premium users) */}
+            {isPremium && (
+              <Pressable
+                style={({ pressed }) => [
+                  {
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    opacity: pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 16, color: colors.foreground }}>
+                  Abonelik
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.success }}>
+                  Aktif ›
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Sign Out Section */}
+        <View style={{ marginHorizontal: 24, marginBottom: 32 }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              overflow: "hidden",
+              borderWidth: 0.5,
+              borderColor: colors.border,
+            }}
+          >
             <Pressable
               onPress={handleLogout}
               disabled={isLoggingOut}
-              className="px-4 py-3.5 flex-row items-center justify-between"
-              style={({ pressed }) => [{ opacity: isLoggingOut ? 0.5 : pressed ? 0.6 : 1 }]}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  opacity: isLoggingOut ? 0.5 : pressed ? 0.6 : 1,
+                },
+              ]}
             >
               {isLoggingOut ? (
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
-                <Text className="text-base" style={{ color: colors.error }}>
-                  {t("auth.signOut")}
+                <Text style={{ fontSize: 16, color: colors.error }}>
+                  Çıkış Yap
                 </Text>
               )}
             </Pressable>
           </View>
         </View>
 
-        {/* App Version — bottom */}
-        <View className="px-6 pb-8">
-          <Text className="text-xs text-muted text-center">
-            {t("app.name")} v3.0
+        {/* Version */}
+        <View style={{ paddingBottom: 32 }}>
+          <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
+            PALIMPS v4.0
           </Text>
         </View>
       </ScrollView>

@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  ActivityIndicator,
+  ScrollView,
+  Image,
+  Pressable,
+  Alert,
+} from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -20,6 +29,7 @@ export default function AddMomentScreen() {
   const [userNote, setUserNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ocrText, setOcrText] = useState<string | null>(null);
+  const [isOcrComplete, setIsOcrComplete] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const { isPremium } = useSubscription();
 
@@ -27,14 +37,15 @@ export default function AddMomentScreen() {
     onSuccess: (data) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOcrText(data.ocrText);
-      // OCR sonucu gösterildikten sonra geri dön
-      setTimeout(() => {
-        router.back();
-      }, 1500);
+      setIsOcrComplete(true);
+      router.back();
     },
     onError: (error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(t("addMoment.error"), error.message || t("addMoment.createError"));
+      Alert.alert(
+        t("addMoment.error"),
+        error.message || t("addMoment.createError")
+      );
     },
   });
 
@@ -58,14 +69,13 @@ export default function AddMomentScreen() {
     }
 
     if (!isPremium) {
-      Alert.alert(
-        t("premiumGate.title"),
-        t("premiumGate.premiumRequired"),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          { text: t("premiumGate.upgrade"), onPress: () => router.push("/premium") },
-        ]
-      );
+      Alert.alert(t("premiumGate.title"), t("premiumGate.premiumRequired"), [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("premiumGate.upgrade"),
+          onPress: () => router.push("/premium"),
+        },
+      ]);
       return;
     }
 
@@ -78,9 +88,13 @@ export default function AddMomentScreen() {
   };
 
   const handlePickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.galleryPermission"));
+      Alert.alert(
+        t("addMoment.permissionRequired"),
+        t("addMoment.galleryPermission")
+      );
       return;
     }
 
@@ -93,6 +107,8 @@ export default function AddMomentScreen() {
 
     if (!result.canceled && result.assets[0].base64) {
       setPageImage(result.assets[0].base64);
+      setOcrText(null);
+      setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -100,7 +116,10 @@ export default function AddMomentScreen() {
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.cameraPermission"));
+      Alert.alert(
+        t("addMoment.permissionRequired"),
+        t("addMoment.cameraPermission")
+      );
       return;
     }
 
@@ -112,6 +131,8 @@ export default function AddMomentScreen() {
 
     if (!result.canceled && result.assets[0].base64) {
       setPageImage(result.assets[0].base64);
+      setOcrText(null);
+      setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -138,118 +159,221 @@ export default function AddMomentScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
-        <View className="flex-row items-center mb-6">
+      {/* Header */}
+      <View>
+        <View className="flex-row items-center justify-between px-6 py-4">
           <Pressable
             onPress={() => router.back()}
-            className="mr-4 p-2"
+            className="p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">{"← " + t("common.back")}</Text>
+            <Text className="text-lg" style={{ color: colors.muted }}>
+              ✕
+            </Text>
           </Pressable>
-          <Text className="text-2xl font-bold text-foreground">{t("addMoment.title")}</Text>
-        </View>
-
-        {/* Sayfa Fotoğrafı */}
-        <View className="items-center mb-6">
-          <Pressable
-            onPress={() => {
-              Alert.alert(t("common.selectPhoto"), t("addMoment.selectPhotoSource"), [
-                { text: t("addMoment.chooseFromLibrary"), onPress: handlePickImage },
-                { text: t("addMoment.takePhoto"), onPress: handleTakePhoto },
-                { text: t("common.cancel"), style: "cancel" },
-              ]);
-            }}
-            className="w-full h-96 rounded-xl border-2 border-dashed border-border items-center justify-center bg-surface"
-            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-          >
-            {pageImage ? (
-              <Image
-                source={{ uri: `data:image/jpeg;base64,${pageImage}` }}
-                className="w-full h-full rounded-xl"
-                resizeMode="contain"
-              />
-            ) : (
-              <View className="items-center">
-                <Text className="text-6xl text-muted mb-4">📸</Text>
-                <Text className="text-base text-foreground font-semibold text-center mb-2">
-                  {t("addMoment.pagePhotoTitle")}
-                </Text>
-                <Text className="text-sm text-muted text-center px-8">
-                  {t("addMoment.pagePhotoDesc")}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        </View>
-
-        {/* Not Alanı */}
-        <View className="mb-6">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-foreground">{t("addMoment.yourNote")}</Text>
-            {ocrText && (
-              <View className="flex-row items-center px-3 py-1 rounded-full bg-muted/20">
-                <Text className="text-xs font-semibold text-muted">
-                  {"🕒 " + t("addMoment.aiComingSoon")}
-                </Text>
-              </View>
-            )}
-          </View>
-          <TextInput
-            value={userNote}
-            onChangeText={setUserNote}
-            placeholder={t("addMoment.notePlaceholder")}
-            placeholderTextColor={colors.muted}
-            className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground text-base"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            returnKeyType="done"
-            editable={!isGeneratingAI}
-          />
-        </View>
-
-        {/* OCR Bilgisi */}
-        <View className="mb-6 bg-surface rounded-xl p-4 border border-border">
-          <Text className="text-xs text-muted text-center">
-            💡 {t("addMoment.ocrInfo")}
+          <Text className="text-lg font-semibold text-foreground">
+            {t("addMoment.title")}
           </Text>
-        </View>
-
-        {/* Kaydet Butonu */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={!isFormValid || isSubmitting}
-          className="bg-primary rounded-full py-4 items-center mb-4"
-          style={({ pressed }) => [
-            {
-              opacity: !isFormValid || isSubmitting ? 0.5 : pressed ? 0.9 : 1,
-              transform: [{ scale: pressed && isFormValid && !isSubmitting ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          {isSubmitting ? (
-            <View className="flex-row items-center">
-              <ActivityIndicator color={colors.background} size="small" />
-              <Text className="text-background font-semibold text-base ml-2">
-                {t("addMoment.ocrProcessing")}
+          <Pressable
+            onPress={handleSubmit}
+            disabled={!isFormValid || isSubmitting}
+            style={({ pressed }) => [
+              {
+                opacity:
+                  !isFormValid || isSubmitting
+                    ? 0.5
+                    : pressed
+                      ? 0.7
+                      : 1,
+              },
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Text
+                className="font-semibold text-sm"
+                style={{
+                  color: !isFormValid ? colors.muted : colors.primary,
+                }}
+              >
+                {t("addMoment.save")}
               </Text>
-            </View>
-          ) : (
-            <Text className="text-background font-semibold text-base">{t("addMoment.save")}</Text>
-          )}
-        </Pressable>
+            )}
+          </Pressable>
+        </View>
+      </View>
 
-        {/* OCR Sonucu (Başarılı kayıt sonrası) */}
-        {ocrText && (
-          <View className="bg-success/10 rounded-xl p-4 border border-success">
-            <Text className="text-sm font-semibold text-success mb-2">{"✓ " + t("addMoment.savedSuccess")}</Text>
-            <Text className="text-xs text-muted">{t("addMoment.extractedText")}</Text>
-            <Text className="text-sm text-foreground mt-2" numberOfLines={5}>
-              {ocrText}
+      {/* Content */}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="px-6 py-6">
+          {/* Photo Picker */}
+          <View className="mb-6">
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  t("common.selectPhoto"),
+                  t("addMoment.selectPhotoSource"),
+                  [
+                    {
+                      text: t("addMoment.chooseFromLibrary"),
+                      onPress: handlePickImage,
+                    },
+                    {
+                      text: t("addMoment.takePhoto"),
+                      onPress: handleTakePhoto,
+                    },
+                    { text: t("common.cancel"), style: "cancel" },
+                  ]
+                );
+              }}
+              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View
+                className="w-full aspect-[3/2] rounded-2xl border-2 border-dashed items-center justify-center relative"
+                style={{
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                }}
+              >
+                {pageImage ? (
+                  <>
+                    <Image
+                      source={{ uri: `data:image/jpeg;base64,${pageImage}` }}
+                      className="w-full h-full rounded-2xl"
+                      resizeMode="cover"
+                    />
+                    <Pressable
+                      onPress={() => {
+                        setPageImage(null);
+                        setOcrText(null);
+                        setIsOcrComplete(false);
+                        Haptics.impactAsync(
+                          Haptics.ImpactFeedbackStyle.Light
+                        );
+                      }}
+                      className="absolute top-3 right-3 w-6 h-6 rounded-full items-center justify-center"
+                      style={{ backgroundColor: colors.foreground + "99" }}
+                    >
+                      <Text className="text-white text-xs font-bold">✕</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <View className="items-center">
+                    <Text className="text-4xl mb-3">📷</Text>
+                    <Text
+                      className="text-base font-semibold text-center"
+                      style={{ color: colors.muted }}
+                    >
+                      {t("addMoment.pagePhotoTitle")}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+          </View>
+
+          {/* OCR Status */}
+          {pageImage && (
+            <View className="mb-6 flex-row items-center px-4 py-3 rounded-xl" style={{ backgroundColor: colors.surface }}>
+              {isSubmitting ? (
+                <>
+                  <ActivityIndicator
+                    color={colors.muted}
+                    size="small"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    className="text-xs"
+                    style={{ color: colors.muted }}
+                  >
+                    {t("addMoment.ocrProcessing")}
+                  </Text>
+                </>
+              ) : isOcrComplete ? (
+                <>
+                  <Text className="text-base mr-2">✓</Text>
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: colors.primary }}
+                  >
+                    {t("addMoment.ocrComplete")}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          )}
+
+          {/* Note Input */}
+          <View className="mb-6">
+            <Text
+              className="text-xs font-semibold mb-2"
+              style={{ color: colors.muted }}
+            >
+              {t("addMoment.yourNote")}
+            </Text>
+            <TextInput
+              value={userNote}
+              onChangeText={setUserNote}
+              placeholder={t("addMoment.notePlaceholder")}
+              placeholderTextColor={colors.muted}
+              className="rounded-2xl px-4 py-3 text-base"
+              style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                color: colors.foreground,
+                height: 100,
+              }}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              returnKeyType="done"
+              editable={!isGeneratingAI}
+            />
+          </View>
+
+          {/* AI Note Button */}
+          {pageImage && isOcrComplete && (
+            <Pressable
+              onPress={handleGenerateAINote}
+              disabled={isGeneratingAI}
+              className="mb-6 rounded-2xl py-3 items-center"
+              style={({ pressed }) => [
+                {
+                  backgroundColor:
+                    colors.accent + "26",
+                  opacity: isGeneratingAI
+                    ? 0.5
+                    : pressed
+                      ? 0.7
+                      : 1,
+                },
+              ]}
+            >
+              {isGeneratingAI ? (
+                <ActivityIndicator color={colors.accent} size="small" />
+              ) : (
+                <Text
+                  className="font-semibold text-sm"
+                  style={{ color: colors.accent }}
+                >
+                  {t("addMoment.aiGenerateNote")}
+                </Text>
+              )}
+            </Pressable>
+          )}
+
+          {/* OCR Info */}
+          <View>
+            <Text
+              className="text-xs text-center"
+              style={{ color: colors.muted }}
+            >
+              💡 {t("addMoment.ocrInfo")}
             </Text>
           </View>
-        )}
+        </View>
       </ScrollView>
     </ScreenContainer>
   );

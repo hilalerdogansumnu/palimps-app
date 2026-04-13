@@ -56,6 +56,32 @@ export default function MomentDetailScreen() {
     );
   };
 
+  const handleMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      t("common.options"),
+      "",
+      [
+        {
+          text: t("momentDetail.editNote"),
+          onPress: () => {
+            setEditedNote(moment?.userNote || "");
+            setIsEditModalVisible(true);
+          },
+        },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: handleDelete,
+        },
+        {
+          text: t("common.cancel"),
+          style: "cancel",
+        },
+      ]
+    );
+  };
+
   const handleSaveEdit = () => {
     updateMutation.mutate({
       id: momentId,
@@ -103,83 +129,120 @@ export default function MomentDetailScreen() {
     <ScreenContainer>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="p-6 pb-4 flex-row items-center justify-between">
+        <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
           <Pressable
             onPress={() => router.back()}
-            className="p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">{"← " + t("common.back")}</Text>
+            <Text className="text-lg text-foreground">←</Text>
           </Pressable>
           <Pressable
-            onPress={() => {
-              setEditedNote(moment?.userNote || "");
-              setIsEditModalVisible(true);
-            }}
-            className="p-2"
+            onPress={handleMenu}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-base text-foreground">{t("common.edit")}</Text>
+            <Text className="text-lg text-foreground">⋯</Text>
           </Pressable>
         </View>
 
         {/* Page Image */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-8">
           <Image
             source={{ uri: moment.pageImageUrl }}
-            className="w-full rounded-xl"
-            style={{ aspectRatio: 0.7 }}
+            style={{
+              width: "100%",
+              maxHeight: 400,
+              borderRadius: 16,
+            }}
             resizeMode="contain"
           />
         </View>
 
-        {/* OCR Text */}
+        {/* OCR Text Section */}
         {moment.ocrText && (
-          <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">{t("momentDetail.ocrText")}</Text>
-            <View className="bg-surface rounded-xl p-4 border border-border">
-              <Text className="text-base text-foreground leading-relaxed">{moment.ocrText}</Text>
+          <View className="px-6 mb-8">
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.muted,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              {t("momentDetail.ocrText")}
+            </Text>
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: colors.foreground,
+                  lineHeight: 24,
+                }}
+              >
+                {moment.ocrText}
+              </Text>
             </View>
           </View>
         )}
 
-        {/* User Note */}
+        {/* User Note Section */}
         {moment.userNote && (
-          <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">{t("momentDetail.yourNote")}</Text>
-            <View className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-              <Text className="text-base text-foreground italic leading-relaxed">
-                &ldquo;{moment.userNote}&rdquo;
+          <View className="px-6 mb-8">
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.muted,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              {t("momentDetail.yourNote")}
+            </Text>
+            <View
+              style={{
+                borderLeftWidth: 3,
+                borderLeftColor: colors.primary + "4D",
+                paddingLeft: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: colors.primary,
+                  fontStyle: "italic",
+                  lineHeight: 24,
+                }}
+              >
+                {moment.userNote}
               </Text>
             </View>
           </View>
         )}
 
         {/* Timestamp */}
-        <View className="px-6 mb-4">
-          <Text className="text-xs text-muted text-center">{formattedDate}</Text>
+        <View className="px-6 mb-8">
+          <Text
+            style={{
+              fontSize: 13,
+              color: colors.muted,
+              textAlign: "center",
+            }}
+          >
+            {formattedDate}
+          </Text>
         </View>
 
-        {/* Delete Button */}
-        <View className="px-6 pb-8">
-          <Pressable
-            onPress={handleDelete}
-            disabled={deleteMutation.isPending}
-            style={({ pressed }) => [
-              {
-                paddingVertical: 12,
-                paddingHorizontal: 24,
-                borderRadius: 8,
-                backgroundColor: "#EF4444",
-                opacity: pressed || deleteMutation.isPending ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text className="text-base text-white text-center font-medium">
-              {deleteMutation.isPending ? t("momentDetail.deleting") : t("momentDetail.deleteMoment")}
-            </Text>
-          </Pressable>
-        </View>
+        {/* Spacer for scroll */}
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* Edit Modal */}

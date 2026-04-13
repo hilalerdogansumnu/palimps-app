@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -86,9 +87,6 @@ export default function LoginScreen() {
 
       const result = await postToServer("/api/auth/apple", {
         identityToken: credential.identityToken,
-        // Apple only sends fullName + email on the FIRST sign-in. We forward
-        // them so the server can persist them on first save; the server is
-        // careful not to overwrite an existing record.
         fullName: credential.fullName ?? null,
         email: credential.email ?? null,
       });
@@ -108,17 +106,44 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScreenContainer className="items-center justify-center px-8">
-      <View className="items-center mb-16">
-        <Text className="text-lg text-foreground mb-2 font-medium tracking-wide">
-          {t("app.name")}
+    <ScreenContainer className="items-center justify-center px-6">
+      {/* Top: App name + tagline */}
+      <View className="items-center">
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: "700",
+            letterSpacing: 2,
+            color: colors.primary,
+            marginBottom: 8,
+          }}
+        >
+          PALIMPS
         </Text>
-        <Text className="text-sm text-muted text-center">{t("app.tagline")}</Text>
+        <Text
+          style={{
+            fontSize: 16,
+            color: colors.muted,
+            textAlign: "center",
+          }}
+        >
+          {t("app.tagline")}
+        </Text>
       </View>
 
-      <View className="w-full max-w-xs gap-4">
-        {/* Apple Sign In — the only auth method, per Apple ecosystem design */}
-        {Platform.OS === "ios" && appleAvailable ? (
+      {/* Breathing gap */}
+      <View style={{ height: 80 }} />
+
+      {/* Apple Sign In or loading state */}
+      {isLoading ? (
+        <View className="w-full items-center gap-4">
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={{ fontSize: 14, color: colors.muted }}>
+            {t("auth.loggingIn")}
+          </Text>
+        </View>
+      ) : Platform.OS === "ios" && appleAvailable ? (
+        <View className="w-full">
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={
               AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
@@ -130,34 +155,40 @@ export default function LoginScreen() {
             style={{ width: "100%", height: 52 }}
             onPress={handleAppleLogin}
           />
-        ) : (
-          <View
-            style={{
-              paddingVertical: 16,
-              paddingHorizontal: 24,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.background,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center" }}>
-              {t("auth.iosOnly")}
+        </View>
+      ) : (
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.muted,
+            textAlign: "center",
+          }}
+        >
+          {t("auth.iosOnly")}
+        </Text>
+      )}
+
+      {/* Privacy note with lock icon */}
+      {!isLoading && (
+        <View style={{ marginTop: 16, alignItems: "center" }}>
+          <View className="flex-row items-center gap-2">
+            <IconSymbol
+              size={13}
+              name="lock.fill"
+              color={colors.muted}
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.muted,
+                textAlign: "center",
+              }}
+            >
+              {t("auth.privacyNote")}
             </Text>
           </View>
-        )}
-
-        {isLoading && (
-          <View style={{ alignItems: "center", marginTop: 12 }}>
-            <ActivityIndicator size="small" color={colors.foreground} />
-          </View>
-        )}
-      </View>
-
-      <View className="mt-16">
-        <Text className="text-xs text-muted text-center">{t("auth.privacyNote")}</Text>
-      </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
