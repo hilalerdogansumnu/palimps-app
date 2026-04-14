@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, Alert, ScrollView, Modal } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Pressable, View, Text } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
@@ -11,6 +11,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { useSubscription } from "@/hooks/use-subscription";
+import { a11y } from "@/lib/accessibility";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -23,8 +24,11 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { isPremium } = useSubscription();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
 
   const { data: books } = trpc.books.list.useQuery();
   const bookCount = books?.length || 0;
@@ -42,6 +46,33 @@ export default function ProfileScreen() {
     } catch (error) {
       // silently fail
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t("profile.deleteAccountConfirmTitle"),
+      t("profile.deleteAccountConfirmMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("profile.deleteAccount"),
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingAccount(true);
+            try {
+              await deleteAccountMutation.mutateAsync();
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.replace("/login");
+            } catch (error) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert(t("common.error"), t("profile.deleteAccountError"));
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleLogout = () => {
@@ -101,49 +132,47 @@ export default function ProfileScreen() {
             paddingHorizontal: 16,
             backgroundColor: colors.surface,
             borderRadius: 16,
+            borderWidth: 0.5,
+            borderColor: colors.border,
             flexDirection: "row",
             alignItems: "center",
+            gap: 12,
           }}
         >
-          {/* Avatar */}
           <View
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: colors.primary,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: colors.primary + "33",
               alignItems: "center",
               justifyContent: "center",
-              marginRight: 12,
             }}
           >
-            <Text style={{ fontSize: 22, fontWeight: "bold", color: "white" }}>
+            <Text style={{ fontSize: 24, fontWeight: "700", color: colors.primary }}>
               {initial}
             </Text>
           </View>
-
-          {/* Name + Stats */}
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-              <Text style={{ fontSize: 22, fontWeight: "600", color: colors.foreground, marginRight: 8 }}>
-                {displayName}
-              </Text>
-              {isPremium && (
-                <View
-                  style={{
-                    backgroundColor: colors.accent + "33",
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accent }}>
-                    Premium
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Text style={{ fontSize: 14, color: colors.muted }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>
+              {displayName}
+            </Text>
+            {isPremium && (
+              <View
+                style={{
+                  backgroundColor: colors.accent + "33",
+                  borderRadius: 12,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  alignSelf: "flex-start",
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accent }}>
+                  Premium
+                </Text>
+              </View>
+            )}
+            <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>
               {bookCount} kitap · {momentCount} an
             </Text>
           </View>
@@ -173,6 +202,35 @@ export default function ProfileScreen() {
               borderColor: colors.border,
             }}
           >
+            {/* Notifications Row */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/notification-settings");
+              }}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={a11y.notifications.label}
+              accessibilityHint={a11y.notifications.hint}
+            >
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                {t("notifications.title")}
+              </Text>
+              <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
+            </Pressable>
+
             {/* Language Row */}
             <Pressable
               onPress={() => {
@@ -191,6 +249,10 @@ export default function ProfileScreen() {
                   opacity: pressed ? 0.6 : 1,
                 },
               ]}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={a11y.language.label}
+              accessibilityHint={a11y.language.hint}
             >
               <Text style={{ fontSize: 16, color: colors.foreground }}>
                 Dil
@@ -222,52 +284,19 @@ export default function ProfileScreen() {
                     opacity: pressed ? 0.6 : 1,
                   },
                 ]}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={a11y.upgradePremium.label}
+                accessibilityHint={a11y.upgradePremium.hint}
               >
-                <Text style={{ fontSize: 16, color: colors.foreground }}>
-                  Premium
+                <Text style={{ fontSize: 16, color: colors.foreground, fontWeight: "600" }}>
+                  Premium'e Yükselt
                 </Text>
-                <Text style={{ fontSize: 14, color: colors.accent }}>
-                  Yükselt ›
-                </Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
               </Pressable>
             )}
 
-            {/* Subscription Row (only for premium users) */}
-            {isPremium && (
-              <Pressable
-                style={({ pressed }) => [
-                  {
-                    paddingHorizontal: 16,
-                    paddingVertical: 16,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    opacity: pressed ? 0.6 : 1,
-                  },
-                ]}
-              >
-                <Text style={{ fontSize: 16, color: colors.foreground }}>
-                  Abonelik
-                </Text>
-                <Text style={{ fontSize: 14, color: colors.success }}>
-                  Aktif ›
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {/* Sign Out Section */}
-        <View style={{ marginHorizontal: 24, marginBottom: 32 }}>
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
-              overflow: "hidden",
-              borderWidth: 0.5,
-              borderColor: colors.border,
-            }}
-          >
+            {/* Logout Row */}
             <Pressable
               onPress={handleLogout}
               disabled={isLoggingOut}
@@ -275,82 +304,139 @@ export default function ProfileScreen() {
                 {
                   paddingHorizontal: 16,
                   paddingVertical: 16,
-                  opacity: isLoggingOut ? 0.5 : pressed ? 0.6 : 1,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: colors.border,
+                  opacity: pressed || isLoggingOut ? 0.6 : 1,
                 },
               ]}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={a11y.logout.label}
+              accessibilityHint={a11y.logout.hint}
             >
+              <Text style={{ fontSize: 16, color: colors.error }}>
+                {t("auth.signOut")}
+              </Text>
               {isLoggingOut ? (
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
-                <Text style={{ fontSize: 16, color: colors.error }}>
-                  Çıkış Yap
-                </Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
+              )}
+            </Pressable>
+
+            {/* Privacy Policy Row */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                import("expo-linking").then(({ default: Linking }) => {
+                  Linking.openURL("https://palimps.app/privacy");
+                });
+              }}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: colors.border,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+              accessible={true}
+              accessibilityRole="link"
+              accessibilityLabel="Gizlilik Politikası"
+              accessibilityHint="Gizlilik politikası sayfasını açar"
+            >
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                Gizlilik Politikası
+              </Text>
+              <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
+            </Pressable>
+
+            {/* Delete Account Row */}
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  opacity: pressed || isDeletingAccount ? 0.6 : 1,
+                },
+              ]}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Hesabı Sil"
+              accessibilityHint="Tüm verilerinizi kalıcı olarak siler"
+            >
+              <Text style={{ fontSize: 16, color: colors.error, opacity: 0.7 }}>
+                Hesabı Sil
+              </Text>
+              {isDeletingAccount ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
               )}
             </Pressable>
           </View>
         </View>
 
-        {/* Version */}
-        <View style={{ paddingBottom: 32 }}>
-          <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center" }}>
-            PALIMPS v4.0
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Language Picker Modal */}
-      <Modal
-        visible={showLanguagePicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLanguagePicker(false)}
-      >
-        <Pressable
-          className="flex-1 items-center justify-center"
-          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-          onPress={() => setShowLanguagePicker(false)}
-        >
-          <Pressable
-            className="w-72 rounded-2xl overflow-hidden"
-            style={{ backgroundColor: colors.background }}
-            onPress={() => {}} // prevent close on inner press
+        {/* Language Picker Modal */}
+        {showLanguagePicker && (
+          <View
+            style={{
+              marginHorizontal: 24,
+              marginBottom: 24,
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              borderWidth: 0.5,
+              borderColor: colors.border,
+              overflow: "hidden",
+            }}
           >
-            <View className="px-5 py-4 border-b border-border">
-              <Text className="text-lg font-semibold text-foreground">
-                {t("profile.language")}
-              </Text>
-            </View>
             {LANGUAGES.map((lang, index) => (
               <Pressable
                 key={lang.code}
                 onPress={() => handleLanguageChange(lang.code)}
-                className="px-5 py-3.5 flex-row items-center justify-between"
                 style={({ pressed }) => [
                   {
-                    opacity: pressed ? 0.6 : 1,
-                    backgroundColor: currentLanguage === lang.code ? colors.primary + "10" : "transparent",
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     borderBottomWidth: index < LANGUAGES.length - 1 ? 0.5 : 0,
                     borderBottomColor: colors.border,
+                    opacity: pressed ? 0.6 : 1,
                   },
                 ]}
+                accessible={true}
+                accessibilityRole="radio"
+                accessibilityLabel={lang.name}
+                accessibilityState={{ selected: currentLanguage === lang.code }}
               >
-                <Text
-                  className="text-base"
-                  style={{
-                    color: currentLanguage === lang.code ? colors.primary : colors.foreground,
-                    fontWeight: currentLanguage === lang.code ? "600" : "400",
-                  }}
-                >
+                <Text style={{ fontSize: 16, color: colors.foreground }}>
                   {lang.name}
                 </Text>
                 {currentLanguage === lang.code && (
-                  <Text style={{ color: colors.primary, fontSize: 16 }}>✓</Text>
+                  <Text style={{ fontSize: 18, color: colors.primary }}>✓</Text>
                 )}
               </Pressable>
             ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </View>
+        )}
+
+        {/* Footer spacing */}
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </ScreenContainer>
   );
 }

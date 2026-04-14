@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 
@@ -25,6 +26,10 @@ export default function MomentDetailScreen() {
       refetch();
       setIsEditModalVisible(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (error) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t("common.error"), error.message || t("common.updateFailed"));
     },
   });
 
@@ -126,23 +131,22 @@ export default function MomentDetailScreen() {
   });
 
   return (
-    <ScreenContainer>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text className="text-lg text-foreground">←</Text>
-          </Pressable>
+    <ScreenContainer edges={["top", "left", "right"]}>
+      <NavigationBar
+        title={formattedDate}
+        backLabel={t("bookDetail.title")}
+        onBack={() => router.back()}
+        rightNode={
           <Pressable
             onPress={handleMenu}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            hitSlop={{ top: 10, bottom: 10, left: 16, right: 8 }}
+            style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 6, opacity: pressed ? 0.4 : 1 }]}
           >
-            <Text className="text-lg text-foreground">⋯</Text>
+            <Text style={{ fontSize: 22, color: colors.primary, lineHeight: 26 }}>···</Text>
           </Pressable>
-        </View>
+        }
+      />
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
         {/* Page Image */}
         <View className="px-6 mb-8">

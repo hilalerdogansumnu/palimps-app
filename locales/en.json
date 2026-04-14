@@ -86,6 +86,12 @@
     "notePlaceholder": "Your thoughts about this page...",
     "ocrInfo": "After saving the photo, the text on the page will be automatically extracted.",
     "ocrExtracted": "Text extracted",
+    "fontSize": "Font Size",
+    "alignment": "Alignment",
+    "style": "Style",
+    "preview": "Preview",
+    "extractedText": "Extracted Text",
+    "pageNumber": "Page Number",
     "save": "Save",
     "back": "Back",
     "error": "Error",
@@ -129,7 +135,11 @@
     "subscription": "Subscription",
     "premiumComingSoon": "Premium Coming Soon",
     "premiumComingSoonDesc": "AI features will be available very soon",
-    "version": "v4.0"
+    "version": "v4.0",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirmTitle": "Delete Account",
+    "deleteAccountConfirmMessage": "All your books, reading moments, and data will be permanently deleted. This action cannot be undone.",
+    "deleteAccountError": "Couldn't delete your account. Please try again."
   },
   "subscription": {
     "management": "Subscription Management",
@@ -152,6 +162,8 @@
     "noPackages": "No packages available. Please try again later.",
     "restorePurchase": "Restore previous purchase",
     "terms": "Subscription can be cancelled anytime from App Store settings. Auto-renews.",
+    "cancellationTitle": "How to Cancel",
+    "cancellationInfo": "You can cancel your subscription at any time in iPhone Settings > Apple ID > Subscriptions. Cancellation takes effect at the end of the current billing period. If not cancelled at least 24 hours before the period ends, the subscription automatically renews.",
     "thanks": "Thank you!",
     "activated": "Your Premium membership is now active.",
     "purchaseFailed": "Purchase failed",
@@ -168,7 +180,7 @@
     "feature4": { "title": "Advanced Search", "desc": "Search across all your books and notes with powerful filters" },
     "feature5": { "title": "Reading Statistics", "desc": "Track your reading progress with detailed graphs and analytics" },
     "feature6": { "title": "Export Options", "desc": "Export your notes as PDF or Markdown" },
-    "feature7": { "title": "Multi-Language Support", "desc": "Use in Turkish, English, German, and Spanish" },
+    "feature7": { "title": "Multi-Language Support", "desc": "Available in Turkish and English" },
     "feature8": { "title": "Unlimited Storage", "desc": "Store all your reading moments and photos without limits" }
   },
   "premiumGate": {
@@ -192,6 +204,80 @@
     "example4": "How are my reading habits?"
   },
   "languages": { "en": "English", "tr": "Türkçe" },
+  "notifications": {
+    "title": "Notifications",
+    "dailySection": "Daily Reminder",
+    "dailyReminder": "Reading Reminder",
+    "dailyReminderDesc": "Reminds you to read at your chosen time every day",
+    "reminderTime": "Time",
+    "streakSection": "Streak Alert",
+    "streakAlert": "Streak Break Alert",
+    "streakAlertDesc": "Notifies you if 22 hours pass without saving a moment",
+    "weeklySection": "Weekly Summary",
+    "weeklySummary": "Weekly Summary",
+    "weeklySummaryDesc": "Track your reading stats with a weekly digest",
+    "summaryDay": "Day",
+    "permissionTitle": "Notification Permission Required",
+    "permissionMessage": "Please allow notifications in Settings to enable this feature.",
+    "permissionBanner": "Notification permission is needed. Tap here to request access.",
+    "permissionHint": "Tap to grant notification permission",
+    "dailyPushTitle": "Time to read",
+    "dailyPushBody": "You haven't saved a moment today. Your book is waiting.",
+    "weeklyPushTitle": "Weekly reading summary",
+    "weeklyPushBody": "How many moments did you catch this week? Let's see.",
+    "days": { "sun": "Sun", "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat" },
+    "a11y": {
+      "hourDecrease": "Decrease hour",
+      "hourIncrease": "Increase hour",
+      "dayPrev": "Previous day",
+      "dayNext": "Next day"
+    }
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Continue",
+    "getStarted": "Get Started",
+    "welcome": {
+      "title": "Welcome to PALIMPS",
+      "description": "Save every page you read, every moment, in your digital memory. Build a deeper connection with your books."
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "description": "Add a book, photograph a page, write your note. Our OCR automatically recognizes the text."
+    },
+    "aiPowered": {
+      "title": "Power It with AI",
+      "description": "With Premium, unlock unlimited AI-powered note generation, summaries, and thematic analysis."
+    },
+    "a11y": {
+      "paginationDot": "Step {{current}} of {{total}}"
+    }
+  },
+  "ocrEdit": {
+    "title": "Edit Text",
+    "sizeSmall": "Small",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Large",
+    "alignLeft": "Left",
+    "alignCenter": "Center",
+    "alignRight": "Right",
+    "alignJustify": "Justify",
+    "styleNormal": "Normal",
+    "styleItalic": "Italic",
+    "styleSerif": "Serif",
+    "pageNumberLabel": "Page Number (Optional)",
+    "pageNumberPlaceholder": "e.g. 42",
+    "saveError": "Couldn't save your changes.",
+    "textEmpty": "Text can't be empty."
+  },
+  "errors": {
+    "generic": "Something went wrong. Want to try again?",
+    "chatSendFailed": "Message couldn't be sent. Please try again.",
+    "deleteAccountFailed": "Account couldn't be deleted.",
+    "deleteMomentFailed": "Moment couldn't be deleted.",
+    "exportFailed": "Export failed.",
+    "photoUploadFailed": "Photo upload failed. Please try again."
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -206,6 +292,8 @@
     "no": "No",
     "back": "Back",
     "selectPhoto": "Select Photo",
-    "more": "More"
+    "more": "More",
+    "options": "Options",
+    "updateFailed": "Couldn't save your changes. Please try again."
   }
 }

@@ -1,4 +1,5 @@
 import { View, Text } from "react-native";
+import { useColors } from "@/hooks/use-colors";
 
 interface PremiumBadgeProps {
   size?: "small" | "medium" | "large";
@@ -6,34 +7,52 @@ interface PremiumBadgeProps {
 
 /**
  * Premium Badge Component
- * Shows a premium indicator badge for premium users
+ * Theme-aware premium indicator. Uses the `primary` token (deep violet)
+ * with white text for WCAG AA legibility in both light and dark modes.
+ * The emoji-free label matches Apple's preferred text-based status indicators.
  */
 export function PremiumBadge({ size = "medium" }: PremiumBadgeProps) {
-  const sizeClasses = {
-    small: "px-2 py-0.5",
-    medium: "px-3 py-1",
-    large: "px-4 py-2",
-  };
+  const colors = useColors();
 
-  const textSizeClasses = {
-    small: "text-xs",
-    medium: "text-sm",
-    large: "text-base",
-  };
+  const padding = {
+    small: { paddingHorizontal: 8, paddingVertical: 2 },
+    medium: { paddingHorizontal: 12, paddingVertical: 4 },
+    large: { paddingHorizontal: 16, paddingVertical: 8 },
+  }[size];
+
+  const fontSize = {
+    small: 11,
+    medium: 13,
+    large: 15,
+  }[size];
 
   return (
     <View
-      className={`bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex-row items-center ${sizeClasses[size]}`}
       style={{
-        shadowColor: "#000",
+        ...padding,
+        backgroundColor: colors.primary,
+        borderRadius: 999,
+        flexDirection: "row",
+        alignItems: "center",
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.22,
+        shadowRadius: 6,
         elevation: 3,
       }}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel="Premium"
     >
-      <Text className={`font-bold text-white ${textSizeClasses[size]}`}>
-        👑 Premium
+      <Text
+        style={{
+          fontSize,
+          fontWeight: "700",
+          color: "#FFFFFF",
+          letterSpacing: 0.4,
+        }}
+      >
+        Premium
       </Text>
     </View>
   );

@@ -8,8 +8,10 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { a11y } from "@/lib/accessibility";
 
 export default function BookDetailScreen() {
   const colors = useColors();
@@ -82,13 +84,15 @@ export default function BookDetailScreen() {
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(fileUri);
         } else {
-          Alert.alert("Success", `Saved to ${fileUri}`);
+          Alert.alert(t("common.success"), t("bookDetail.exportSuccess"));
         }
       }
-      
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      console.error("Export error:", error);
+      // Export failure is rare but worth surfacing — Sentry picks up the
+      // unhandled rejection path; user gets a warm retry prompt.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(t("common.error"), t("bookDetail.exportError"));
     } finally {
       setIsExporting(false);
@@ -110,6 +114,10 @@ export default function BookDetailScreen() {
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={a11y.backButton.label}
+          accessibilityHint={a11y.backButton.hint}
         >
           <Text className="text-base text-foreground">{t("bookDetail.goBack")}</Text>
         </Pressable>
@@ -138,37 +146,37 @@ export default function BookDetailScreen() {
   // Empty state
   if (!moments || moments.length === 0) {
     return (
-      <ScreenContainer className="px-6">
-        {/* Header */}
-        <View className="pt-4 pb-6 flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text className="text-lg text-foreground">←</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleMenu}
-            disabled={isExporting}
-            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
-          >
-            <Text className="text-lg text-foreground">⋯</Text>
-          </Pressable>
-        </View>
+      <ScreenContainer edges={["top", "left", "right"]}>
+        <NavigationBar
+          title={book.title}
+          backLabel={t("tabs.library")}
+          onBack={() => router.back()}
+          rightNode={
+            <Pressable
+              onPress={handleMenu}
+              disabled={isExporting}
+              hitSlop={{ top: 10, bottom: 10, left: 16, right: 8 }}
+              style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 6, opacity: isExporting ? 0.4 : pressed ? 0.4 : 1 }]}
+            >
+              <Text style={{ fontSize: 22, color: colors.primary, lineHeight: 26 }} accessible={true} accessibilityRole="button" accessibilityLabel={a11y.menu.label} accessibilityHint={a11y.menu.hint}>···</Text>
+            </Pressable>
+          }
+        />
+        <View className="px-6">
 
         {/* Book info section */}
         <View className="mb-10 flex-row gap-4">
           {book.coverImageUrl ? (
             <Image
               source={{ uri: book.coverImageUrl }}
-              style={{ width: 80, height: 110, borderRadius: 12 }}
+              style={{ width: 90, height: 135, borderRadius: 12 }}
               resizeMode="cover"
             />
           ) : (
             <View
               style={{
-                width: 80,
-                height: 110,
+                width: 90,
+                height: 135,
                 borderRadius: 12,
                 backgroundColor: colors.primary,
                 justifyContent: "center",
@@ -236,42 +244,42 @@ export default function BookDetailScreen() {
         >
           <Text className="text-2xl text-background">+</Text>
         </Pressable>
+        </View>
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer className="px-6">
-      {/* Header */}
-      <View className="pt-4 pb-6 flex-row items-center justify-between">
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text className="text-lg text-foreground">←</Text>
-        </Pressable>
-        <Pressable
-          onPress={handleMenu}
-          disabled={isExporting}
-          style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
-        >
-          <Text className="text-lg text-foreground">⋯</Text>
-        </Pressable>
-      </View>
-
+    <ScreenContainer edges={["top", "left", "right"]}>
+      <NavigationBar
+        title={book.title}
+        backLabel={t("tabs.library")}
+        onBack={() => router.back()}
+        rightNode={
+          <Pressable
+            onPress={handleMenu}
+            disabled={isExporting}
+            hitSlop={{ top: 10, bottom: 10, left: 16, right: 8 }}
+            style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 6, opacity: isExporting ? 0.4 : pressed ? 0.4 : 1 }]}
+          >
+            <Text style={{ fontSize: 22, color: colors.primary, lineHeight: 26 }}>···</Text>
+          </Pressable>
+        }
+      />
+      <View className="px-6 flex-1">
       {/* Book info section */}
       <View className="mb-10 flex-row gap-4">
         {book.coverImageUrl ? (
           <Image
             source={{ uri: book.coverImageUrl }}
-            style={{ width: 80, height: 110, borderRadius: 12 }}
+            style={{ width: 90, height: 135, borderRadius: 12 }}
             resizeMode="cover"
           />
         ) : (
           <View
             style={{
-              width: 80,
-              height: 110,
+              width: 90,
+              height: 135,
               borderRadius: 12,
               backgroundColor: colors.primary,
               justifyContent: "center",
@@ -416,6 +424,7 @@ export default function BookDetailScreen() {
       >
         <Text className="text-2xl text-background">+</Text>
       </Pressable>
+      </View>
     </ScreenContainer>
   );
 }

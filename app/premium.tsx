@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import Purchases, { PurchasesPackage } from "react-native-purchases";
 import { useTranslation } from "react-i18next";
 import { ScreenContainer } from "@/components/screen-container";
+import { NavigationBar } from "@/components/navigation-bar";
 import { router } from "expo-router";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useColors } from "@/hooks/use-colors";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const ENTITLEMENT_ID = "premium";
 
@@ -80,28 +82,26 @@ export default function PremiumScreen() {
     }
   };
 
-  const features = [
-    { icon: "✨", title: t("premium.feature1.title"), description: t("premium.feature1.desc") },
-    { icon: "🧠", title: t("premium.feature2.title"), description: t("premium.feature2.desc") },
-    { icon: "🎨", title: t("premium.feature3.title"), description: t("premium.feature3.desc") },
-    { icon: "🔍", title: t("premium.feature4.title"), description: t("premium.feature4.desc") },
-    { icon: "📊", title: t("premium.feature5.title"), description: t("premium.feature5.desc") },
-    { icon: "📤", title: t("premium.feature6.title"), description: t("premium.feature6.desc") },
-    { icon: "🌍", title: t("premium.feature7.title"), description: t("premium.feature7.desc") },
-    { icon: "☁️", title: t("premium.feature8.title"), description: t("premium.feature8.desc") },
+  const features: { icon: React.ComponentProps<typeof MaterialIcons>["name"]; title: string; description: string }[] = [
+    { icon: "auto-awesome", title: t("premium.feature1.title"), description: t("premium.feature1.desc") },
+    { icon: "psychology", title: t("premium.feature2.title"), description: t("premium.feature2.desc") },
+    { icon: "palette", title: t("premium.feature3.title"), description: t("premium.feature3.desc") },
+    { icon: "search", title: t("premium.feature4.title"), description: t("premium.feature4.desc") },
+    { icon: "bar-chart", title: t("premium.feature5.title"), description: t("premium.feature5.desc") },
+    { icon: "upload", title: t("premium.feature6.title"), description: t("premium.feature6.desc") },
+    { icon: "language", title: t("premium.feature7.title"), description: t("premium.feature7.desc") },
+    { icon: "cloud", title: t("premium.feature8.title"), description: t("premium.feature8.desc") },
   ];
 
   return (
-    <ScreenContainer style={{ paddingHorizontal: 0, paddingVertical: 0 }}>
+    <ScreenContainer edges={["top", "left", "right"]}>
+      <NavigationBar
+        title={t("premium.title")}
+        backLabel={t("profile.title")}
+        onBack={() => router.back()}
+      />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 16 }}>
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ marginBottom: 24 }}
-          >
-            <Text style={{ fontSize: 16, color: colors.primary }}>← Geri</Text>
-          </TouchableOpacity>
 
           {/* Hero Section */}
           <View style={{ marginBottom: 32 }}>
@@ -137,7 +137,7 @@ export default function PremiumScreen() {
                   textAlign: "center",
                 }}
               >
-                ✓ Premium üyesiniz
+                Premium üyesiniz
               </Text>
             </View>
           )}
@@ -165,9 +165,9 @@ export default function PremiumScreen() {
                     borderBottomColor: colors.border,
                   }}
                 >
-                  <Text style={{ fontSize: 24, marginRight: 12, marginTop: 2 }}>
-                    {feature.icon}
-                  </Text>
+                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primary + "1A", alignItems: "center", justifyContent: "center", marginRight: 12, marginTop: 2 }}>
+                    <MaterialIcons name={feature.icon} size={18} color={colors.primary} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>
                       {feature.title}
@@ -257,6 +257,30 @@ export default function PremiumScreen() {
               )}
             </View>
           )}
+
+          {/* Subscription Cancellation Info — App Store Review Guideline 3.1.2 */}
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.foreground,
+                marginBottom: 8,
+              }}
+            >
+              {t("premium.cancellationTitle")}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 18 }}>
+              {t("premium.cancellationInfo")}
+            </Text>
+          </View>
 
           {/* Terms */}
           <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", paddingBottom: 16 }}>

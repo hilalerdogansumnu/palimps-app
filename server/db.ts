@@ -308,6 +308,29 @@ export async function updateUser(userId: number, data: Partial<InsertUser>) {
 }
 
 /**
+ * Kullanıcıyı ve tüm verilerini sil (App Store Guideline 5.1.1.v)
+ * Sıra önemli: önce bağlı veriler, sonra kullanıcı silinir.
+ */
+export async function deleteUserAndAllData(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 1. Kullanıcının tüm kitaplarını bul
+  const userBooks = await db.select().from(books).where(eq(books.userId, userId));
+
+  // 2. Her kitabın okuma anlarını sil
+  for (const book of userBooks) {
+    await db.delete(readingMoments).where(eq(readingMoments.bookId, book.id));
+  }
+
+  // 3. Kitapları sil
+  await db.delete(books).where(eq(books.userId, userId));
+
+  // 4. Kullanıcıyı sil
+  await db.delete(users).where(eq(users.id, userId));
+}
+
+/**
  * ID ile kullanıcı bul
  */
 export async function getUserById(userId: number) {

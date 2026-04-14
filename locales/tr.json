@@ -86,6 +86,12 @@
     "notePlaceholder": "Bu sayfa hakkındaki düşünceleriniz...",
     "ocrInfo": "Fotoğrafı kaydettikten sonra, sayfadaki metin otomatik olarak çıkarılacaktır.",
     "ocrExtracted": "Metin çıkarıldı",
+    "fontSize": "Yazı Boyutu",
+    "alignment": "Hizalama",
+    "style": "Stil",
+    "preview": "Önizleme",
+    "extractedText": "Çıkarılan Metin",
+    "pageNumber": "Sayfa Numarası",
     "save": "Kaydet",
     "back": "Geri",
     "error": "Hata",
@@ -129,7 +135,11 @@
     "subscription": "Abonelik",
     "premiumComingSoon": "Premium Yakında",
     "premiumComingSoonDesc": "AI özellikleri çok yakında aktif olacak",
-    "version": "v4.0"
+    "version": "v4.0",
+    "deleteAccount": "Hesabı Sil",
+    "deleteAccountConfirmTitle": "Hesabı Sil",
+    "deleteAccountConfirmMessage": "Tüm kitaplarınız, okuma anlarınız ve verileriniz kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "deleteAccountError": "Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin."
   },
   "subscription": {
     "management": "Abonelik Yönetimi",
@@ -152,6 +162,8 @@
     "noPackages": "Şu an satın alınabilir bir paket yok. Lütfen daha sonra tekrar deneyin.",
     "restorePurchase": "Önceki satın almayı geri yükle",
     "terms": "Abonelik istediğiniz zaman App Store ayarlarından iptal edilebilir. Otomatik yenilenir.",
+    "cancellationTitle": "Aboneliği İptal Etme",
+    "cancellationInfo": "Aboneliğinizi iPhone Ayarları > Apple ID > Abonelikler bölümünden istediğiniz zaman iptal edebilirsiniz. İptal işlemi mevcut dönem sonunda geçerli olur. Abonelik, dönem bitiminden en az 24 saat önce iptal edilmezse otomatik olarak yenilenir.",
     "thanks": "Teşekkürler!",
     "activated": "Premium üyeliğiniz aktifleşti.",
     "purchaseFailed": "Satın alma başarısız",
@@ -168,7 +180,7 @@
     "feature4": { "title": "Gelişmiş Arama", "desc": "Tüm kitaplarınızda ve notlarınızda güçlü filtrelerle arama yapın" },
     "feature5": { "title": "Okuma İstatistikleri", "desc": "Detaylı grafikler ve analizlerle okuma ilerlemenizi takip edin" },
     "feature6": { "title": "Export Seçenekleri", "desc": "Notlarınızı PDF veya Markdown olarak dışa aktarın" },
-    "feature7": { "title": "Çoklu Dil Desteği", "desc": "Türkçe, İngilizce, Almanca ve İspanyolca" },
+    "feature7": { "title": "Çoklu Dil Desteği", "desc": "Türkçe ve İngilizce destekli" },
     "feature8": { "title": "Sınırsız Depolama", "desc": "Tüm okuma anlarınızı ve fotoğraflarınızı sınırsız saklayın" }
   },
   "premiumGate": {
@@ -192,6 +204,80 @@
     "example4": "Okuma alışkanlıklarım nasıl?"
   },
   "languages": { "en": "English", "tr": "Türkçe" },
+  "notifications": {
+    "title": "Bildirimler",
+    "dailySection": "Günlük Hatırlatıcı",
+    "dailyReminder": "Okuma Hatırlatıcısı",
+    "dailyReminderDesc": "Her gün belirlediğin saatte seni hatırlatır",
+    "reminderTime": "Saat",
+    "streakSection": "Seri Uyarısı",
+    "streakAlert": "Seri Kırılma Uyarısı",
+    "streakAlertDesc": "22 saat içinde an kaydetmezsen bildirim gönderilir",
+    "weeklySection": "Haftalık Özet",
+    "weeklySummary": "Haftalık Özet",
+    "weeklySummaryDesc": "Okuma istatistiklerini haftalık özetle takip et",
+    "summaryDay": "Gün",
+    "permissionTitle": "Bildirim İzni Gerekli",
+    "permissionMessage": "Bildirimleri etkinleştirmek için lütfen ayarlardan izin verin.",
+    "permissionBanner": "Bildirimleri kullanmak için izin gerekli. Buraya dokunarak izin isteyin.",
+    "permissionHint": "Bildirim izni vermek için dokunun",
+    "dailyPushTitle": "Okuma zamanı",
+    "dailyPushBody": "Bugün bir an kaydetmeyi unuttun. Kitabın seni bekliyor.",
+    "weeklyPushTitle": "Haftalık okuma özeti",
+    "weeklyPushBody": "Bu hafta kaç an yakaladın? Bak bakalım.",
+    "days": { "sun": "Paz", "mon": "Pzt", "tue": "Sal", "wed": "Çar", "thu": "Per", "fri": "Cum", "sat": "Cmt" },
+    "a11y": {
+      "hourDecrease": "Saati azalt",
+      "hourIncrease": "Saati artır",
+      "dayPrev": "Önceki gün",
+      "dayNext": "Sonraki gün"
+    }
+  },
+  "onboarding": {
+    "skip": "Atla",
+    "next": "Devam",
+    "getStarted": "Başlayalım",
+    "welcome": {
+      "title": "PALIMPS'e Hoş Geldiniz",
+      "description": "Okuduğunuz her sayfayı, her anı dijital hafızanızda saklayın. Kitaplarınızla daha derin bir bağ kurun."
+    },
+    "howItWorks": {
+      "title": "Nasıl Çalışır?",
+      "description": "Kitap ekleyin, sayfa fotoğrafı çekin, notlarınızı alın. OCR teknolojisi ile metinler otomatik olarak tanınır."
+    },
+    "aiPowered": {
+      "title": "AI ile Güçlendirin",
+      "description": "Premium ile AI destekli otomatik not oluşturma, özet çıkarma ve tematik analiz özelliklerini sınırsız kullanın."
+    },
+    "a11y": {
+      "paginationDot": "Adım {{current}} / {{total}}"
+    }
+  },
+  "ocrEdit": {
+    "title": "Metni Düzenle",
+    "sizeSmall": "Küçük",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Büyük",
+    "alignLeft": "Sol",
+    "alignCenter": "Orta",
+    "alignRight": "Sağ",
+    "alignJustify": "Yaslı",
+    "styleNormal": "Normal",
+    "styleItalic": "İtalik",
+    "styleSerif": "Serif",
+    "pageNumberLabel": "Sayfa Numarası (Opsiyonel)",
+    "pageNumberPlaceholder": "Örn: 42",
+    "saveError": "Düzenlemeler kaydedilirken bir hata oluştu.",
+    "textEmpty": "Metin boş olamaz."
+  },
+  "errors": {
+    "generic": "Bir şeyler ters gitti. Lütfen tekrar dener misin?",
+    "chatSendFailed": "Mesaj gönderilemedi. Lütfen tekrar dene.",
+    "deleteAccountFailed": "Hesap silinirken bir hata oluştu.",
+    "deleteMomentFailed": "An silinirken bir hata oluştu.",
+    "exportFailed": "Dışa aktarma başarısız oldu.",
+    "photoUploadFailed": "Fotoğraf yüklenemedi. Lütfen tekrar dene."
+  },
   "common": {
     "loading": "Yükleniyor...",
     "error": "Hata",
@@ -206,6 +292,8 @@
     "no": "Hayır",
     "back": "Geri",
     "selectPhoto": "Fotoğraf Seç",
-    "more": "Daha Fazla"
+    "more": "Daha Fazla",
+    "options": "Seçenekler",
+    "updateFailed": "Değişiklikler kaydedilemedi. Lütfen tekrar dene."
   }
 }

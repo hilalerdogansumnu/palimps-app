@@ -1,6 +1,10 @@
 import "@/global.css";
 import "@/lib/i18n";
+import { initSentry } from "@/lib/_core/sentry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Initialize Sentry for crash reporting
+initSentry();
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,12 +22,14 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
-import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { initPurchases, identifyPurchasesUser } from "@/lib/_core/purchases";
+import { subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import { initManusRuntime } from "@/lib/_core/manus-runtime"; // Keep for compatibility
 import { useAuth } from "@/hooks/use-auth";
 import { router, useSegments } from "expo-router";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { OnboardingScreens } from "@/components/onboarding-screens";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { View, ActivityIndicator } from "react-native";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -43,6 +49,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.openId) {
       identifyPurchasesUser(user.openId);
+      // Set user context in Sentry for crash reporting
+      const { setUserContext } = require("@/lib/_core/sentry");
+      setUserContext(user.openId);
     }
   }, [user?.openId]);
 
@@ -85,9 +94,8 @@ export default function RootLayout() {
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
 
-  // Initialize Manus runtime (no-op now) and RevenueCat once at startup.
+  // Initialize RevenueCat once at startup.
   useEffect(() => {
-    initManusRuntime();
     initPurchases();
   }, []);
 
@@ -132,6 +140,7 @@ export default function RootLayout() {
   }, [initialInsets, initialFrame]);
 
   const content = (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
@@ -146,12 +155,14 @@ export default function RootLayout() {
               <Stack.Screen name="book/[id]" />
               <Stack.Screen name="add-moment/[bookId]" options={{ presentation: "modal" }} />
               <Stack.Screen name="moment/[id]" />
+              <Stack.Screen name="notification-settings" />
             </Stack>
           </AuthGuard>
           <StatusBar style="auto" />
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 
   const shouldOverrideSafeArea = Platform.OS === "web";

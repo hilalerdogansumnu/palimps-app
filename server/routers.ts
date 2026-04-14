@@ -5,6 +5,23 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { ENV } from "./_core/env";
+
+function getClient(): S3Client {
+  if (!ENV.r2AccountId || !ENV.r2AccessKeyId || !ENV.r2SecretAccessKey) {
+    throw new Error("R2 not configured");
+  }
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${ENV.r2AccountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: ENV.r2AccessKeyId,
+      secretAccessKey: ENV.r2SecretAccessKey,
+    },
+  });
+}
 import { invokeLLM } from "./_core/llm";
 
 export const appRouter = router({
@@ -18,6 +35,16 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+    /**
+     * Hesap silme — App Store Guideline 5.1.1.v zorunlu kılıyor.
+     * Kullanıcının tüm verilerini (kitaplar, okuma anları) siler ve oturumu kapatır.
+     */
+    deleteAccount: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.deleteUserAndAllData(ctx.user.id);
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      return { success: true } as const;
     }),
   }),
 
@@ -67,13 +94,17 @@ export const appRouter = router({
           title: z.string().min(1).max(500),
           author: z.string().max(255).optional(),
           coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
+          coverImageUrl: z.string().url().optional(), // Presigned URL upload sonrası
         })
       )
       .mutation(async ({ ctx, input }) => {
         let coverImageUrl: string | undefined;
 
-        // Eğer kapak fotoğrafı varsa, S3'e yükle
-        if (input.coverImageBase64) {
+        // Presigned URL ile yüklendiyse direkt kullan
+        if (input.coverImageUrl) {
+          coverImageUrl = input.coverImageUrl;
+        } else if (input.coverImageBase64) {
+          // Fallback: base64 ile yükle (eski yöntem)
           const buffer = Buffer.from(input.coverImageBase64, "base64");
           const fileName = `covers/${ctx.user.id}/${Date.now()}.jpg`;
           const result = await storagePut(fileName, buffer, "image/jpeg");
@@ -100,6 +131,7 @@ export const appRouter = router({
           title: z.string().min(1).max(500).optional(),
           author: z.string().max(255).optional(),
           coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
+          coverImageUrl: z.string().url().optional(), // Presigned URL upload sonrası
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -108,7 +140,9 @@ export const appRouter = router({
           throw new Error("Book not found");
         }
         let coverImageUrl: string | undefined;
-        if (input.coverImageBase64) {
+        if (input.coverImageUrl) {
+          coverImageUrl = input.coverImageUrl;
+        } else if (input.coverImageBase64) {
           const buffer = Buffer.from(input.coverImageBase64, "base64");
           const fileName = `covers/${ctx.user.id}/${Date.now()}.jpg`;
           const result = await storagePut(fileName, buffer, "image/jpeg");
@@ -134,6 +168,44 @@ export const appRouter = router({
         }
         await db.deleteBook(input.id);
         return { success: true };
+      }),
+  }),
+
+  // ============================================
+  // FILE UPLOAD (Presigned URLs)
+  // ============================================
+  upload: router({
+    /**
+     * Get presigned URL for uploading a file to S3
+     */
+    getPresignedUrl: protectedProcedure
+      .input(
+        z.object({
+          fileName: z.string().min(1),
+          fileType: z.enum(["image/jpeg", "image/png", "application/pdf"]),
+          fileSize: z.number().min(1).max(50_000_000), // 50MB max
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Generate unique key
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(7);
+        const ext = input.fileName.split(".").pop() || "bin";
+        const key = `uploads/${ctx.user.id}/${timestamp}-${randomId}.${ext}`;
+
+        // Create presigned PUT URL
+        const client = getClient();
+        const presignedUrl = await getSignedUrl(
+          client,
+          new PutObjectCommand({
+            Bucket: ENV.r2BucketName,
+            Key: key,
+            ContentType: input.fileType,
+          }),
+          { expiresIn: 3600 } // 1 hour
+        );
+
+        return { presignedUrl, key };
       }),
   }),
 
@@ -174,16 +246,27 @@ export const appRouter = router({
       .input(
         z.object({
           bookId: z.number(),
-          pageImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)"),
+          pageImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
+          pageImageUrl: z.string().url().optional(), // Presigned URL upload sonrası
           userNote: z.string().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (!input.pageImageBase64 && !input.pageImageUrl) {
+          throw new Error("pageImageBase64 veya pageImageUrl zorunlu");
+        }
         // 1. Sayfa fotoğrafını S3'e yükle
-        const imageBuffer = Buffer.from(input.pageImageBase64, "base64");
-        const imageFileName = `pages/${ctx.user.id}/${Date.now()}.jpg`;
-        const uploadResult = await storagePut(imageFileName, imageBuffer, "image/jpeg");
-        const pageImageUrl = uploadResult.url;
+        let pageImageUrl: string;
+        if (input.pageImageUrl) {
+          // Presigned URL ile yüklendiyse direkt kullan
+          pageImageUrl = input.pageImageUrl;
+        } else {
+          // Fallback: base64 ile yükle
+          const imageBuffer = Buffer.from(input.pageImageBase64!, "base64");
+          const imageFileName = `pages/${ctx.user.id}/${Date.now()}.jpg`;
+          const uploadResult = await storagePut(imageFileName, imageBuffer, "image/jpeg");
+          pageImageUrl = uploadResult.url;
+        }
 
         // 2. OCR işlemi (LLM ile)
         let ocrText: string | null = null;

@@ -393,7 +393,163 @@
 
 - [x] Google login yok - Claude kodunda sadece Apple Sign In var (zaten doğru)
 - [x] trust proxy - Claude sunucusunda zaten var (satır 57)
-- [ ] eas.json: production profilinden Android bloğunu kaldır (iOS-only ilk sürüm)
-- [ ] eas.json: appVersionSource "local" → "remote" yap
+- [x] eas.json: production profilinden Android bloğunu kaldır (iOS-only ilk sürüm)
+- [x] eas.json: appVersionSource "local" → "remote" yap
 - [ ] EXPO_PUBLIC_REVENUECAT_IOS_API_KEY EAS production ortamına ekle
-- [ ] GitHub'a push et
+- [x] GitHub'a push et (commit 2a2d87d)
+
+## UX Bug Fix Listesi - Video Analizi (Nisan 2026)
+
+### Kritik Hatalar
+- [ ] bookDetail ekranında `bookDetail.momentsCount - bookDetail.addedAgo` değişken adları ekranda görünüyor (data-binding hatası)
+- [ ] Kitap eklendikten sonra kitap listesine değil, kitap detay sayfasına yönlendirmeli
+- [ ] Kitap kapak fotoğrafları listede görünmüyor (boş gri kareler)
+- [ ] Asistan sayfası "Üzgünüm, bir hata oluştu" veriyor - LLM bağlantısı çalışmıyor
+- [ ] Premium sayfasında "Şu an satın alınabilir paket yok" - RevenueCat API key eksik
+
+### Navigasyon / Geri Butonları
+- [ ] Geri okları çok ince ve küçük - SF Symbols ile büyütülmeli, dokunma alanı genişletilmeli
+- [ ] Geri butonlarının tasarımı modern iOS standardına uygun değil
+
+### Profil Sayfası
+- [ ] Profil fotoğrafı kaldırılacak
+- [ ] İsim Apple Sign In'den gelen gerçek isim olmalı
+- [ ] Profil sayfası tamamen yeniden tasarlanacak (şık, minimalist, fotoğrafsız)
+- [ ] "Çıkış Yap" düzgün bir buton olmalı, sadece kırmızı metin değil
+- [ ] Sürüm numarası konumu düzeltilmeli
+
+### Görsel Tasarım
+- [ ] Emoji kullanımı kaldırılacak (premium, asistan, kitap listesi) - SF Symbols veya özel ikonlar kullanılacak
+- [ ] Premium sayfasındaki ✨🧠🎨🔍📊 emojileri SF Symbols ikonlarıyla değiştirilecek
+- [ ] Kitap listesindeki boş kapak placeholder'ı daha şık olmalı
+- [ ] Genel tipografi hiyerarşisi iyileştirilmeli
+
+### Fotoğraf / Resize
+- [ ] Kitap kapağı eklerken kırpma/resize arayüzü eklenmeli (expo-image-manipulator)
+- [ ] An eklerken fotoğraf seçimi sonrası resize/kırpma arayüzü eklenmeli
+- [ ] Fotoğraf seçimi sonrası "Metin çıkarılıyor..." ekranına progress indicator eklenmeli
+
+## iOS Native NavigationBar
+
+- [x] NavigationBar bileşeni oluştur (iOS HIG uyumlu: ‹ geri + başlık + sağ aksiyon)
+- [x] add-book ekranına NavigationBar uygula
+- [x] add-moment ekranına NavigationBar uygula
+- [x] book/[id] ekranına NavigationBar uygula
+- [x] moment/[id] ekranına NavigationBar uygula
+- [x] premium ekranına NavigationBar uygula
+
+## Bildirim Ayarları Ekranı
+
+- [x] notification-settings.tsx ekranı oluştur
+- [x] Günlük hatırlatıcı toggle + saat seçici
+- [x] Seri kırılma uyarısı toggle
+- [x] Haftalık özet toggle + gün seçici
+- [x] İzin banner'ı (izin verilmemişse)
+- [x] Profil ekranına "Bildirimler" satırı ekle
+- [x] _layout.tsx'e notification-settings route ekle
+- [x] tr.json ve en.json'a bildirim çevirileri ekle
+
+## Manus Branding Temizliği
+
+- [x] app.config.ts: Bundle ID (com.palimps.okuma.hafizasi.mvp), scheme (palimps)
+- [x] constants/oauth.ts: Deep link scheme (palimps), USER_INFO_KEY (palimps-user-info)
+- [x] scripts/load-env.js: Manus referansı kaldırıldı
+- [x] eas.json: API URL (https://api.palimps.app)
+
+## Fotoğraf Depolama Pipeline
+
+- [x] expo-image-manipulator kurulumu
+- [x] lib/photo-storage.ts: Kırpma, resize, JPEG sıkıştırma, thumbnail üretimi
+- [x] FileSystem depolama (documentDirectory)
+- [x] AsyncStorage indexing
+- [x] Cleanup fonksiyonu (eski fotoğraflar)
+
+## Kitap Kapağı Boyutu Güncelleme
+
+- [x] Home screen: 48×72 → 60×90
+- [x] Book detail screen: 80×110 → 90×135
+
+## OCR Metin Düzenleme Ekranı
+
+- [x] app/ocr-edit.tsx: Font boyutu, hizalama, stil seçenekleri
+- [x] Fotoğraf thumbnail'i göster
+- [x] Metin önizlemesi (gerçek zamanlı)
+- [x] Sayfa numarası alanı (opsiyonel)
+- [x] Türkçe ve İngilizce çeviriler
+- [x] add-moment akışına entegre et: fotoğraf seçimi → OCR edit → kaydet
+
+
+## App Store Compliance & Critical Quality Fixes (v4.4+)
+
+- [x] Privacy Manifest (PrivacyInfo.xcprivacy) oluştur
+- [x] Sentry crash reporting entegrasyonu
+- [x] Photo storage: file URI + thumbnail generation (zaten optimize)
+- [x] Accessibility helper component (a11y constants)
+
+## Accessibility Batch Implementation (v4.5)
+
+- [x] Core screens: home, profile, add-book (3/5 done)
+- [ ] Remaining core: book detail, moment detail, login
+- [ ] Action screens: add-moment, ocr-edit, premium
+- [ ] Utility screens: chat, search, notification-settings, theme-lab
+- [ ] Reusable components: buttons, cards, inputs, modals, navigation-bar
+- [ ] Test on iOS VoiceOver and Android TalkBack
+
+
+## App Store Submission - Critical Fixes (v4.5+)
+
+- [x] Privacy Manifest (PrivacyInfo.xcprivacy) oluştur
+- [x] Sentry crash reporting entegrasyonu (SENTRY_DSN env var)
+- [x] Presigned URL upload endpoint (server/routers.ts)
+- [x] Accessibility labels main buttons'a ekle
+- [x] Navigation bar component iOS native style
+- [x] Notification settings screen
+- [x] OCR text editing screen
+- [ ] Photo storage pipeline client integration (next phase)
+- [ ] App Store submission testing (next phase)
+
+## iOS Quality Check Fixes (v4.6)
+
+- [x] #1 Hesap silme: server/db.ts + server/routers.ts + profile.tsx (deleteAccount mutation + Alert)
+- [x] #2 Gizlilik politikası: profil ekranına Privacy Policy satırı eklendi (palimps.app/privacy)
+- [x] #3 Geri butonu etiketi: moment/[id].tsx, premium, notification-settings HIG uyumlu
+- [x] #4 Emoji kaldırıldı: MaterialIcons ile değiştirildi (index, premium, add-book, add-moment)
+- [x] #5 Dynamic Type: tab bar'a tabBarAllowFontScaling=false eklendi
+- [x] #6 Renk kontrası: muted light #8A8478 → #5C5752 (WCAG AA uyumlu)
+- [x] #7 Arama sonuçları: FlatList'e geçirildi (index.tsx)
+- [x] #8 Error Boundary: components/error-boundary.tsx + _layout.tsx'e eklendi
+- [x] #9 Premium fiyat: pkg.product.priceString zaten RevenueCat'ten dinamik çekiliyor
+- [x] #10 Abonelik iptal: cancellationTitle + cancellationInfo premium ekranına eklendi (tr.json + en.json)
+
+## Photo Storage Client Entegrasyonu (v4.7)
+
+- [x] add-book.tsx: base64 kaldır, storePhoto() + presigned URL S3 upload
+- [x] add-moment/[bookId].tsx: base64 kaldır, storePhoto() + presigned URL S3 upload
+- [x] server/routers.ts: coverImageUrl + pageImageUrl alanları eklendi
+- [x] Hata yönetimi: upload başarısız olursa kullanıcıya bildir
+
+## Notification Scheduling Logic (v4.7)
+
+- [x] expo-notifications izin akışı (requestPermissionsAsync)
+- [x] Günlük hatırlatıcı: seçilen saatte tekrarlayan local bildirim zamanla
+- [x] Seri kırılma uyarısı: an kaydedilince +22 saat sonrası için bildirim zamanla; yeni an gelince iptal et
+- [x] Haftalık özet: seçilen günde tekrarlayan bildirim
+- [x] Toggle açık/kapalı: bildirim iptal/yeniden zamanla
+- [x] AsyncStorage'a bildirim ayarlarını kaydet
+
+## App Store Metadata Hazırlığı (v4.7)
+
+- [x] App Store açıklaması (TR + EN, 4000 karakter)
+- [x] Kısa açıklama (TR + EN, 30 karakter)
+- [x] Anahtar kelimeler (100 karakter, virgülle ayrılmış)
+- [x] Review notes (test hesabı, özel talimatlar)
+- [x] App Store metadata dokümanı (PALIMPS_APPSTORE_METADATA.md)
+
+## App Store Ekran Görüntüleri (v4.8)
+
+- [x] Screenshot 1: Kitap listesi — "Kitaplarınız, hafızanızda"
+- [x] Screenshot 2: Kitap detay (anlar) — "Her an, bir iz"
+- [x] Screenshot 3: OCR düzenleme — "Sayfayı fotoğrafla, metin hazır"
+- [x] Screenshot 4: Bildirim ayarları — "Okuma ritüelinizi koruyun"
+- [x] Screenshot 5: Profil/Premium — "Okuma hafızanız, sizin"
+- [x] Tüm görseller 1290×2796 px (6.7" iPhone 16 Pro Max)

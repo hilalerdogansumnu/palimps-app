@@ -140,7 +140,7 @@ export default function ChatScreen() {
         {/* Messages */}
         {messages.length === 0 ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>📚</Text>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Text style={{ fontSize: 32 }}>◻</Text></View>
             <Text style={{ fontSize: 16, fontWeight: "500", color: colors.muted, textAlign: "center", marginBottom: 24 }}>
               Okuma verileriniz hakkında sorular sorun
             </Text>

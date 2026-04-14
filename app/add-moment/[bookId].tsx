@@ -8,6 +8,7 @@ import {
   Image,
   Pressable,
   Alert,
+  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -15,9 +16,49 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useSubscription } from "@/hooks/use-subscription";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { storePhoto } from "@/lib/photo-storage";
+import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const NOTIF_STREAK_ALERT = "palimps_streak_alert";
+
+/**
+ * Schedule a streak alert 22 hours from now.
+ * Cancels any existing streak alert first (reset on each new moment).
+ */
+async function scheduleStreakAlert(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const stored = await AsyncStorage.getItem("notification_settings");
+    const settings = stored ? JSON.parse(stored) : { streakAlert: true };
+    if (!settings.streakAlert) return;
+
+    // Cancel previous streak alert
+    await Notifications.cancelScheduledNotificationAsync(NOTIF_STREAK_ALERT).catch(() => {});
+
+    // Schedule 22 hours from now
+    const trigger = new Date(Date.now() + 22 * 60 * 60 * 1000);
+    await Notifications.scheduleNotificationAsync({
+      identifier: NOTIF_STREAK_ALERT,
+      content: {
+        title: "Serin kırmak üzeresin",
+        body: "Bugün henüz bir an kaydetmedin. Serinini koru.",
+        sound: false,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: trigger,
+      },
+    });
+  } catch {
+    // Non-critical, ignore
+  }
+}
 
 export default function AddMomentScreen() {
   const colors = useColors();
@@ -25,7 +66,7 @@ export default function AddMomentScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const bookIdNum = parseInt(bookId, 10);
 
-  const [pageImage, setPageImage] = useState<string | null>(null);
+  const [pageImageUri, setPageImageUri] = useState<string | null>(null);
   const [userNote, setUserNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ocrText, setOcrText] = useState<string | null>(null);
@@ -33,19 +74,20 @@ export default function AddMomentScreen() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const { isPremium } = useSubscription();
 
+  const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
+
   const createMomentMutation = trpc.readingMoments.create.useMutation({
     onSuccess: (data) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOcrText(data.ocrText);
       setIsOcrComplete(true);
+      // Streak alert: schedule a reminder 22 hours from now if user has streak alerts enabled
+      scheduleStreakAlert();
       router.back();
     },
     onError: (error) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        t("addMoment.error"),
-        error.message || t("addMoment.createError")
-      );
+      Alert.alert(t("addMoment.error"), error.message || t("addMoment.createError"));
     },
   });
 
@@ -67,145 +109,139 @@ export default function AddMomentScreen() {
       Alert.alert(t("addMoment.warning"), t("addMoment.ocrFirst"));
       return;
     }
-
     if (!isPremium) {
       Alert.alert(t("premiumGate.title"), t("premiumGate.premiumRequired"), [
         { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("premiumGate.upgrade"),
-          onPress: () => router.push("/premium"),
-        },
+        { text: t("premiumGate.upgrade"), onPress: () => router.push("/premium") },
       ]);
       return;
     }
-
     setIsGeneratingAI(true);
     try {
       await generateNoteMutation.mutateAsync({ ocrText });
-    } catch (error) {
-      // Error handled in onError
+    } catch {
+      // handled in onError
     }
   };
 
   const handlePickImage = async () => {
-    const { status } =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        t("addMoment.permissionRequired"),
-        t("addMoment.galleryPermission")
-      );
+      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.galleryPermission"));
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
       allowsEditing: true,
       quality: 0.8,
-      base64: true,
     });
-
-    if (!result.canceled && result.assets[0].base64) {
-      setPageImage(result.assets[0].base64);
+    if (!result.canceled && result.assets[0].uri) {
+      const photoUri = result.assets[0].uri;
+      setPageImageUri(photoUri);
       setOcrText(null);
       setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push({
+        pathname: "/ocr-edit",
+        params: { photoUri, bookId, ocrText: "" },
+      } as any);
     }
   };
 
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        t("addMoment.permissionRequired"),
-        t("addMoment.cameraPermission")
-      );
+      Alert.alert(t("addMoment.permissionRequired"), t("addMoment.cameraPermission"));
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.8,
-      base64: true,
     });
-
-    if (!result.canceled && result.assets[0].base64) {
-      setPageImage(result.assets[0].base64);
+    if (!result.canceled && result.assets[0].uri) {
+      const photoUri = result.assets[0].uri;
+      setPageImageUri(photoUri);
       setOcrText(null);
       setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push({
+        pathname: "/ocr-edit",
+        params: { photoUri, bookId, ocrText: "" },
+      } as any);
     }
   };
 
   const handleSubmit = async () => {
-    if (!pageImage) {
+    if (!pageImageUri) {
       Alert.alert(t("addMoment.warning"), t("addMoment.photoRequired"));
       return;
     }
-
     setIsSubmitting(true);
     try {
+      // 1. Yerel olarak işle (resize + compress)
+      const stored = await storePhoto(pageImageUri, "page");
+
+      // 2. Presigned URL al
+      const { presignedUrl, key } = await getPresignedUrlMutation.mutateAsync({
+        fileName: "page.jpg",
+        fileType: "image/jpeg",
+        fileSize: 800_000,
+      });
+
+      // 3. R2'ye yükle
+      const fileContent = await fetch(stored.fullPath);
+      const blob = await fileContent.blob();
+      const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        body: blob,
+        headers: { "Content-Type": "image/jpeg" },
+      });
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      const r2PublicBase = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
+      if (!r2PublicBase) {
+        throw new Error("R2 public URL not configured");
+      }
+      const uploadedPageImageUrl = `${r2PublicBase}/${key}`;
+
       await createMomentMutation.mutateAsync({
         bookId: bookIdNum,
-        pageImageBase64: pageImage,
+        pageImageUrl: uploadedPageImageUrl,
         userNote: userNote.trim() || undefined,
       });
+    } catch (error) {
+      // Surface upload failures rather than silently falling back to base64.
+      // Sentry catches the unhandled rejection; user gets a warm retry prompt.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t("common.error"), t("errors.photoUploadFailed"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isFormValid = pageImage !== null;
+  const isFormValid = pageImageUri !== null;
 
   return (
-    <ScreenContainer>
-      {/* Header */}
-      <View>
-        <View className="flex-row items-center justify-between px-6 py-4">
-          <Pressable
-            onPress={() => router.back()}
-            className="p-2"
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text className="text-lg" style={{ color: colors.muted }}>
-              ✕
-            </Text>
-          </Pressable>
-          <Text className="text-lg font-semibold text-foreground">
-            {t("addMoment.title")}
-          </Text>
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!isFormValid || isSubmitting}
-            style={({ pressed }) => [
-              {
-                opacity:
-                  !isFormValid || isSubmitting
-                    ? 0.5
-                    : pressed
-                      ? 0.7
-                      : 1,
-              },
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.primary} size="small" />
-            ) : (
-              <Text
-                className="font-semibold text-sm"
-                style={{
-                  color: !isFormValid ? colors.muted : colors.primary,
-                }}
-              >
-                {t("addMoment.save")}
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      </View>
+    <ScreenContainer edges={["top", "left", "right"]}>
+      <NavigationBar
+        title={t("addMoment.title")}
+        backLabel={t("common.cancel")}
+        onBack={() => router.back()}
+        rightLabel={isSubmitting ? undefined : t("addMoment.save")}
+        rightDisabled={!isFormValid || isSubmitting}
+        onRight={handleSubmit}
+        rightNode={
+          isSubmitting ? (
+            <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : undefined
+        }
+      />
 
-      {/* Content */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View className="px-6 py-6">
           {/* Photo Picker */}
           <View className="mb-6">
@@ -215,14 +251,8 @@ export default function AddMomentScreen() {
                   t("common.selectPhoto"),
                   t("addMoment.selectPhotoSource"),
                   [
-                    {
-                      text: t("addMoment.chooseFromLibrary"),
-                      onPress: handlePickImage,
-                    },
-                    {
-                      text: t("addMoment.takePhoto"),
-                      onPress: handleTakePhoto,
-                    },
+                    { text: t("addMoment.chooseFromLibrary"), onPress: handlePickImage },
+                    { text: t("addMoment.takePhoto"), onPress: handleTakePhoto },
                     { text: t("common.cancel"), style: "cancel" },
                   ]
                 );
@@ -230,42 +260,67 @@ export default function AddMomentScreen() {
               style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
             >
               <View
-                className="w-full aspect-[3/2] rounded-2xl border-2 border-dashed items-center justify-center relative"
                 style={{
+                  width: "100%",
+                  aspectRatio: 3 / 2,
+                  borderRadius: 16,
+                  borderWidth: pageImageUri ? 0 : 1.5,
+                  borderStyle: "dashed",
                   borderColor: colors.border,
                   backgroundColor: colors.surface,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
-                {pageImage ? (
+                {pageImageUri ? (
                   <>
                     <Image
-                      source={{ uri: `data:image/jpeg;base64,${pageImage}` }}
-                      className="w-full h-full rounded-2xl"
+                      source={{ uri: pageImageUri }}
+                      style={{ width: "100%", height: "100%" }}
                       resizeMode="cover"
                     />
                     <Pressable
                       onPress={() => {
-                        setPageImage(null);
+                        setPageImageUri(null);
                         setOcrText(null);
                         setIsOcrComplete(false);
-                        Haptics.impactAsync(
-                          Haptics.ImpactFeedbackStyle.Light
-                        );
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
-                      className="absolute top-3 right-3 w-6 h-6 rounded-full items-center justify-center"
-                      style={{ backgroundColor: colors.foreground + "99" }}
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        backgroundColor: "rgba(0,0,0,0.55)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <Text className="text-white text-xs font-bold">✕</Text>
+                      <MaterialIcons name="close" size={14} color="white" />
                     </Pressable>
                   </>
                 ) : (
-                  <View className="items-center">
-                    <Text className="text-4xl mb-3">📷</Text>
-                    <Text
-                      className="text-base font-semibold text-center"
-                      style={{ color: colors.muted }}
+                  <View style={{ alignItems: "center", gap: 10 }}>
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
+                        backgroundColor: colors.border,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
+                      <MaterialIcons name="photo-camera" size={24} color={colors.muted} />
+                    </View>
+                    <Text style={{ fontSize: 15, fontWeight: "500", color: colors.muted }}>
                       {t("addMoment.pagePhotoTitle")}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.muted, textAlign: "center", paddingHorizontal: 24 }}>
+                      {t("addMoment.pagePhotoDesc")}
                     </Text>
                   </View>
                 )}
@@ -274,42 +329,26 @@ export default function AddMomentScreen() {
           </View>
 
           {/* OCR Status */}
-          {pageImage && (
-            <View className="mb-6 flex-row items-center px-4 py-3 rounded-xl" style={{ backgroundColor: colors.surface }}>
-              {isSubmitting ? (
-                <>
-                  <ActivityIndicator
-                    color={colors.muted}
-                    size="small"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    className="text-xs"
-                    style={{ color: colors.muted }}
-                  >
-                    {t("addMoment.ocrProcessing")}
-                  </Text>
-                </>
-              ) : isOcrComplete ? (
-                <>
-                  <Text className="text-base mr-2">✓</Text>
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: colors.primary }}
-                  >
-                    {t("addMoment.ocrComplete")}
-                  </Text>
-                </>
-              ) : null}
+          {pageImageUri && isSubmitting && (
+            <View
+              style={{
+                marginBottom: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: colors.surface,
+              }}
+            >
+              <ActivityIndicator color={colors.muted} size="small" style={{ marginRight: 10 }} />
+              <Text style={{ fontSize: 13, color: colors.muted }}>{t("addMoment.ocrProcessing")}</Text>
             </View>
           )}
 
           {/* Note Input */}
-          <View className="mb-6">
-            <Text
-              className="text-xs font-semibold mb-2"
-              style={{ color: colors.muted }}
-            >
+          <View className="mb-5">
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
               {t("addMoment.yourNote")}
             </Text>
             <TextInput
@@ -317,62 +356,54 @@ export default function AddMomentScreen() {
               onChangeText={setUserNote}
               placeholder={t("addMoment.notePlaceholder")}
               placeholderTextColor={colors.muted}
-              className="rounded-2xl px-4 py-3 text-base"
               style={{
                 backgroundColor: colors.surface,
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 13,
+                fontSize: 16,
+                color: colors.foreground,
                 borderWidth: 1,
                 borderColor: colors.border,
-                color: colors.foreground,
-                height: 100,
+                minHeight: 100,
+                textAlignVertical: "top",
               }}
               multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-              returnKeyType="done"
+              numberOfLines={4}
               editable={!isGeneratingAI}
             />
           </View>
 
           {/* AI Note Button */}
-          {pageImage && isOcrComplete && (
+          {pageImageUri && isOcrComplete && (
             <Pressable
               onPress={handleGenerateAINote}
               disabled={isGeneratingAI}
-              className="mb-6 rounded-2xl py-3 items-center"
               style={({ pressed }) => [
                 {
-                  backgroundColor:
-                    colors.accent + "26",
-                  opacity: isGeneratingAI
-                    ? 0.5
-                    : pressed
-                      ? 0.7
-                      : 1,
+                  marginBottom: 20,
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  backgroundColor: colors.primary + "18",
+                  opacity: isGeneratingAI ? 0.5 : pressed ? 0.7 : 1,
                 },
               ]}
             >
               {isGeneratingAI ? (
-                <ActivityIndicator color={colors.accent} size="small" />
+                <ActivityIndicator color={colors.primary} size="small" />
               ) : (
-                <Text
-                  className="font-semibold text-sm"
-                  style={{ color: colors.accent }}
-                >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.primary }}>
                   {t("addMoment.aiGenerateNote")}
                 </Text>
               )}
             </Pressable>
           )}
 
-          {/* OCR Info */}
-          <View>
-            <Text
-              className="text-xs text-center"
-              style={{ color: colors.muted }}
-            >
-              💡 {t("addMoment.ocrInfo")}
-            </Text>
-          </View>
+          {/* OCR Info hint */}
+          <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", lineHeight: 18 }}>
+            {t("addMoment.ocrInfo")}
+          </Text>
         </View>
       </ScrollView>
     </ScreenContainer>

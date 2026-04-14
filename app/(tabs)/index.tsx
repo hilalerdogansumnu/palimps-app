@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
+import { a11y } from "@/lib/accessibility";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 type BookWithCount = {
   id: number;
@@ -182,6 +184,10 @@ export default function HomeScreen() {
         <Pressable
           onPress={() => router.push("/login" as any)}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t("auth.signIn")}
+          accessibilityHint="Navigates to login screen"
         >
           <Text className="text-base text-foreground">{t("auth.signOut")}</Text>
         </Pressable>
@@ -207,6 +213,10 @@ export default function HomeScreen() {
             onChangeText={setSearchQuery}
             placeholder={t("home.search")}
             placeholderTextColor={colors.muted}
+            accessible={true}
+            accessibilityRole="search"
+            accessibilityLabel={a11y.searchBar.label}
+            accessibilityHint={a11y.searchBar.hint}
             style={{
               backgroundColor: colors.surface,
               borderRadius: 12,
@@ -222,7 +232,9 @@ export default function HomeScreen() {
 
         {/* Empty state */}
         <View className="flex-1 items-center justify-center">
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>📚</Text>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+            <MaterialIcons name="menu-book" size={36} color={colors.muted} />
+          </View>
           <Text style={{ fontSize: 16, color: colors.muted, marginBottom: 8, textAlign: "center" }}>
             Henüz kitap yok
           </Text>
@@ -240,6 +252,10 @@ export default function HomeScreen() {
                 opacity: pressed ? 0.8 : 1,
               },
             ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={a11y.addBook.label}
+            accessibilityHint={a11y.addBook.hint}
           >
             <Text style={{ fontSize: 16, color: "white", fontWeight: "600" }}>
               İlk Kitabınızı Ekleyin
@@ -269,6 +285,10 @@ export default function HomeScreen() {
               elevation: 5,
             },
           ]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={a11y.addBook.label}
+          accessibilityHint={a11y.addBook.hint}
         >
           <Text style={{ fontSize: 24, color: "white" }}>+</Text>
         </Pressable>
@@ -315,7 +335,7 @@ export default function HomeScreen() {
       {/* Search Bar */}
       <View style={{ marginBottom: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", position: "relative" }}>
-          <Text style={{ position: "absolute", left: 12, fontSize: 16 }}>🔍</Text>
+          <MaterialIcons name="search" size={18} color={colors.muted} style={{ position: "absolute", left: 12 }} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -338,124 +358,78 @@ export default function HomeScreen() {
 
       {/* Search Results or Book List */}
       {showSearchResults ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-          {searchLoading ? (
-            <View style={{ paddingVertical: 32, alignItems: "center" }}>
-              <ActivityIndicator size="small" color={colors.foreground} />
-            </View>
-          ) : hasSearchResults ? (
-            <>
-              {/* Combined results - Books and Moments in flat list */}
-              {sortedSearchResults.books.map((book, bookIndex) => (
-                <View key={`book-${book.id}`}>
-                  {(bookIndex > 0 || sortedSearchResults.moments.length > 0) && (
-                    <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 12 }} />
-                  )}
-                  <Pressable
-                    onPress={() => handleBookPress(book.id)}
-                    style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      {/* Cover image or placeholder */}
-                      {book.coverImageUrl ? (
-                        <Image
-                          source={{ uri: book.coverImageUrl }}
-                          style={{
-                            width: 48,
-                            height: 72,
-                            borderRadius: 6,
-                            backgroundColor: colors.surface,
-                          }}
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: 48,
-                            height: 72,
-                            borderRadius: 6,
-                            backgroundColor: colors.accent + "20",
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 16,
-                              fontWeight: "700",
-                              color: colors.accent,
-                            }}
-                          >
-                            {getBookInitials(book.title)}
-                          </Text>
-                        </View>
-                      )}
-                      {/* Content */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>
-                          {book.title}
-                        </Text>
-                        {book.author && (
-                          <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>
-                            {book.author}
-                          </Text>
-                        )}
-                        {"momentCount" in book && (book as any).momentCount > 0 && (
-                          <Text style={{ fontSize: 13, color: colors.muted }}>
-                            {t("home.momentCount", { count: (book as any).momentCount })}
-                          </Text>
-                        )}
-                      </View>
-                      {/* Chevron */}
-                      <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
-                    </View>
-                  </Pressable>
-                </View>
-              ))}
-
-              {/* Moments */}
-              {sortedSearchResults.moments.map((moment, momentIndex) => {
-                const book = books?.find((b) => b.id === moment.bookId);
-                return (
-                  <View key={`moment-${moment.id}`}>
-                    {(momentIndex > 0 || sortedSearchResults.books.length > 0) && (
-                      <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 12 }} />
-                    )}
-                    <Pressable
-                      onPress={() => handleMomentPress(moment.id)}
-                      style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-                    >
-                      <View>
-                        <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 4 }}>
-                          {book?.title || t("home.unknownBook")}
-                        </Text>
-                        {moment.ocrText && (
-                          <Text
-                            style={{ fontSize: 14, color: colors.foreground, marginBottom: 2 }}
-                            numberOfLines={2}
-                          >
-                            {moment.ocrText}
-                          </Text>
-                        )}
-                        {moment.userNote && (
-                          <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }} numberOfLines={1}>
-                            "{moment.userNote}"
-                          </Text>
-                        )}
-                        <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
-                          {formatDate(moment.createdAt)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </>
-          ) : (
-            <View style={{ paddingVertical: 32, alignItems: "center" }}>
-              <Text style={{ fontSize: 16, color: colors.muted }}>{t("home.noResults")}</Text>
-            </View>
+        <FlatList
+          data={[
+            ...(searchLoading || !sortedSearchResults ? [] : sortedSearchResults.books.map(b => ({ type: "book" as const, item: b }))),
+            ...(searchLoading || !sortedSearchResults ? [] : sortedSearchResults.moments.map(m => ({ type: "moment" as const, item: m }))),
+          ]}
+          keyExtractor={(entry) => `${entry.type}-${entry.item.id}`}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          ListEmptyComponent={
+            searchLoading ? (
+              <View style={{ paddingVertical: 32, alignItems: "center" }}>
+                <ActivityIndicator size="small" color={colors.foreground} />
+              </View>
+            ) : (
+              <View style={{ paddingVertical: 32, alignItems: "center" }}>
+                <Text style={{ fontSize: 16, color: colors.muted }}>{t("home.noResults")}</Text>
+              </View>
+            )
+          }
+          ItemSeparatorComponent={() => (
+            <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 12 }} />
           )}
-        </ScrollView>
+          renderItem={({ item: entry }) => {
+            if (entry.type === "book") {
+              const book = entry.item as NonNullable<typeof sortedSearchResults>["books"][0];
+              return (
+                <Pressable
+                  onPress={() => handleBookPress(book.id)}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    {book.coverImageUrl ? (
+                      <Image
+                        source={{ uri: book.coverImageUrl }}
+                        style={{ width: 48, height: 72, borderRadius: 6, backgroundColor: colors.surface }}
+                      />
+                    ) : (
+                      <View style={{ width: 60, height: 90, borderRadius: 8, backgroundColor: colors.accent + "20", justifyContent: "center", alignItems: "center" }}>
+                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.accent }}>
+                          {getBookInitials(book.title)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>{book.title}</Text>
+                      {book.author && <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>{book.author}</Text>}
+                      {"momentCount" in book && (book as any).momentCount > 0 && (
+                        <Text style={{ fontSize: 13, color: colors.muted }}>{t("home.momentCount", { count: (book as any).momentCount })}</Text>
+                      )}
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colors.muted} />
+                  </View>
+                </Pressable>
+              );
+            }
+            const moment = entry.item as NonNullable<typeof sortedSearchResults>["moments"][0];
+            const book = books?.find((b) => b.id === moment.bookId);
+            return (
+              <Pressable
+                onPress={() => handleMomentPress(moment.id)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+              >
+                <View>
+                  <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 4 }}>{book?.title || t("home.unknownBook")}</Text>
+                  {moment.ocrText && <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: 2 }} numberOfLines={2}>{moment.ocrText}</Text>}
+                  {moment.userNote && <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }} numberOfLines={1}>"{moment.userNote}"</Text>}
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{formatDate(moment.createdAt)}</Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
       ) : (
         <FlatList
           data={books}
@@ -474,8 +448,8 @@ export default function HomeScreen() {
                   <Image
                     source={{ uri: item.coverImageUrl }}
                     style={{
-                      width: 48,
-                      height: 72,
+                      width: 60,
+                      height: 90,
                       borderRadius: 6,
                       backgroundColor: colors.surface,
                     }}
@@ -483,8 +457,8 @@ export default function HomeScreen() {
                 ) : (
                   <View
                     style={{
-                      width: 48,
-                      height: 72,
+                      width: 60,
+                      height: 90,
                       borderRadius: 6,
                       backgroundColor: colors.accent + "20",
                       justifyContent: "center",

@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useColors } from '@/hooks/use-colors';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -10,36 +11,25 @@ interface OnboardingScreensProps {
   onComplete: () => void;
 }
 
-const screens = [
-  {
-    id: 1,
-    icon: '📚',
-    title: 'PALIMPS\'e Hoş Geldiniz',
-    description: 'Okuduğunuz her sayfayı, her anı dijital hafızanızda saklayın. Kitaplarınızla daha derin bir bağ kurun.',
-  },
-  {
-    id: 2,
-    icon: '📸',
-    title: 'Nasıl Çalışır?',
-    description: 'Kitap ekleyin, sayfa fotoğrafı çekin, notlarınızı alın. OCR teknolojisi ile metinler otomatik olarak tanınır.',
-  },
-  {
-    id: 3,
-    icon: '✨',
-    title: 'AI ile Güçlendirin',
-    description: 'Premium ile AI destekli otomatik not oluşturma, özet çıkarma ve tematik analiz özelliklerini sınırsız kullanın.',
-  },
-];
+// Screens reference i18n keys under `onboarding.*` — copy lives in the locale
+// files, not here, so both languages stay in sync.
+const SCREEN_KEYS = [
+  { id: 1, icon: '📚', titleKey: 'onboarding.welcome.title', descKey: 'onboarding.welcome.description' },
+  { id: 2, icon: '📸', titleKey: 'onboarding.howItWorks.title', descKey: 'onboarding.howItWorks.description' },
+  { id: 3, icon: '✨', titleKey: 'onboarding.aiPowered.title', descKey: 'onboarding.aiPowered.description' },
+] as const;
 
 export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
   const colors = useColors();
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const currentScreen = screens[currentIndex];
-  const isLastScreen = currentIndex === screens.length - 1;
+  const currentScreen = SCREEN_KEYS[currentIndex];
+  const isLastScreen = currentIndex === SCREEN_KEYS.length - 1;
 
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (isLastScreen) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onComplete();
     } else {
       setCurrentIndex(currentIndex + 1);
@@ -60,8 +50,11 @@ export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
             onPress={handleSkip}
             className="px-4 py-2"
             activeOpacity={0.7}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t('onboarding.skip')}
           >
-            <Text className="text-muted font-semibold">Atla</Text>
+            <Text className="text-muted font-semibold">{t('onboarding.skip')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -79,12 +72,12 @@ export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
 
           {/* Title */}
           <Text className="text-3xl font-bold text-foreground text-center mb-4">
-            {currentScreen.title}
+            {t(currentScreen.titleKey)}
           </Text>
 
           {/* Description */}
           <Text className="text-base text-muted text-center leading-relaxed max-w-sm">
-            {currentScreen.description}
+            {t(currentScreen.descKey)}
           </Text>
         </Animated.View>
       </View>
@@ -92,8 +85,16 @@ export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
       {/* Bottom Section */}
       <View className="px-8 pb-12">
         {/* Pagination Dots */}
-        <View className="flex-row items-center justify-center mb-8 gap-2">
-          {screens.map((_, index) => (
+        <View
+          className="flex-row items-center justify-center mb-8 gap-2"
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('onboarding.a11y.paginationDot', {
+            current: currentIndex + 1,
+            total: SCREEN_KEYS.length,
+          })}
+        >
+          {SCREEN_KEYS.map((_, index) => (
             <View
               key={index}
               className="rounded-full"
@@ -110,6 +111,9 @@ export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
         <Pressable
           onPress={handleNext}
           className="bg-primary rounded-full py-4"
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={isLastScreen ? t('onboarding.getStarted') : t('onboarding.next')}
           style={({ pressed }) => [
             {
               opacity: pressed ? 0.9 : 1,
@@ -118,7 +122,7 @@ export function OnboardingScreens({ onComplete }: OnboardingScreensProps) {
           ]}
         >
           <Text className="text-background font-bold text-center text-lg">
-            {isLastScreen ? 'Başlayalım' : 'Devam'}
+            {isLastScreen ? t('onboarding.getStarted') : t('onboarding.next')}
           </Text>
         </Pressable>
       </View>
