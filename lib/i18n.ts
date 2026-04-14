@@ -4,8 +4,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import en from "@/locales/en.json";
 import tr from "@/locales/tr.json";
-import de from "@/locales/de.json";
-import es from "@/locales/es.json";
 
 const LANGUAGE_KEY = "@palimps_language";
 
@@ -39,8 +37,6 @@ const initI18n = async () => {
       resources: {
         en: { translation: en },
         tr: { translation: tr },
-        de: { translation: de },
-        es: { translation: es },
       },
       lng: initialLanguage,
       fallbackLng: "en",

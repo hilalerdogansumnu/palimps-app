@@ -1,9 +1,11 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, Image } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -11,6 +13,7 @@ import { useColors } from "@/hooks/use-colors";
 
 export default function BookDetailScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const bookId = parseInt(id, 10);
   const [isExporting, setIsExporting] = useState(false);
@@ -32,22 +35,23 @@ export default function BookDetailScreen() {
 
   const exportMutation = trpc.export.book.useMutation();
 
-  const handleExport = () => {
+  const handleMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
-      "Export Format",
-      "Choose export format",
+      t("common.options"),
+      "",
       [
         {
-          text: "Cancel",
-          style: "cancel",
+          text: t("bookDetail.exportPDF"),
+          onPress: () => performExport("pdf"),
         },
         {
-          text: "Markdown",
+          text: t("bookDetail.exportMarkdown"),
           onPress: () => performExport("markdown"),
         },
         {
-          text: "PDF",
-          onPress: () => performExport("pdf"),
+          text: t("common.cancel"),
+          style: "cancel",
         },
       ]
     );
@@ -67,7 +71,7 @@ export default function BookDetailScreen() {
         a.download = result.filename;
         a.click();
         URL.revokeObjectURL(url);
-        Alert.alert("Success", "Exported successfully");
+        Alert.alert(t("common.success"), t("bookDetail.exportSuccess"));
       } else {
         // Mobil platformlarda dosyaya yaz ve paylaş
         const fileUri = `${FileSystem.documentDirectory}${result.filename}`;
@@ -85,7 +89,7 @@ export default function BookDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("Export error:", error);
-      Alert.alert("Error", "Export failed");
+      Alert.alert(t("common.error"), t("bookDetail.exportError"));
     } finally {
       setIsExporting(false);
     }
@@ -102,12 +106,12 @@ export default function BookDetailScreen() {
   if (!book) {
     return (
       <ScreenContainer className="items-center justify-center px-8">
-        <Text className="text-base text-muted mb-8">Book not found</Text>
+        <Text className="text-base text-muted mb-8">{t("bookDetail.notFound")}</Text>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-base text-foreground">Go back</Text>
+          <Text className="text-base text-foreground">{t("bookDetail.goBack")}</Text>
         </Pressable>
       </ScreenContainer>
     );
@@ -116,8 +120,19 @@ export default function BookDetailScreen() {
   // Format date helper
   const formatDate = (date: Date) => {
     const d = new Date(date);
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    const localeMap: Record<string, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES" };
+    const locale = localeMap[i18n.language] || "en-US";
+    return d.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
+  };
+
+  // Helper to generate initials placeholder
+  const getInitials = (title: string) => {
+    return title
+      .split(" ")
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase();
   };
 
   // Empty state
@@ -130,45 +145,97 @@ export default function BookDetailScreen() {
             onPress={() => router.back()}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-base text-foreground">←</Text>
+            <Text className="text-lg text-foreground">←</Text>
           </Pressable>
-          <View className="flex-row gap-4">
-            <Pressable
-              onPress={handleExport}
-              disabled={isExporting}
-              style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
-            >
-              <Text className="text-base text-foreground">{isExporting ? "..." : "↓"}</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleAddMoment}
-              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-            >
-              <Text className="text-2xl text-foreground">+</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={handleMenu}
+            disabled={isExporting}
+            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
+          >
+            <Text className="text-lg text-foreground">⋯</Text>
+          </Pressable>
         </View>
 
-        {/* Book title (small, quiet) */}
-        <View className="mb-8">
-          <Text className="text-base text-foreground font-medium mb-1">{book.title}</Text>
-          {book.author && (
-            <Text className="text-sm text-muted">{book.author}</Text>
+        {/* Book info section */}
+        <View className="mb-10 flex-row gap-4">
+          {book.coverImageUrl ? (
+            <Image
+              source={{ uri: book.coverImageUrl }}
+              style={{ width: 80, height: 110, borderRadius: 12 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={{
+                width: 80,
+                height: 110,
+                borderRadius: 12,
+                backgroundColor: colors.primary,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text className="text-lg font-bold text-background">{getInitials(book.title)}</Text>
+            </View>
           )}
+          <View className="flex-1 justify-center">
+            <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.foreground }} className="mb-1">
+              {book.title}
+            </Text>
+            {book.author && (
+              <Text style={{ fontSize: 14, color: colors.muted }} className="mb-2">
+                {book.author}
+              </Text>
+            )}
+            <Text style={{ fontSize: 13, color: colors.muted }}>
+              {t("bookDetail.momentsCount")} · {t("bookDetail.addedAgo")}
+            </Text>
+          </View>
         </View>
 
         {/* Empty state */}
         <View className="flex-1 items-center justify-center">
           <Text className="text-base text-muted mb-8 text-center">
-            No moments yet
+            {t("bookDetail.noMomentsYet")}
           </Text>
           <Pressable
             onPress={handleAddMoment}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            className="px-6 py-3 rounded-full"
+            style={({ pressed }) => [
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              },
+            ]}
           >
-            <Text className="text-base text-foreground">Add your first moment</Text>
+            <Text className="text-base font-semibold text-background">
+              {t("bookDetail.addFirstMoment")}
+            </Text>
           </Pressable>
         </View>
+
+        {/* FAB */}
+        <Pressable
+          onPress={handleAddMoment}
+          style={({ pressed }) => [
+            {
+              position: "absolute",
+              bottom: 32,
+              right: 24,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: colors.primary,
+              justifyContent: "center",
+              alignItems: "center",
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            },
+          ]}
+        >
+          <Text className="text-2xl text-background">+</Text>
+        </Pressable>
       </ScreenContainer>
     );
   }
@@ -181,72 +248,174 @@ export default function BookDetailScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text className="text-base text-foreground">←</Text>
+          <Text className="text-lg text-foreground">←</Text>
         </Pressable>
-        <View className="flex-row gap-4">
-          <Pressable
-            onPress={handleExport}
-            disabled={isExporting}
-            style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
+        <Pressable
+          onPress={handleMenu}
+          disabled={isExporting}
+          style={({ pressed }) => [{ opacity: pressed || isExporting ? 0.6 : 1 }]}
+        >
+          <Text className="text-lg text-foreground">⋯</Text>
+        </Pressable>
+      </View>
+
+      {/* Book info section */}
+      <View className="mb-10 flex-row gap-4">
+        {book.coverImageUrl ? (
+          <Image
+            source={{ uri: book.coverImageUrl }}
+            style={{ width: 80, height: 110, borderRadius: 12 }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            style={{
+              width: 80,
+              height: 110,
+              borderRadius: 12,
+              backgroundColor: colors.primary,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
           >
-            <Text className="text-base text-foreground">{isExporting ? "..." : "↓"}</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleAddMoment}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-          >
-            <Text className="text-2xl text-foreground">+</Text>
-          </Pressable>
+            <Text className="text-lg font-bold text-background">{getInitials(book.title)}</Text>
+          </View>
+        )}
+        <View className="flex-1 justify-center">
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.foreground }} className="mb-1">
+            {book.title}
+          </Text>
+          {book.author && (
+            <Text style={{ fontSize: 14, color: colors.muted }} className="mb-2">
+              {book.author}
+            </Text>
+          )}
+          <Text style={{ fontSize: 13, color: colors.muted }}>
+            {t("bookDetail.momentsCount")} · {t("bookDetail.addedAgo")}
+          </Text>
         </View>
       </View>
 
-      {/* Book title (small, quiet) */}
-      <View className="mb-8">
-        <Text className="text-base text-foreground font-medium mb-1">{book.title}</Text>
-        {book.author && (
-          <Text className="text-sm text-muted">{book.author}</Text>
-        )}
+      {/* Section header with badge */}
+      <View className="flex-row items-center justify-between mb-6">
+        <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+          {t("bookDetail.moments")}
+        </Text>
+        <View
+          style={{
+            backgroundColor: colors.primary + "15",
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "500" }}>
+            {moments?.length || 0}
+          </Text>
+        </View>
       </View>
 
-      {/* Chronological moments (timeline) */}
+      {/* Moment list (FlatList) */}
       <FlatList
         data={moments}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        ItemSeparatorComponent={() => <View style={{ height: 32 }} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => handleMomentPress(item.id)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
           >
-            <View>
-              {/* Date (system gray) */}
-              <Text className="text-xs text-muted mb-2">
-                {formatDate(item.createdAt)}
-              </Text>
-
-              {/* OCR text (main content) */}
-              {item.ocrText && (
-                <Text className="text-base text-foreground mb-2 leading-6">
-                  {item.ocrText.length > 200
-                    ? item.ocrText.substring(0, 200) + "..."
-                    : item.ocrText}
-                </Text>
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                overflow: "hidden",
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              {/* Page photo */}
+              {item.pageImageUrl && (
+                <Image
+                  source={{ uri: item.pageImageUrl }}
+                  style={{
+                    width: "100%",
+                    aspectRatio: 3 / 2,
+                  }}
+                  resizeMode="cover"
+                />
               )}
 
-              {/* User note (lighter tone) */}
-              {item.userNote && (
-                <Text className="text-sm text-muted leading-5">
-                  {item.userNote}
+              {/* Text content */}
+              <View style={{ padding: 12 }}>
+                {/* OCR text preview */}
+                {item.ocrText && (
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: colors.foreground,
+                      lineHeight: 20,
+                      marginBottom: 8,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {item.ocrText}
+                  </Text>
+                )}
+
+                {/* User note if exists */}
+                {item.userNote && (
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontStyle: "italic",
+                      color: colors.primary,
+                      marginBottom: 8,
+                    }}
+                  >
+                    {item.userNote}
+                  </Text>
+                )}
+
+                {/* Date right-aligned */}
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.muted,
+                    textAlign: "right",
+                  }}
+                >
+                  {formatDate(item.createdAt)}
                 </Text>
-              )}
-
-
+              </View>
             </View>
           </Pressable>
         )}
       />
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleAddMoment}
+        style={({ pressed }) => [
+          {
+            position: "absolute",
+            bottom: 32,
+            right: 24,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            opacity: pressed ? 0.8 : 1,
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+          },
+        ]}
+      >
+        <Text className="text-2xl text-background">+</Text>
+      </Pressable>
     </ScreenContainer>
   );
 }

@@ -128,3 +128,16 @@ export async function clearUserInfo(): Promise<void> {
     console.error("[Auth] Failed to clear user info:", error);
   }
 }
+
+// Simple auth change notification so useAuth can re-fetch after login
+type AuthChangeListener = () => void;
+const listeners: Set<AuthChangeListener> = new Set();
+
+export function onAuthChange(listener: AuthChangeListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function notifyAuthChange(): void {
+  listeners.forEach((fn) => fn());
+}

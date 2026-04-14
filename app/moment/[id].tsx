@@ -2,6 +2,8 @@ import React from "react";
 import { Text, View, Pressable, ScrollView, Image, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -9,6 +11,7 @@ import { useColors } from "@/hooks/use-colors";
 
 export default function MomentDetailScreen() {
   const colors = useColors();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const momentId = parseInt(id, 10);
 
@@ -28,15 +31,15 @@ export default function MomentDetailScreen() {
   const handleDelete = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      "Delete Moment",
-      "Are you sure you want to delete this moment? This action cannot be undone.",
+      t("momentDetail.deleteTitle"),
+      t("momentDetail.deleteConfirm"),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel"),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -45,9 +48,35 @@ export default function MomentDetailScreen() {
               router.back();
             } catch (error) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert("Error", "Failed to delete moment.");
+              Alert.alert(t("common.error"), t("momentDetail.deleteError"));
             }
           },
+        },
+      ]
+    );
+  };
+
+  const handleMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      t("common.options"),
+      "",
+      [
+        {
+          text: t("momentDetail.editNote"),
+          onPress: () => {
+            setEditedNote(moment?.userNote || "");
+            setIsEditModalVisible(true);
+          },
+        },
+        {
+          text: t("common.delete"),
+          style: "destructive",
+          onPress: handleDelete,
+        },
+        {
+          text: t("common.cancel"),
+          style: "cancel",
         },
       ]
     );
@@ -71,7 +100,7 @@ export default function MomentDetailScreen() {
   if (!moment) {
     return (
       <ScreenContainer className="items-center justify-center p-6">
-        <Text className="text-xl font-semibold text-foreground mb-3">Moment not found</Text>
+        <Text className="text-xl font-semibold text-foreground mb-3">{t("momentDetail.notFound")}</Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-primary px-6 py-3 rounded-full"
@@ -79,14 +108,16 @@ export default function MomentDetailScreen() {
             { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.9 : 1 },
           ]}
         >
-          <Text className="text-background font-semibold">Go Back</Text>
+          <Text className="text-background font-semibold">{t("momentDetail.goBack")}</Text>
         </Pressable>
       </ScreenContainer>
     );
   }
 
   const createdDate = new Date(moment.createdAt);
-  const formattedDate = createdDate.toLocaleDateString("en-US", {
+  const localeMap: Record<string, string> = { en: "en-US", tr: "tr-TR", de: "de-DE", es: "es-ES" };
+  const locale = localeMap[i18n.language] || "en-US";
+  const formattedDate = createdDate.toLocaleDateString(locale, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -98,83 +129,120 @@ export default function MomentDetailScreen() {
     <ScreenContainer>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="p-6 pb-4 flex-row items-center justify-between">
+        <View className="px-6 pt-4 pb-6 flex-row items-center justify-between">
           <Pressable
             onPress={() => router.back()}
-            className="p-2"
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-primary text-base">← Back</Text>
+            <Text className="text-lg text-foreground">←</Text>
           </Pressable>
           <Pressable
-            onPress={() => {
-              setEditedNote(moment?.userNote || "");
-              setIsEditModalVisible(true);
-            }}
-            className="p-2"
+            onPress={handleMenu}
             style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text className="text-base text-foreground">Edit</Text>
+            <Text className="text-lg text-foreground">⋯</Text>
           </Pressable>
         </View>
 
         {/* Page Image */}
-        <View className="px-6 mb-6">
+        <View className="px-6 mb-8">
           <Image
             source={{ uri: moment.pageImageUrl }}
-            className="w-full rounded-xl"
-            style={{ aspectRatio: 0.7 }}
+            style={{
+              width: "100%",
+              maxHeight: 400,
+              borderRadius: 16,
+            }}
             resizeMode="contain"
           />
         </View>
 
-        {/* OCR Text */}
+        {/* OCR Text Section */}
         {moment.ocrText && (
-          <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">Extracted Text</Text>
-            <View className="bg-surface rounded-xl p-4 border border-border">
-              <Text className="text-base text-foreground leading-relaxed">{moment.ocrText}</Text>
+          <View className="px-6 mb-8">
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.muted,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              {t("momentDetail.ocrText")}
+            </Text>
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: colors.foreground,
+                  lineHeight: 24,
+                }}
+              >
+                {moment.ocrText}
+              </Text>
             </View>
           </View>
         )}
 
-        {/* User Note */}
+        {/* User Note Section */}
         {moment.userNote && (
-          <View className="px-6 mb-6">
-            <Text className="text-sm font-semibold text-muted mb-2">Your Note</Text>
-            <View className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-              <Text className="text-base text-foreground italic leading-relaxed">
-                "{moment.userNote}"
+          <View className="px-6 mb-8">
+            <Text
+              style={{
+                fontSize: 12,
+                color: colors.muted,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              {t("momentDetail.yourNote")}
+            </Text>
+            <View
+              style={{
+                borderLeftWidth: 3,
+                borderLeftColor: colors.primary + "4D",
+                paddingLeft: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: colors.primary,
+                  fontStyle: "italic",
+                  lineHeight: 24,
+                }}
+              >
+                {moment.userNote}
               </Text>
             </View>
           </View>
         )}
 
         {/* Timestamp */}
-        <View className="px-6 mb-4">
-          <Text className="text-xs text-muted text-center">{formattedDate}</Text>
+        <View className="px-6 mb-8">
+          <Text
+            style={{
+              fontSize: 13,
+              color: colors.muted,
+              textAlign: "center",
+            }}
+          >
+            {formattedDate}
+          </Text>
         </View>
 
-        {/* Delete Button */}
-        <View className="px-6 pb-8">
-          <Pressable
-            onPress={handleDelete}
-            disabled={deleteMutation.isPending}
-            style={({ pressed }) => [
-              {
-                paddingVertical: 12,
-                paddingHorizontal: 24,
-                borderRadius: 8,
-                backgroundColor: "#EF4444",
-                opacity: pressed || deleteMutation.isPending ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text className="text-base text-white text-center font-medium">
-              {deleteMutation.isPending ? "Deleting..." : "Delete Moment"}
-            </Text>
-          </Pressable>
-        </View>
+        {/* Spacer for scroll */}
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* Edit Modal */}
@@ -205,19 +273,19 @@ export default function MomentDetailScreen() {
               }}
             >
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg text-foreground font-medium">Edit Note</Text>
+                <Text className="text-lg text-foreground font-medium">{t("momentDetail.editNote")}</Text>
                 <Pressable
                   onPress={() => setIsEditModalVisible(false)}
                   style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
                 >
-                  <Text className="text-base text-muted">Cancel</Text>
+                  <Text className="text-base text-muted">{t("common.cancel")}</Text>
                 </Pressable>
               </View>
 
               <TextInput
                 value={editedNote}
                 onChangeText={setEditedNote}
-                placeholder="Add your thoughts..."
+                placeholder={t("momentDetail.notePlaceholder")}
                 placeholderTextColor={colors.muted}
                 multiline
                 numberOfLines={6}
@@ -249,7 +317,7 @@ export default function MomentDetailScreen() {
                 ]}
               >
                 <Text className="text-base text-white text-center font-medium">
-                  {updateMutation.isPending ? "Saving..." : "Save"}
+                  {updateMutation.isPending ? t("momentDetail.saving") : t("common.save")}
                 </Text>
               </Pressable>
             </View>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert, Image } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -8,8 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { useTranslation } from "react-i18next";
-import { useSubscription } from "@/hooks/use-subscription";
-import { PremiumBadge } from "@/components/premium-badge";
+import i18n from "@/lib/i18n";
 
 type BookWithCount = {
   id: number;
@@ -27,13 +26,12 @@ export default function HomeScreen() {
   const colors = useColors();
   const { t } = useTranslation();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { isPremium } = useSubscription();
   const { data: books, isLoading, refetch } = trpc.books.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [sortBy, setSortBy] = React.useState<SortOption>("relevance");
+  const [sortBy, setSortBy] = React.useState<SortOption>("date-newest");
 
   // Backend search API
   const { data: searchResults, isLoading: searchLoading } = trpc.search.all.useQuery(
@@ -196,225 +194,265 @@ export default function HomeScreen() {
     return (
       <ScreenContainer className="px-6">
         {/* Header */}
-        <View className="pt-4 pb-6">
-          <Text className="text-sm text-muted">{t("home.title")}</Text>
+        <View className="pt-8 pb-6">
+          <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginBottom: 24 }}>
+            Kitaplarım
+          </Text>
+        </View>
+
+        {/* Search bar */}
+        <View className="mb-8">
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={t("home.search")}
+            placeholderTextColor={colors.muted}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              fontSize: 15,
+              color: colors.foreground,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          />
         </View>
 
         {/* Empty state */}
         <View className="flex-1 items-center justify-center">
-          <Text className="text-base text-muted mb-8 text-center">
-            {t("home.emptyState")}
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>📚</Text>
+          <Text style={{ fontSize: 16, color: colors.muted, marginBottom: 8, textAlign: "center" }}>
+            Henüz kitap yok
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 24 }}>
+            Okuma yolculuğunuza başlayın
           </Text>
           <Pressable
             onPress={handleAddBook}
-            style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [
+              {
+                backgroundColor: colors.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 14,
+                borderRadius: 12,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
           >
-            <Text className="text-base text-foreground">{t("home.emptyStateAction")}</Text>
+            <Text style={{ fontSize: 16, color: "white", fontWeight: "600" }}>
+              İlk Kitabınızı Ekleyin
+            </Text>
           </Pressable>
         </View>
+
+        {/* FAB */}
+        <Pressable
+          onPress={handleAddBook}
+          style={({ pressed }) => [
+            {
+              position: "absolute",
+              bottom: 24,
+              right: 24,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: colors.primary,
+              justifyContent: "center",
+              alignItems: "center",
+              opacity: pressed ? 0.8 : 1,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              elevation: 5,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 24, color: "white" }}>+</Text>
+        </Pressable>
       </ScreenContainer>
     );
   }
 
-  // Format date helper
+  // Format date helper with i18n
   const formatDate = (date: Date | null) => {
     if (!date) return "";
     const d = new Date(date);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-    return `${Math.floor(diffDays / 365)} years ago`;
+
+    if (diffDays === 0) return t("dates.today");
+    if (diffDays === 1) return t("dates.yesterday");
+    if (diffDays < 7) return t("dates.daysAgo", { count: diffDays });
+    if (diffDays < 30) return t("dates.weeksAgo", { count: Math.floor(diffDays / 7) });
+    if (diffDays < 365) return t("dates.monthsAgo", { count: Math.floor(diffDays / 30) });
+    return t("dates.yearsAgo", { count: Math.floor(diffDays / 365) });
   };
 
   // Determine what to display
   const showSearchResults = searchQuery.length > 0;
   const hasSearchResults = sortedSearchResults && (sortedSearchResults.books.length > 0 || sortedSearchResults.moments.length > 0);
 
-  const sortOptions: { value: SortOption; label: string }[] = [
-    { value: "relevance", label: "Relevance" },
-    { value: "date-newest", label: "Newest" },
-    { value: "date-oldest", label: "Oldest" },
-    { value: "author", label: "Author" },
-  ];
+  // Helper function to get initials from book title
+  const getBookInitials = (title: string): string => {
+    const words = title.trim().split(/\s+/);
+    if (words.length === 0) return "??";
+    if (words.length === 1) return title.substring(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
 
   return (
     <ScreenContainer className="px-6">
-      {/* Header */}
-      <View className="pt-4 pb-4 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-sm text-muted">Library</Text>
-          {isPremium && <PremiumBadge size="small" />}
-        </View>
-        <Pressable
-          onPress={handleAddBook}
-          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text className="text-2xl text-foreground">+</Text>
-        </Pressable>
+      {/* Header - iOS Large Title Style */}
+      <View style={{ paddingTop: 16, paddingBottom: 12 }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground }}>
+          Kitaplarım
+        </Text>
       </View>
 
       {/* Search Bar */}
-      <View className="mb-4">
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search books and moments..."
-          placeholderTextColor={colors.muted}
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            fontSize: 15,
-            color: colors.foreground,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        />
-      </View>
-
-      {/* Sort Options (only show when searching) */}
-      {showSearchResults && (
-        <View className="mb-6">
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            {sortOptions.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => handleSortChange(option.value)}
-                style={({ pressed }) => [
-                  {
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 20,
-                    backgroundColor: sortBy === option.value ? colors.foreground : colors.surface,
-                    borderWidth: 1,
-                    borderColor: sortBy === option.value ? colors.foreground : colors.border,
-                    opacity: pressed ? 0.6 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: sortBy === option.value ? colors.background : colors.foreground,
-                    fontWeight: sortBy === option.value ? "600" : "400",
-                  }}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+      <View style={{ marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", position: "relative" }}>
+          <Text style={{ position: "absolute", left: 12, fontSize: 16 }}>🔍</Text>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={t("home.search")}
+            placeholderTextColor={colors.muted}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              paddingHorizontal: 40,
+              paddingVertical: 10,
+              fontSize: 15,
+              color: colors.foreground,
+              borderWidth: 1,
+              borderColor: colors.border,
+              flex: 1,
+            }}
+          />
         </View>
-      )}
+      </View>
 
       {/* Search Results or Book List */}
       {showSearchResults ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           {searchLoading ? (
-            <View className="py-8 items-center">
+            <View style={{ paddingVertical: 32, alignItems: "center" }}>
               <ActivityIndicator size="small" color={colors.foreground} />
             </View>
           ) : hasSearchResults ? (
             <>
-              {/* Books Section */}
-              {sortedSearchResults.books.length > 0 && (
-                <View className="mb-8">
-                  <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Books ({sortedSearchResults.books.length})
-                  </Text>
-                  {sortedSearchResults.books.map((book, index) => (
-                    <View key={book.id}>
-                      {index > 0 && (
-                        <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
-                      )}
-                      <Pressable
-                        onPress={() => handleBookPress(book.id)}
-                        style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-                      >
-                        <View>
-                          <Text className="text-base text-foreground mb-1 font-medium">
-                            {book.title}
-                          </Text>
-                          {book.author && (
-                            <Text className="text-sm text-muted">
-                              {book.author}
-                            </Text>
-                          )}
-                        </View>
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Moments Section */}
-              {sortedSearchResults.moments.length > 0 && (
-                <View>
-                  <Text className="text-xs text-muted mb-4 uppercase tracking-wider">
-                    Moments ({sortedSearchResults.moments.length})
-                  </Text>
-                  {sortedSearchResults.moments.map((moment, index) => {
-                    const book = books?.find((b) => b.id === moment.bookId);
-                    return (
-                      <View key={moment.id}>
-                        {index > 0 && (
-                          <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 16 }} />
-                        )}
-                        <Pressable
-                          onPress={() => handleMomentPress(moment.id)}
-                          style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+              {/* Combined results - Books and Moments in flat list */}
+              {sortedSearchResults.books.map((book, bookIndex) => (
+                <View key={`book-${book.id}`}>
+                  {(bookIndex > 0 || sortedSearchResults.moments.length > 0) && (
+                    <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 12 }} />
+                  )}
+                  <Pressable
+                    onPress={() => handleBookPress(book.id)}
+                    style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                      {/* Cover image or placeholder */}
+                      {book.coverImageUrl ? (
+                        <Image
+                          source={{ uri: book.coverImageUrl }}
+                          style={{
+                            width: 48,
+                            height: 72,
+                            borderRadius: 6,
+                            backgroundColor: colors.surface,
+                          }}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            width: 48,
+                            height: 72,
+                            borderRadius: 6,
+                            backgroundColor: colors.accent + "20",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
                         >
-                          <View>
-                            {/* Book title (small) */}
-                            <Text className="text-xs text-muted mb-2">
-                              {book?.title || "Unknown Book"}
-                            </Text>
-                            
-                            {/* OCR text preview */}
-                            {moment.ocrText && (
-                              <Text 
-                                className="text-sm text-foreground mb-2" 
-                                numberOfLines={3}
-                              >
-                                {moment.ocrText}
-                              </Text>
-                            )}
-                            
-                            {/* User note preview */}
-                            {moment.userNote && (
-                              <Text 
-                                className="text-sm text-muted italic" 
-                                numberOfLines={2}
-                              >
-                                "{moment.userNote}"
-                              </Text>
-                            )}
-                            
-                            {/* Date */}
-                            <Text className="text-xs text-muted mt-2">
-                              {formatDate(moment.createdAt)}
-                            </Text>
-                          </View>
-                        </Pressable>
+                          <Text
+                            style={{
+                              fontSize: 16,
+                              fontWeight: "700",
+                              color: colors.accent,
+                            }}
+                          >
+                            {getBookInitials(book.title)}
+                          </Text>
+                        </View>
+                      )}
+                      {/* Content */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>
+                          {book.title}
+                        </Text>
+                        {book.author && (
+                          <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>
+                            {book.author}
+                          </Text>
+                        )}
+                        {"momentCount" in book && (book as any).momentCount > 0 && (
+                          <Text style={{ fontSize: 13, color: colors.muted }}>
+                            {t("home.momentCount", { count: (book as any).momentCount })}
+                          </Text>
+                        )}
                       </View>
-                    );
-                  })}
+                      {/* Chevron */}
+                      <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
+                    </View>
+                  </Pressable>
                 </View>
-              )}
+              ))}
+
+              {/* Moments */}
+              {sortedSearchResults.moments.map((moment, momentIndex) => {
+                const book = books?.find((b) => b.id === moment.bookId);
+                return (
+                  <View key={`moment-${moment.id}`}>
+                    {(momentIndex > 0 || sortedSearchResults.books.length > 0) && (
+                      <View style={{ height: 0.5, backgroundColor: colors.border, marginVertical: 12 }} />
+                    )}
+                    <Pressable
+                      onPress={() => handleMomentPress(moment.id)}
+                      style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
+                    >
+                      <View>
+                        <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 4 }}>
+                          {book?.title || t("home.unknownBook")}
+                        </Text>
+                        {moment.ocrText && (
+                          <Text
+                            style={{ fontSize: 14, color: colors.foreground, marginBottom: 2 }}
+                            numberOfLines={2}
+                          >
+                            {moment.ocrText}
+                          </Text>
+                        )}
+                        {moment.userNote && (
+                          <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }} numberOfLines={1}>
+                            "{moment.userNote}"
+                          </Text>
+                        )}
+                        <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+                          {formatDate(moment.createdAt)}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })}
             </>
           ) : (
-            <View className="py-8 items-center">
-              <Text className="text-base text-muted">No results found</Text>
+            <View style={{ paddingVertical: 32, alignItems: "center" }}>
+              <Text style={{ fontSize: 16, color: colors.muted }}>{t("home.noResults")}</Text>
             </View>
           )}
         </ScrollView>
@@ -423,40 +461,103 @@ export default function HomeScreen() {
           data={books}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
-          ItemSeparatorComponent={() => (
-            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 24 }} />
-          )}
+          contentContainerStyle={{ paddingBottom: 100 }}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => handleBookPress(item.id)}
               onLongPress={() => handleBookLongPress(item.id)}
               style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
             >
-              <View>
-                {/* Book title */}
-                <Text className="text-base text-foreground mb-1 font-medium">
-                  {item.title}
-                </Text>
-                
-                {/* Author (if exists) */}
-                {item.author && (
-                  <Text className="text-sm text-muted mb-2">
-                    {item.author}
-                  </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
+                {/* Cover image or placeholder */}
+                {item.coverImageUrl ? (
+                  <Image
+                    source={{ uri: item.coverImageUrl }}
+                    style={{
+                      width: 48,
+                      height: 72,
+                      borderRadius: 6,
+                      backgroundColor: colors.surface,
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 48,
+                      height: 72,
+                      borderRadius: 6,
+                      backgroundColor: colors.accent + "20",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: colors.accent,
+                      }}
+                    >
+                      {getBookInitials(item.title)}
+                    </Text>
+                  </View>
                 )}
-                
-                {/* Last moment date */}
-                {item.momentCount > 0 && (
-                  <Text className="text-xs text-muted">
-                    {item.momentCount} {item.momentCount === 1 ? "moment" : "moments"}
+                {/* Content */}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>
+                    {item.title}
                   </Text>
-                )}
+                  {item.author && (
+                    <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>
+                      {item.author}
+                    </Text>
+                  )}
+                  <Text style={{ fontSize: 13, color: colors.muted }}>
+                    {item.momentCount} an
+                  </Text>
+                </View>
+                {/* Chevron */}
+                <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
               </View>
+              {/* Separator - inset from left */}
+              <View
+                style={{
+                  height: 0.5,
+                  backgroundColor: colors.border,
+                  marginLeft: 64,
+                }}
+              />
             </Pressable>
           )}
+          ItemSeparatorComponent={() => <View />}
         />
       )}
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleAddBook}
+        style={({ pressed }) => [
+          {
+            position: "absolute",
+            bottom: 24,
+            right: 24,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            opacity: pressed ? 0.8 : 1,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 5,
+          },
+        ]}
+      >
+        <Text style={{ fontSize: 24, color: "white", fontWeight: "600" }}>+</Text>
+      </Pressable>
 
       {/* Delete Confirmation Dialog */}
       {bookToDelete !== null && (
@@ -470,31 +571,31 @@ export default function HomeScreen() {
             backgroundColor: "rgba(0, 0, 0, 0.5)",
             justifyContent: "center",
             alignItems: "center",
+            zIndex: 50,
           }}
         >
           <View
             style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
+              backgroundColor: colors.background,
+              borderRadius: 20,
               padding: 24,
               width: "80%",
               maxWidth: 400,
             }}
           >
-            <Text className="text-lg text-foreground font-medium mb-4">
-              Delete book?
+            <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground, marginBottom: 12 }}>
+              {t("home.deleteTitle")}
             </Text>
-            <Text className="text-sm text-muted mb-6">
-              This will delete the book and all its moments. This action cannot be undone.
+            <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 20 }}>
+              {t("home.deleteMessage")}
             </Text>
-            <View className="flex-row gap-3">
+            <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable
                 onPress={() => setBookToDelete(null)}
                 style={({ pressed }) => [
                   {
                     flex: 1,
                     paddingVertical: 12,
-                    paddingHorizontal: 20,
                     borderRadius: 8,
                     backgroundColor: colors.surface,
                     borderWidth: 1,
@@ -503,7 +604,9 @@ export default function HomeScreen() {
                   },
                 ]}
               >
-                <Text className="text-base text-foreground text-center">Cancel</Text>
+                <Text style={{ fontSize: 16, color: colors.foreground, textAlign: "center" }}>
+                  {t("common.cancel")}
+                </Text>
               </Pressable>
               <Pressable
                 onPress={handleDeleteBook}
@@ -512,15 +615,14 @@ export default function HomeScreen() {
                   {
                     flex: 1,
                     paddingVertical: 12,
-                    paddingHorizontal: 20,
                     borderRadius: 8,
                     backgroundColor: "#EF4444",
                     opacity: pressed || deleteBookMutation.isPending ? 0.6 : 1,
                   },
                 ]}
               >
-                <Text className="text-base text-white text-center font-medium">
-                  {deleteBookMutation.isPending ? "..." : "Delete"}
+                <Text style={{ fontSize: 16, color: "white", textAlign: "center", fontWeight: "600" }}>
+                  {deleteBookMutation.isPending ? "..." : t("common.delete")}
                 </Text>
               </Pressable>
             </View>

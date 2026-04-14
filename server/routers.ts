@@ -50,8 +50,12 @@ export const appRouter = router({
      */
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getBookById(input.id);
+      .query(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
+        return book;
       }),
 
     /**
@@ -62,7 +66,7 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1).max(500),
           author: z.string().max(255).optional(),
-          coverImageBase64: z.string().optional(), // Base64 encoded image
+          coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -95,12 +99,25 @@ export const appRouter = router({
           id: z.number(),
           title: z.string().min(1).max(500).optional(),
           author: z.string().max(255).optional(),
+          coverImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)").optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
+        let coverImageUrl: string | undefined;
+        if (input.coverImageBase64) {
+          const buffer = Buffer.from(input.coverImageBase64, "base64");
+          const fileName = `covers/${ctx.user.id}/${Date.now()}.jpg`;
+          const result = await storagePut(fileName, buffer, "image/jpeg");
+          coverImageUrl = result.url;
+        }
         await db.updateBook(input.id, {
           title: input.title,
           author: input.author,
+          ...(coverImageUrl ? { coverImageUrl } : {}),
         });
         return { success: true };
       }),
@@ -110,7 +127,11 @@ export const appRouter = router({
      */
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
         await db.deleteBook(input.id);
         return { success: true };
       }),
@@ -125,7 +146,11 @@ export const appRouter = router({
      */
     listByBook: protectedProcedure
       .input(z.object({ bookId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.bookId);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
         return db.getReadingMomentsByBook(input.bookId);
       }),
 
@@ -134,8 +159,12 @@ export const appRouter = router({
      */
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getReadingMomentById(input.id);
+      .query(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
+        return moment;
       }),
 
     /**
@@ -145,7 +174,7 @@ export const appRouter = router({
       .input(
         z.object({
           bookId: z.number(),
-          pageImageBase64: z.string(), // Base64 encoded image
+          pageImageBase64: z.string().max(5_000_000, "Image too large (max ~3.8MB)"),
           userNote: z.string().optional(),
         })
       )
@@ -199,7 +228,13 @@ export const appRouter = router({
           userNote: input.userNote,
         });
 
-        return { id: momentId, ocrText };
+        // 4. Kitabın kapak fotoğrafı yoksa, bu fotoğrafı kapak olarak ayarla
+        const book = await db.getBookById(input.bookId);
+        if (book && !book.coverImageUrl) {
+          await db.updateBook(input.bookId, { coverImageUrl: pageImageUrl });
+        }
+
+        return { id: momentId, ocrText, pageImageUrl };
       }),
 
     /**
@@ -209,10 +244,14 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-          userNote: z.string().optional(),
+          userNote: z.string().max(10000).optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
         await db.updateReadingMoment(input.id, {
           userNote: input.userNote,
         });
@@ -224,7 +263,11 @@ export const appRouter = router({
      */
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const moment = await db.getReadingMomentById(input.id);
+        if (!moment || moment.userId !== ctx.user.id) {
+          throw new Error("Reading moment not found");
+        }
         await db.deleteReadingMoment(input.id);
         return { success: true };
       }),
@@ -380,10 +423,15 @@ export const appRouter = router({
     send: protectedProcedure
       .input(
         z.object({
-          message: z.string().min(1),
+          message: z.string().min(1).max(2000),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        // Premium kontrolü
+        if (ctx.user.isPremium !== 1) {
+          throw new Error("Chat requires premium subscription");
+        }
+
         // Kullanıcının tüm kitaplarını ve okuma anlarını al
         const books = await db.getUserBooks(ctx.user.id);
         const allMoments = await Promise.all(
@@ -447,192 +495,36 @@ Tarih: ${m.createdAt}
   // ============================================
   subscriptions: router({
     /**
-     * Webhook endpoint - Ödeme sağlayıcısından gelen event'leri işle
-     * RevenueCat veya Stripe webhook'ları için
+     * Premium status — read the current user's flag.
+     *
+     * The actual source of truth is RevenueCat. The app calls this on launch
+     * to render gated UI; RevenueCat's webhook keeps the DB flag in sync.
      */
-    webhook: publicProcedure
-      .input(z.object({ 
-        event: z.any(), // Event payload (RevenueCat veya Stripe formatında)
-        provider: z.enum(["revenuecat", "stripe"]).optional(),
-      }))
-      .mutation(async ({ input }) => {
-        try {
-          const { event, provider = "revenuecat" } = input;
-
-          if (provider === "revenuecat") {
-            // RevenueCat webhook formatı
-            const { event_type, app_user_id, entitlements } = event;
-            const userId = parseInt(app_user_id, 10);
-
-            if (event_type === "INITIAL_PURCHASE" || event_type === "RENEWAL") {
-              // Premium aktif et
-              await db.updateUserPremiumStatus(userId, true);
-              console.log(`[Webhook] User ${userId} premium activated`);
-            } else if (event_type === "CANCELLATION" || event_type === "EXPIRATION") {
-              // Premium iptal et
-              await db.updateUserPremiumStatus(userId, false);
-              console.log(`[Webhook] User ${userId} premium cancelled`);
-            }
-          } else if (provider === "stripe") {
-            // Stripe webhook formatı
-            const { type, data } = event;
-            const userId = data.object.metadata?.userId;
-
-            if (type === "payment_intent.succeeded" && userId) {
-              await db.updateUserPremiumStatus(parseInt(userId), true);
-              console.log(`[Webhook] User ${userId} premium activated via Stripe`);
-            } else if (type === "customer.subscription.deleted" && userId) {
-              await db.updateUserPremiumStatus(parseInt(userId), false);
-              console.log(`[Webhook] User ${userId} premium cancelled via Stripe`);
-            }
-          }
-
-          return { success: true };
-        } catch (error) {
-          console.error("[Webhook] Error:", error);
-          throw new Error("Webhook processing failed");
-        }
-      }),
+    status: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      return {
+        isPremium: (user?.isPremium ?? 0) === 1,
+        openId: user?.openId ?? ctx.user.openId,
+      };
+    }),
 
     /**
-     * Manuel premium aktifleştirme (test/admin için)
+     * Manual premium toggle — for development / admin tooling only.
+     * Production purchases flow through Apple IAP → RevenueCat → webhook.
      */
     activatePremium: protectedProcedure
-      .input(z.object({ userId: z.number().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        const targetUserId = input.userId || ctx.user.id;
-        await db.updateUserPremiumStatus(targetUserId, true);
+      .mutation(async ({ ctx }) => {
+        if (ctx.user.role !== "admin") {
+          throw new Error("Premium activation only available via subscription purchase");
+        }
+        await db.updateUserPremiumStatus(ctx.user.id, true);
         return { success: true };
       }),
 
-    /**
-     * Premium iptal et
-     */
-    cancelPremium: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        await db.updateUserPremiumStatus(ctx.user.id, false);
-        return { success: true };
-      }),
-
-    /**
-     * iyzico abonelik başlatma
-     */
-    createIyzicoSubscription: protectedProcedure
-      .input(z.object({
-        cardHolderName: z.string(),
-        cardNumber: z.string(),
-        expireMonth: z.string(),
-        expireYear: z.string(),
-        cvc: z.string(),
-        userPhone: z.string(),
-        userAddress: z.string(),
-        userCity: z.string(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const { createSubscription } = await import('./iyzico');
-        
-        try {
-          const result: any = await createSubscription({
-            userId: ctx.user.id,
-            userEmail: ctx.user.email || '',
-            userName: ctx.user.name || 'User',
-            userPhone: input.userPhone,
-            userAddress: input.userAddress,
-            userCity: input.userCity,
-            userCountry: 'Turkey',
-            cardHolderName: input.cardHolderName,
-            cardNumber: input.cardNumber,
-            expireMonth: input.expireMonth,
-            expireYear: input.expireYear,
-            cvc: input.cvc,
-          });
-
-          if (result.status === 'success') {
-            // Premium aktif et
-            await db.updateUserPremiumStatus(ctx.user.id, true);
-            
-            // iyzico subscription ref'i kaydet
-            await db.updateUser(ctx.user.id, {
-              iyzicoSubscriptionRef: result.subscriptionReferenceCode,
-            });
-
-            return { success: true, subscriptionRef: result.subscriptionReferenceCode };
-          } else {
-            throw new Error(result.errorMessage || 'Ödeme başarısız');
-          }
-        } catch (error: any) {
-          console.error('[iyzico] Subscription error:', error);
-          throw new Error(error.message || 'Ödeme işlemi başarısız oldu');
-        }
-      }),
-
-    /**
-     * iyzico abonelik iptal etme
-     */
-    cancelIyzicoSubscription: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        const { cancelSubscription } = await import('./iyzico');
-        
-        try {
-          const user = await db.getUserById(ctx.user.id);
-          if (!user?.iyzicoSubscriptionRef) {
-            throw new Error('Aktif abonelik bulunamadı');
-          }
-
-          const result: any = await cancelSubscription(user.iyzicoSubscriptionRef);
-
-          if (result.status === 'success') {
-            // Premium iptal et
-            await db.updateUserPremiumStatus(ctx.user.id, false);
-            
-            return { success: true };
-          } else {
-            throw new Error(result.errorMessage || 'İptal işlemi başarısız');
-          }
-        } catch (error: any) {
-          console.error('[iyzico] Cancel error:', error);
-          throw new Error(error.message || 'İptal işlemi başarısız oldu');
-        }
-      }),
-
-    /**
-     * iyzico webhook handler
-     */
-    iyzicoWebhook: publicProcedure
-      .input(z.object({ 
-        token: z.string(),
-        subscriptionReferenceCode: z.string(),
-        status: z.string(),
-      }))
-      .mutation(async ({ input }) => {
-        try {
-          // Webhook güvenlik kontrolü (iyzico token doğrulama)
-          // TODO: Token doğrulama ekleyin
-          
-          const { subscriptionReferenceCode, status } = input;
-          
-          // Kullanıcıyı bul
-          const user = await db.getUserByIyzicoSubscriptionRef(subscriptionReferenceCode);
-          if (!user) {
-            console.error('[iyzico] User not found for subscription:', subscriptionReferenceCode);
-            return { success: false };
-          }
-
-          // Status'e göre premium durumunu güncelle
-          if (status === 'ACTIVE') {
-            await db.updateUserPremiumStatus(user.id, true);
-            console.log(`[iyzico] User ${user.id} premium activated`);
-          } else if (status === 'CANCELED' || status === 'EXPIRED') {
-            await db.updateUserPremiumStatus(user.id, false);
-            console.log(`[iyzico] User ${user.id} premium cancelled`);
-          }
-
-          return { success: true };
-        } catch (error) {
-          console.error('[iyzico] Webhook error:', error);
-          return { success: false };
-        }
-      }),
+    cancelPremium: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.updateUserPremiumStatus(ctx.user.id, false);
+      return { success: true };
+    }),
   }),
 });
 

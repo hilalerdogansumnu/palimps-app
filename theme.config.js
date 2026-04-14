@@ -1,28 +1,18 @@
 /** @type {const} */
 const themeColors = {
-  // PALIMPS Design System
-  // Near-white background (not pure white)
-  background: { light: '#F8F8F7', dark: '#F8F8F7' },
-  
-  // Near-black text (not pure black)
-  foreground: { light: '#1C1C1E', dark: '#1C1C1E' },
-  
-  // System gray for secondary text
-  muted: { light: '#8E8E93', dark: '#8E8E93' },
-  
-  // Muted accent color (single, not saturated)
-  primary: { light: '#6B7280', dark: '#6B7280' },
-  
-  // Surface for subtle elevation
-  surface: { light: '#FAFAF9', dark: '#FAFAF9' },
-  
-  // Minimal border (very subtle)
-  border: { light: '#E5E5E5', dark: '#E5E5E5' },
-  
-  // Success, warning, error (muted, not vibrant)
-  success: { light: '#10B981', dark: '#10B981' },
-  warning: { light: '#F59E0B', dark: '#F59E0B' },
-  error: { light: '#EF4444', dark: '#EF4444' },
+  // PALIMPS Design System v4 — Goodreads-inspired Warm Palette
+  // Primary: Forest green for actions/CTAs
+  // Accent: Warm amber/orange for highlights/badges
+  background: { light: '#FFFDF7', dark: '#1A1816' },
+  foreground: { light: '#2D2A26', dark: '#F0ECE4' },
+  muted:      { light: '#8A8478', dark: '#7A7368' },
+  primary:    { light: '#3D7A5F', dark: '#5BAE8A' },
+  accent:     { light: '#E8913A', dark: '#F0A04B' },
+  surface:    { light: '#F5F0E8', dark: '#252220' },
+  border:     { light: '#E5DDD2', dark: '#3A3530' },
+  success:    { light: '#2E8B57', dark: '#3DBB85' },
+  warning:    { light: '#D4940A', dark: '#E8AB1A' },
+  error:      { light: '#C4453C', dark: '#EF5555' },
 };
 
 module.exports = { themeColors };

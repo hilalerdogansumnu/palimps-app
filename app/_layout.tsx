@@ -19,6 +19,7 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import { initPurchases, identifyPurchasesUser } from "@/lib/_core/purchases";
 import { useAuth } from "@/hooks/use-auth";
 import { router, useSegments } from "expo-router";
 import { useOnboarding } from "@/hooks/use-onboarding";
@@ -33,9 +34,17 @@ export const unstable_settings = {
 };
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const segments = useSegments();
   const { isOnboardingCompleted, isLoading: onboardingLoading, completeOnboarding } = useOnboarding();
+
+  // Tie the RevenueCat customer record to our internal openId so the
+  // webhook can flip the premium flag when Apple confirms the purchase.
+  useEffect(() => {
+    if (user?.openId) {
+      identifyPurchasesUser(user.openId);
+    }
+  }, [user?.openId]);
 
   useEffect(() => {
     if (loading) return;
@@ -76,9 +85,10 @@ export default function RootLayout() {
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
 
-  // Initialize Manus runtime for cookie injection from parent container
+  // Initialize Manus runtime (no-op now) and RevenueCat once at startup.
   useEffect(() => {
     initManusRuntime();
+    initPurchases();
   }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
@@ -136,7 +146,6 @@ export default function RootLayout() {
               <Stack.Screen name="book/[id]" />
               <Stack.Screen name="add-moment/[bookId]" options={{ presentation: "modal" }} />
               <Stack.Screen name="moment/[id]" />
-              <Stack.Screen name="oauth/callback" />
             </Stack>
           </AuthGuard>
           <StatusBar style="auto" />
