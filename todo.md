@@ -387,3 +387,13 @@
 - [x] Test locally (dev server running successfully)
 - [x] Push to GitHub (commit 5695e76)
 - [ ] Verify EAS Build success
+
+
+## Claude Kodu Entegrasyon Düzeltmeleri (Nisan 2026)
+
+- [x] Google login yok - Claude kodunda sadece Apple Sign In var (zaten doğru)
+- [x] trust proxy - Claude sunucusunda zaten var (satır 57)
+- [ ] eas.json: production profilinden Android bloğunu kaldır (iOS-only ilk sürüm)
+- [ ] eas.json: appVersionSource "local" → "remote" yap
+- [ ] EXPO_PUBLIC_REVENUECAT_IOS_API_KEY EAS production ortamına ekle
+- [ ] GitHub'a push et
