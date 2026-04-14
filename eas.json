@@ -9,12 +9,20 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
       }
     },
     "production": {
@@ -22,8 +30,9 @@
       "ios": {
         "simulator": false
       },
-      "android": {
-        "buildType": "apk"
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": ""
       }
     }
   },
@@ -33,10 +42,6 @@
         "appleId": "hilalsumnu@gmail.com",
         "ascAppId": "6758565358",
         "appleTeamId": "S456GRHXU8"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "production"
       }
     }
   }
