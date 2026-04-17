@@ -1,261 +1,212 @@
-# PALIMPS - App Store Metadata
+# PALIMPS — App Store Connect Metadata
 
-## App Information
-
-**App Name:** PALIMPS  
-**Subtitle:** Personal Reading Memory System  
-**Category:** Productivity  
-**Content Rating:** 4+  
-**Version:** 1.0.0
+Kopyala/yapıştır için hazır. App Store Connect → My Apps → PALIMPS → App Information + Version 1.0.
 
 ---
 
-## App Description
+## 1. App Information (tek seferlik, versiyondan bağımsız)
 
-### English (Primary)
+**Name**
+```
+PALIMPS
+```
 
-**Short Description (30 characters max):**
-Personal Reading Memory System
+**Bundle ID**
+```
+space.manus.okuma.hafizasi.mvp.t20260130232125
+```
 
-**Promotional Text (170 characters max):**
-Capture book pages, extract text with OCR, and create reading moments with AI-powered notes. Your personal reading memory system for physical books.
+**Primary Language**
+```
+Turkish
+```
 
-**Description (4000 characters max):**
+**Category**
+- Primary: **Books**
+- Secondary: **Productivity**
 
-PALIMPS is your personal reading memory system for physical books. Capture pages from your favorite books, extract text with powerful OCR technology, and create meaningful reading moments with AI-powered notes.
+**Content Rights**
+- "Does your app contain, display, or access third-party content?" → **No**
 
-**KEY FEATURES:**
-
-📚 **Book Library**
-• Organize your physical book collection
-• Add books with cover photos
-• Track reading progress and moments
-• Search across all your books
-
-📸 **Smart Page Capture**
-• Take photos of book pages
-• Automatic text extraction with OCR
-• High-quality image storage
-• Chronological timeline of reading moments
-
-✍️ **Reading Moments**
-• Create notes for each page you read
-• AI-powered note generation (Premium)
-• Edit and organize your thoughts
-• Export moments as PDF or Markdown
-
-🔍 **Powerful Search**
-• Search across book titles and authors
-• Find text within captured pages
-• Sort by relevance, date, or author
-• Quick access to your reading history
-
-🌍 **Multilingual Support**
-• Available in English, Turkish, German, and Spanish
-• Switch languages anytime from settings
-• Localized user interface
-
-🎨 **Beautiful Design**
-• Minimal, Apple Notes-level interface
-• Clean typography and generous whitespace
-• Dark mode support
-• Designed for one-handed use
-
-**PREMIUM FEATURES (Coming Soon):**
-
-✨ AI-powered automatic note generation
-✨ Advanced search and filtering
-✨ Unlimited AI features
-✨ Reading statistics and insights
-
-**PRIVACY FIRST:**
-
-Your reading data stays private. We use secure cloud storage and never share your personal information. All data is encrypted and protected.
-
-**PERFECT FOR:**
-
-• Book lovers who read physical books
-• Students taking notes from textbooks
-• Researchers collecting quotes and references
-• Anyone who wants to remember what they read
-
-Download PALIMPS today and start building your personal reading memory system!
+**Age Rating**
+- Tüm kategoriler "None" → **4+**
 
 ---
 
-### Turkish (Türkçe)
+## 2. Pricing and Availability
 
-**Kısa Açıklama:**
-Kişisel Okuma Hafızası Sistemi
-
-**Tanıtım Metni:**
-Kitap sayfalarını fotoğrafla, OCR ile metni çıkar ve AI destekli notlar oluştur. Basılı kitaplar için kişisel okuma hafıza sisteminiz.
-
-**Açıklama:**
-
-PALIMPS, basılı kitaplar için kişisel okuma hafıza sisteminizdir. Favori kitaplarınızdan sayfaları yakalayın, güçlü OCR teknolojisi ile metni çıkarın ve AI destekli notlarla anlamlı okuma anları oluşturun.
-
-**TEMEL ÖZELLİKLER:**
-
-📚 **Kitap Kütüphanesi**
-• Basılı kitap koleksiyonunuzu düzenleyin
-• Kapak fotoğraflarıyla kitap ekleyin
-• Okuma ilerlemesini ve anlarını takip edin
-• Tüm kitaplarınızda arama yapın
-
-📸 **Akıllı Sayfa Yakalama**
-• Kitap sayfalarının fotoğrafını çekin
-• OCR ile otomatik metin çıkarma
-• Yüksek kaliteli görüntü depolama
-• Kronolojik okuma anları zaman çizelgesi
-
-✍️ **Okuma Anları**
-• Okuduğunuz her sayfa için not oluşturun
-• AI destekli not oluşturma (Premium)
-• Düşüncelerinizi düzenleyin ve organize edin
-• Anları PDF veya Markdown olarak dışa aktarın
-
-🔍 **Güçlü Arama**
-• Kitap başlıkları ve yazarlarda arama
-• Yakalanan sayfalardaki metinleri bulun
-• Alaka düzeyi, tarih veya yazara göre sıralama
-• Okuma geçmişinize hızlı erişim
-
-🌍 **Çoklu Dil Desteği**
-• İngilizce, Türkçe, Almanca ve İspanyolca
-• Ayarlardan istediğiniz zaman dil değiştirin
-• Yerelleştirilmiş kullanıcı arayüzü
-
-🎨 **Güzel Tasarım**
-• Minimal, Apple Notes seviyesinde arayüz
-• Temiz tipografi ve geniş boşluklar
-• Koyu mod desteği
-• Tek elle kullanım için tasarlandı
-
-**PREMIUM ÖZELLİKLER (Yakında):**
-
-✨ AI destekli otomatik not oluşturma
-✨ Gelişmiş arama ve filtreleme
-✨ Sınırsız AI özellikleri
-✨ Okuma istatistikleri ve içgörüler
-
-**GİZLİLİK ÖNCELİKLİ:**
-
-Okuma verileriniz gizli kalır. Güvenli bulut depolama kullanırız ve kişisel bilgilerinizi asla paylaşmayız. Tüm veriler şifrelenmiş ve korunmuştur.
-
-**KİMLER İÇİN İDEAL:**
-
-• Basılı kitap okuyan kitap severler
-• Ders kitaplarından not alan öğrenciler
-• Alıntı ve referans toplayan araştırmacılar
-• Okuduklarını hatırlamak isteyen herkes
-
-PALIMPS'i bugün indirin ve kişisel okuma hafıza sisteminizi oluşturmaya başlayın!
+- **Price**: Free (premium RevenueCat üzerinden in-app)
+- **Availability**: All countries (veya sadece Turkey + US ile başla, sonra genişlet)
 
 ---
 
-## Keywords
+## 3. Localizations — Turkish (Turkey)
 
-### English
-palimps, reading, books, ocr, notes, reading tracker, book tracker, book notes, reading journal, book journal, physical books, page capture, text extraction, reading memory, book memory, reading moments, book moments, ai notes, book scanner, reading app
+**Subtitle** (max 30 karakter)
+```
+Kitap okuma hafızan
+```
 
-### Turkish
-palimps, okuma, kitap, ocr, notlar, okuma takip, kitap takip, kitap notları, okuma günlüğü, kitap günlüğü, basılı kitap, sayfa yakalama, metin çıkarma, okuma hafızası, kitap hafızası, okuma anları, kitap anları, ai notlar, kitap tarayıcı, okuma uygulaması
+**Promotional Text** (max 170 karakter — submit sonrası update edilebilir)
+```
+Yeni: Sayfa fotoğrafından doğrudan alıntı yakala. Okuduğun her satır, sakin bir kütüphanede seni beklesin.
+```
 
----
+**Description** (max 4000 karakter)
+```
+Okuduğun her kitap, tek yerde.
 
-## Categories
+PALIMPS; kitaplarını, notlarını ve alıntılarını sakin bir kütüphanede toplar. Her kitabın kendi sayfası, kendi hafızası var.
 
-**Primary Category:** Productivity  
-**Secondary Category:** Education
+— Kitap ekle, sayfa fotoğrafı çek, not düş.
+— Alıntılarını tek dokunuşla yakala.
+— Okuduklarını yıllar sonra bile arayıp bul.
 
----
+Reklam yok, takip yok. Verin senin kalır.
 
-## App Store Review Information
+Premium ile sınırsız kitap, yedekleme ve AI destekli refleksiyonlar.
+```
 
-### Demo Account
-- Email: demo@palimps.app
-- Password: DemoUser2026!
+**Keywords** (max 100 karakter, virgülle ayır, boşluk koyma)
+```
+kitap,okuma,not,alıntı,kütüphane,okuma günlüğü,kitap notu,reading,book journal,highlight
+```
 
-### Review Notes
-
-Thank you for reviewing PALIMPS!
-
-**What is PALIMPS?**
-PALIMPS is a personal reading memory system for physical books. Users can capture book pages with their camera, extract text using OCR, and create reading moments with notes.
-
-**How to Test:**
-
-1. **Sign in** with the demo account or create a new account using Google/Apple OAuth
-2. **Add a book:**
-   - Tap the "+" button on the home screen
-   - Enter book title and author
-   - Optionally add a cover photo
-   - Tap "Save"
-3. **Create a reading moment:**
-   - Open the book you just added
-   - Tap "Add Reading Moment"
-   - Take a photo of any book page (or select from gallery)
-   - Wait for OCR to extract text
-   - Optionally add a personal note
-   - Tap "Save"
-4. **Search:**
-   - Use the search bar on the home screen
-   - Search works across book titles, authors, and OCR text
-5. **View moment details:**
-   - Tap on any reading moment to view full details
-   - Edit notes or delete moments
-
-**Premium Features:**
-Premium features (AI note generation, advanced search) are currently disabled and marked as "Coming Soon". These will be activated after payment integration is complete.
-
-**Privacy:**
-- We use OAuth for authentication (Google/Apple)
-- All user data is stored securely in our cloud database
-- We do not share user data with third parties
-- Privacy Policy: https://palimps.app/gizlilik.html
-
-**Contact:**
-For any questions during review, please contact: support@palimps.app
-
----
-
-## Privacy Policy URL
-
-https://palimps.app/gizlilik.html
-
----
-
-## Support URL
-
-https://palimps.app/hakkimizda.html
-
----
-
-## Marketing URL
-
+**Support URL**
+```
 https://palimps.app
+```
+
+**Marketing URL** (opsiyonel)
+```
+https://palimps.app
+```
 
 ---
 
-## Copyright
+## 4. Localizations — English (U.S.)
 
-© 2026 PALIMPS. All rights reserved.
+**Subtitle**
+```
+Your reading memory
+```
+
+**Promotional Text**
+```
+New: Capture quotes straight from a page photo. Every line you read, waiting in a quiet library.
+```
+
+**Description**
+```
+Every book you read, in one quiet library.
+
+PALIMPS gathers your books, notes and highlights in a single place. Each book has its own page, its own memory.
+
+— Add a book, snap a page, write a note.
+— Capture highlights with a tap.
+— Find what you read, years later.
+
+No ads, no tracking. Your reading stays yours.
+
+Premium unlocks unlimited books, backups and AI-assisted reflections.
+```
+
+**Keywords**
+```
+books,reading,notes,quotes,journal,library,highlights,book tracker,reflection,reading log
+```
+
+**Support URL**
+```
+https://palimps.app
+```
 
 ---
 
-## App Store Connect Checklist
+## 5. App Privacy (App Store Connect → App Privacy)
 
-- [ ] Create App Store Connect account
-- [ ] Register app with Bundle ID: `space.manus.okuma.hafizasi.mvp.t20260130232125`
-- [ ] Upload app icon (1024x1024)
-- [ ] Add screenshots (6.7", 6.5", 5.5")
-- [ ] Fill in app description (English and Turkish)
-- [ ] Add keywords
-- [ ] Set category (Productivity)
-- [ ] Add privacy policy URL
-- [ ] Add support URL
-- [ ] Create demo account for review
-- [ ] Write review notes
-- [ ] Upload build via EAS
-- [ ] Submit for review
+**Data Collection**: Yes
+
+**Collected Data Types** (hepsi "Linked to You", hiçbiri "Used for Tracking"):
+- **Contact Info → Email Address** → App Functionality
+- **Contact Info → Name** → App Functionality
+- **User Content → Photos or Videos** → App Functionality
+- **User Content → Other User Content** (notes, quotes) → App Functionality
+- **Identifiers → User ID** → App Functionality
+
+**Tracking**: No
+
+**Privacy Policy URL**
+```
+https://palimps.app/privacy
+```
+(⚠️ Bu link canlı ve güncel olmalı — submission öncesi güncellememiz gereken şey.)
+
+---
+
+## 6. Version 1.0 — What's New
+
+İlk versiyon için:
+```
+İlk sürüm.
+```
+EN:
+```
+Initial release.
+```
+
+---
+
+## 7. Screenshots
+
+`assets/appstore-screenshots/` klasöründe 5 adet hazır. App Store Connect 6.7" (iPhone 15 Pro Max) ve 6.5" (iPhone 11 Pro Max) istiyor — aynı görselleri ikisine de yükleyebilirsin.
+
+---
+
+## 8. Review Information
+
+**Contact Information**
+- First Name: Hilal
+- Last Name: Erdoğan Şumnu
+- Phone Number: (senin numaran)
+- Email: hilalsumnu@gmail.com
+
+**Demo Account**
+Apple Sign In kullandığımız için reviewer kendi Apple ID'siyle girer. "Sign-in required" → Yes, ama "Demo account" boş bırakılabilir (reviewer'ın Apple ID'si yeterli). Sadece notes alanına şunu yaz:
+
+```
+This app uses "Sign in with Apple" as the sole authentication method (Apple HIG compliant).
+The reviewer may sign in with any Apple ID — no demo account is required.
+
+After signing in, the reviewer can:
+1. Add a book (title + author, cover optional)
+2. Take a photo of a page (camera permission)
+3. Add notes or quotes to any book
+4. View all books in the library
+
+Premium features (unlimited books, AI reflections) require a RevenueCat subscription.
+Sandbox test accounts can be used for purchase testing.
+
+Thank you for reviewing PALIMPS.
+```
+
+---
+
+## 9. Build Selection
+
+Build tamamlandığında (EAS Build bitince) TestFlight'a otomatik yüklenecek. App Store Connect → Version → Build bölümünden build 1.0 (50311) seçilecek.
+
+---
+
+## 10. Kontrol Listesi (submit öncesi)
+
+- [ ] 5 screenshot yüklendi (6.7" + 6.5")
+- [ ] Description TR + EN yapıştırıldı
+- [ ] Keywords TR + EN yapıştırıldı
+- [ ] Subtitle TR + EN yapıştırıldı
+- [ ] Privacy Policy URL (palimps.app/privacy) CANLI ve güncel
+- [ ] App Privacy data types tanımlandı (5 tip)
+- [ ] Category: Books (primary), Productivity (secondary)
+- [ ] Age rating: 4+
+- [ ] Review notes yazıldı
+- [ ] Build 1.0 (50311) TestFlight'a yüklendi ve Version'a bağlandı
