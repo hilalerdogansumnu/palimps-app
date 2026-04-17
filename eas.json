@@ -11,7 +11,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_API_BASE_URL": "https://palimps-app-production.up.railway.app",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     },
@@ -21,7 +21,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_API_BASE_URL": "https://palimps-app-production.up.railway.app",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     },
@@ -31,7 +31,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://okumahafizasi-9hn5ruat.manus.space",
+        "EXPO_PUBLIC_API_BASE_URL": "https://palimps-app-production.up.railway.app",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
       }
     }
