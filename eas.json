@@ -12,7 +12,9 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://3fa6e97034830e26fde4867ea9518025@o4511219434979328.ingest.de.sentry.io/4511219497435216",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "development"
       }
     },
     "preview": {
@@ -22,7 +24,9 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://3fa6e97034830e26fde4867ea9518025@o4511219434979328.ingest.de.sentry.io/4511219497435216",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "preview"
       }
     },
     "production": {
@@ -32,7 +36,9 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.palimps.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO"
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_MBIyZVXpzgfavqbGIlgIrEaHBcO",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://3fa6e97034830e26fde4867ea9518025@o4511219434979328.ingest.de.sentry.io/4511219497435216",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production"
       }
     }
   },

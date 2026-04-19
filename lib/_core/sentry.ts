@@ -1,28 +1,45 @@
 import * as Sentry from "@sentry/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
+
+const PULSE_STORAGE_KEY_PREFIX = "@palimps/sentry-pulse-sent-";
 
 /**
  * Initialize Sentry for crash reporting and error tracking
  * Call this early in app startup (in app/_layout.tsx)
  */
 export function initSentry() {
-  if (!process.env.SENTRY_DSN) {
+  // Expo only inlines env vars into the client bundle when they are prefixed
+  // with EXPO_PUBLIC_. The previous plain `SENTRY_DSN` read resolved to
+  // undefined at runtime even if the variable was set in eas.json — the core
+  // of the Layer 1 gap documented in AMND-2026-001.
+  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+  if (!dsn) {
     console.warn("SENTRY_DSN not set, crash reporting disabled");
     return;
   }
 
+  const appVersion = Constants.expoConfig?.version ?? "0.0.0";
+  const buildNumber = Constants.expoConfig?.ios?.buildNumber ?? "0";
+  const bundleId = Constants.expoConfig?.ios?.bundleIdentifier ?? "app";
+  const environment =
+    process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT ?? (__DEV__ ? "development" : "production");
+
   Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || "production",
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+    dsn,
+    environment,
+    tracesSampleRate: environment === "production" ? 0.1 : 1.0,
     // Capture breadcrumbs for better debugging
     maxBreadcrumbs: 100,
     // Attach stack traces to all messages
     attachStacktrace: true,
-    // Release version (should match app.config.ts version)
-    release: "1.0.0",
-    // Enable native crash reporting on iOS/Android
-    enableNativeCrashHandling: true,
+    // AMND-2026-001 release gate: events must be tagged with the shipping
+    // build number so "Sentry has a pulse from THIS build" is verifiable.
+    release: `${bundleId}@${appVersion}+${buildNumber}`,
+    dist: buildNumber,
+    // KVKK / observability SKILL: do not send IP / User-Agent by default.
+    sendDefaultPii: false,
     // Ignore certain errors
     ignoreErrors: [
       // Network errors that are expected
@@ -47,6 +64,49 @@ export function initSentry() {
     },
   });
 
+  // AMND-2026-001 release gate: fire a pulse the first time each build boots
+  // on a given install. Release-manager relies on this reaching the Sentry
+  // dashboard before flipping the phased-rollout switch. Fire-and-forget —
+  // never block app startup on this, never throw out of it.
+  sendReleaseHealthPulse({ buildNumber, bundleId, appVersion, environment }).catch(
+    () => {
+      // Swallow — the health check failing must not impact the app at boot.
+    }
+  );
+}
+
+/**
+ * Fire a Sentry "release-health-check" event, once per (install × build).
+ *
+ * Owned by palimps-observability-engineer. Called automatically from
+ * initSentry on first cold start of each new build. Guarded by AsyncStorage
+ * so reopening the app on the same build does not produce noise (cf.
+ * observability SKILL: "metrics that fire during normal operation are worse
+ * than useless").
+ */
+async function sendReleaseHealthPulse(args: {
+  buildNumber: string;
+  bundleId: string;
+  appVersion: string;
+  environment: string;
+}) {
+  const { buildNumber, bundleId, appVersion, environment } = args;
+  const key = `${PULSE_STORAGE_KEY_PREFIX}${buildNumber}`;
+  const alreadySent = await AsyncStorage.getItem(key);
+  if (alreadySent) return;
+
+  Sentry.captureMessage("release-health-check", {
+    level: "info",
+    tags: {
+      pulse: "true",
+      build: buildNumber,
+      bundle_id: bundleId,
+      app_version: appVersion,
+      environment,
+    },
+  });
+
+  await AsyncStorage.setItem(key, new Date().toISOString());
 }
 
 /**
