@@ -82,7 +82,9 @@ export default function LoginScreen() {
       });
 
       if (!credential.identityToken) {
-        throw new Error("No identityToken returned by Apple");
+        throw new Error(
+          `No identityToken from Apple. hasUser=${!!credential.user} hasName=${!!credential.fullName} apiUrl=${getApiBaseUrl()}`
+        );
       }
 
       const result = await postToServer("/api/auth/apple", {
@@ -98,7 +100,9 @@ export default function LoginScreen() {
         // User cancelled the sheet — quietly return.
       } else {
         console.error("[Login/Apple] failed:", err);
-        Alert.alert(t("auth.errorTitle"), t("auth.appleError"));
+        // TEMP: show real error to diagnose TestFlight auth failures
+        const detail = err?.message ?? String(err);
+        Alert.alert(t("auth.errorTitle"), `${t("auth.appleError")}\n\n${detail}`);
       }
     } finally {
       setIsLoading(false);
