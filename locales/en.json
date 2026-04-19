@@ -164,7 +164,23 @@
     "deleteAccountConfirmMessage": "All your books, reading moments, and data will be permanently deleted. This action cannot be undone.",
     "deleteAccountError": "Couldn't delete your account. Please try again.",
     "privacyPolicy": "Privacy Policy",
-    "privacyPolicyHint": "Opens the privacy policy page"
+    "privacyPolicyHint": "Opens the privacy policy page",
+    "editName": "Edit Name",
+    "editNameTitle": "Your Name",
+    "namePlaceholder": "Your name",
+    "nameAdd": "Add your name",
+    "nameSaveError": "Couldn't save your name. Please try again.",
+    "editProfileHint": "Tap to edit your name",
+    "viewLibraryHint": "Opens your books and reading moments",
+    "account": "Account",
+    "accountTitle": "Account",
+    "accountEmail": "Email",
+    "accountLoginMethod": "Sign-in method",
+    "accountLoginMethodApple": "Sign in with Apple",
+    "accountMemberSince": "Member since",
+    "accountNoEmail": "Not provided",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDesc": "This action cannot be undone. All your books, reading moments, and data will be permanently deleted."
   },
   "subscription": {
     "management": "Subscription Management",
@@ -285,6 +301,12 @@
     "a11y": {
       "paginationDot": "Step {{current}} of {{total}}"
     }
+  },
+  "crop": {
+    "title": "Crop Page",
+    "confirm": "Crop",
+    "hint": "Drag the corners to frame only the page — anything outside is ignored by OCR.",
+    "loadFailed": "Couldn't load the image. Please take the photo again."
   },
   "ocrEdit": {
     "title": "Edit Text",

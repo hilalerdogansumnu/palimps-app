@@ -164,7 +164,23 @@
     "deleteAccountConfirmMessage": "Tüm kitaplarınız, okuma anlarınız ve verileriniz kalıcı olarak silinecek. Bu işlem geri alınamaz.",
     "deleteAccountError": "Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.",
     "privacyPolicy": "Gizlilik Politikası",
-    "privacyPolicyHint": "Gizlilik politikası sayfasını açar"
+    "privacyPolicyHint": "Gizlilik politikası sayfasını açar",
+    "editName": "İsmi Düzenle",
+    "editNameTitle": "İsmin",
+    "namePlaceholder": "İsminiz",
+    "nameAdd": "İsim ekle",
+    "nameSaveError": "İsim kaydedilemedi. Lütfen tekrar dene.",
+    "editProfileHint": "İsmini düzenlemek için dokun",
+    "viewLibraryHint": "Kitaplarını ve anlarını açar",
+    "account": "Hesap",
+    "accountTitle": "Hesap",
+    "accountEmail": "E-posta",
+    "accountLoginMethod": "Giriş yöntemi",
+    "accountLoginMethodApple": "Apple ile giriş",
+    "accountMemberSince": "Üyelik tarihi",
+    "accountNoEmail": "Belirtilmemiş",
+    "dangerZone": "Tehlikeli Bölge",
+    "dangerZoneDesc": "Bu işlem geri alınamaz. Tüm kitapların, anların ve verilerin kalıcı olarak silinir."
   },
   "subscription": {
     "management": "Abonelik Yönetimi",
@@ -285,6 +301,12 @@
     "a11y": {
       "paginationDot": "Adım {{current}} / {{total}}"
     }
+  },
+  "crop": {
+    "title": "Sayfayı Kırp",
+    "confirm": "Kırp",
+    "hint": "Köşeleri sürükleyip sadece sayfayı çerçeveye al — dışında kalanlar metne girmez.",
+    "loadFailed": "Fotoğraf yüklenemedi. Lütfen tekrar çek."
   },
   "ocrEdit": {
     "title": "Metni Düzenle",

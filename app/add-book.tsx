@@ -3,6 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable,
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "react-i18next";
 import { a11y } from "@/lib/accessibility";
 
@@ -87,15 +88,19 @@ export default function AddBookScreen() {
             fileSize: 500_000, // ~500KB tahmini
           });
 
-          // 3. S3'e yükle (fetch PUT)
-          const fileContent = await fetch(stored.fullPath);
-          const blob = await fileContent.blob();
-          const uploadRes = await fetch(presignedUrl, {
-            method: "PUT",
-            body: blob,
+          // 3. S3'e yükle — FileSystem.uploadAsync (native binary PUT).
+          //
+          // `fetch(file://...)` + `.blob()` + `fetch(PUT)` zinciri iOS + new
+          // arch üzerinde 0-byte blob dönebiliyor (RN blob plugin + Hermes
+          // etkileşimi). Uzak ucu 200 döner ama objeye boş body yazar; kapak
+          // "uploaded" ama render edilemez. uploadAsync dosyayı native tarafta
+          // okur, aynı cehennemden geçmez.
+          const uploadRes = await FileSystem.uploadAsync(presignedUrl, stored.fullPath, {
+            httpMethod: "PUT",
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
             headers: { "Content-Type": "image/jpeg" },
           });
-          if (!uploadRes.ok) {
+          if (uploadRes.status < 200 || uploadRes.status >= 300) {
             throw new Error(`UPLOAD_HTTP_${uploadRes.status}`);
           }
 

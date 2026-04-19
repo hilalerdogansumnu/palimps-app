@@ -64,4 +64,19 @@ export const ENV = {
   // ─────────────────────────────────────────────────────────────────────────
   revenuecatWebhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET ?? "",
   revenuecatPublicSdkKey: process.env.REVENUECAT_PUBLIC_SDK_KEY ?? "",
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Premium test allowlist
+  //
+  // Comma-separated emails (case-insensitive) that are treated as premium
+  // regardless of the RevenueCat flag. Lets the founder + QA test premium
+  // features without running an IAP sandbox purchase every reset.
+  //
+  // Production note: keep this list TIGHT — every address here skips the paywall.
+  // Remove pre-launch or keep to internal @palimps domain only.
+  // ─────────────────────────────────────────────────────────────────────────
+  premiumTestEmails: (process.env.PREMIUM_TEST_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
 };

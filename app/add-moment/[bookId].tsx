@@ -13,11 +13,13 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
+import { CropModal } from "@/components/crop-modal";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -72,6 +74,9 @@ export default function AddMomentScreen() {
   const bookIdNum = parseInt(bookId, 10);
 
   const [pageImageUri, setPageImageUri] = useState<string | null>(null);
+  // Raw URI from picker/camera, awaiting user-driven crop. When non-null,
+  // CropModal is visible; onDone → setPageImageUri, onCancel → clear.
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
   const [userNote, setUserNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ocrText, setOcrText] = useState<string | null>(null);
@@ -134,24 +139,16 @@ export default function AddMomentScreen() {
       Alert.alert(t("addMoment.permissionRequired"), t("addMoment.galleryPermission"));
       return;
     }
+    // NOT using ImagePicker'ın `allowsEditing: true` çünkü iOS 1:1 square'e
+    // kilitli; kitap sayfasında kenarda kalan masa/parmak/komşu sayfa OCR
+    // metnine sızıyor. Onun yerine kendi CropModal'ımızı kullanıyoruz.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      quality: 0.8,
+      quality: 0.9,
     });
     if (!result.canceled && result.assets[0].uri) {
-      const photoUri = result.assets[0].uri;
-      setPageImageUri(photoUri);
-      setOcrText(null);
-      setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // P0-6: Previously pushed to "/ocr-edit" with an empty ocrText — that
-      // screen's Save just router.back()'d without returning edits, so every
-      // keystroke was discarded. Server-side OCR runs inside
-      // readingMoments.create (see server/routers.ts:272-304); the raw OCR
-      // text is saved to the DB and surfaced in book detail, so the user
-      // doesn't need to see/edit it inline. If we add an editable OCR review
-      // later, wire it as a promise-based roundtrip, not fire-and-forget.
+      setPendingCropUri(result.assets[0].uri);
     }
   };
 
@@ -162,18 +159,27 @@ export default function AddMomentScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
+      quality: 0.9,
     });
     if (!result.canceled && result.assets[0].uri) {
-      const photoUri = result.assets[0].uri;
-      setPageImageUri(photoUri);
-      setOcrText(null);
-      setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      // P0-6: See handlePickImage — same dead-detour removal. Stays in
-      // add-moment; server-side OCR runs on submit.
+      setPendingCropUri(result.assets[0].uri);
     }
+  };
+
+  // Called by CropModal once the user confirms the crop. The cropped URI is
+  // a JPEG on the local filesystem; we treat it exactly like a picker result.
+  const handleCropDone = (croppedUri: string) => {
+    setPageImageUri(croppedUri);
+    setPendingCropUri(null);
+    setOcrText(null);
+    setIsOcrComplete(false);
+  };
+
+  const handleCropCancel = () => {
+    // Keep any previously-selected page photo intact; just discard the raw
+    // uncropped URI so the modal closes.
+    setPendingCropUri(null);
   };
 
   // Upload timeout: long enough for a large photo on a slow 4G link, short
@@ -258,35 +264,37 @@ export default function AddMomentScreen() {
       }
       const { presignedUrl, publicUrl: uploadedPageImageUrl } = presigned;
 
-      // 3. R2'ye yükle — AbortController ile 30s timeout
+      // 3. R2'ye yükle — FileSystem.uploadAsync (native binary PUT) + 30s
+      // timeout Promise.race ile.
+      //
+      // Daha önce `fetch(fileUri).blob()` + `fetch(PUT)` zinciri kullanıyorduk;
+      // iOS new arch'ta blob plugin 0-byte body dönebiliyor, R2 de boş objeyi
+      // 200 ile kabul edip saklıyordu — kapak "uploaded" ama render
+      // edilemiyordu. uploadAsync dosyayı native tarafta okur, bu kusuru
+      // tamamen atlıyor. Timeout için AbortController yok (uploadAsync
+      // desteklemiyor); Promise.race yeterli — race kaybolursa underlying
+      // upload arka planda ölür, kullanıcı error görür.
       phase = "r2Put";
-      const fileContent = await fetch(stored.fullPath);
-      const blob = await fileContent.blob();
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-      let uploadResponse: Response;
+      let uploadRes: FileSystem.FileSystemUploadResult;
       try {
-        uploadResponse = await fetch(presignedUrl, {
-          method: "PUT",
-          body: blob,
+        const uploadPromise = FileSystem.uploadAsync(presignedUrl, stored.fullPath, {
+          httpMethod: "PUT",
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
           headers: { "Content-Type": "image/jpeg" },
-          signal: controller.signal,
         });
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("UPLOAD_TIMEOUT")), UPLOAD_TIMEOUT_MS),
+        );
+        uploadRes = await Promise.race([uploadPromise, timeoutPromise]);
       } catch (err) {
-        clearTimeout(timeoutId);
-        // AbortError shape differs across RN fetch polyfill versions; check
-        // both the name and the signal state.
-        const aborted = (err as any)?.name === "AbortError" || controller.signal.aborted;
-        if (aborted) throw new Error("UPLOAD_TIMEOUT");
-        // Any other fetch throw is a network failure (DNS, offline, TLS).
+        if (err instanceof Error && err.message === "UPLOAD_TIMEOUT") throw err;
+        // Any other uploadAsync throw is a network failure (DNS, offline, TLS).
         const e = new Error("NETWORK_ERROR");
         (e as any).cause = err;
         throw e;
       }
-      clearTimeout(timeoutId);
-      if (!uploadResponse.ok) {
-        throw new Error(`UPLOAD_HTTP_${uploadResponse.status}`);
+      if (uploadRes.status < 200 || uploadRes.status >= 300) {
+        throw new Error(`UPLOAD_HTTP_${uploadRes.status}`);
       }
 
       // 4. Create moment (server-side OCR runs inside this mutation)
@@ -488,6 +496,13 @@ export default function AddMomentScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* In-app crop step — shown between picker and OCR. */}
+      <CropModal
+        uri={pendingCropUri}
+        onDone={handleCropDone}
+        onCancel={handleCropCancel}
+      />
     </ScreenContainer>
   );
 }

@@ -25,17 +25,13 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { isPremium } = useSubscription();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
-  // P0-5 re-entrancy guard: a fast double-tap on Çıkış Yap / Hesabı Sil
-  // previously fired Alert.alert twice, stacking two native alerts and
-  // producing the ghost-text artifact seen in the QA video at 2:11-2:12.
-  // Refs instead of state to avoid an extra render on every tap.
+  // P0-5 re-entrancy guard: a fast double-tap on Çıkış Yap previously fired
+  // Alert.alert twice, stacking two native alerts and producing the ghost-
+  // text artifact seen in the QA video at 2:11-2:12. Ref instead of state to
+  // avoid an extra render on every tap.
   const logoutPromptOpenRef = useRef(false);
-  const deletePromptOpenRef = useRef(false);
-
-  const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
 
   const { data: books } = trpc.books.list.useQuery();
   const bookCount = books?.length || 0;
@@ -96,42 +92,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleDeleteAccount = () => {
-    if (deletePromptOpenRef.current) return;
-    deletePromptOpenRef.current = true;
-    Alert.alert(
-      t("profile.deleteAccountConfirmTitle"),
-      t("profile.deleteAccountConfirmMessage"),
-      [
-        {
-          text: t("common.cancel"),
-          style: "cancel",
-          onPress: () => {
-            deletePromptOpenRef.current = false;
-          },
-        },
-        {
-          text: t("profile.deleteAccount"),
-          style: "destructive",
-          onPress: async () => {
-            deletePromptOpenRef.current = false;
-            setIsDeletingAccount(true);
-            try {
-              await deleteAccountMutation.mutateAsync();
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              router.replace("/login");
-            } catch (error) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert(t("common.error"), t("profile.deleteAccountError"));
-            } finally {
-              setIsDeletingAccount(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const handleLogout = () => {
     if (logoutPromptOpenRef.current) return;
     logoutPromptOpenRef.current = true;
@@ -175,9 +135,14 @@ export default function ProfileScreen() {
     );
   }
 
-  // Display name: use Apple name if available, otherwise extract from email, fallback to "Reader"
-  const displayName = user.name || t("profile.reader");
-  const initial = (user.name?.charAt(0) || user.email?.charAt(0) || "?").toUpperCase();
+  // Apple ad vermediyse (yaygın — kullanıcı "Bu bilgiyi gizle" dediyse) header
+  // "İsim ekle" CTA'sı gösterir; tap ile edit-name ekranına git. İsim varsa
+  // Apple'dan gelen tam ad.
+  const hasName = !!user.name?.trim();
+  const displayName = user.name?.trim() || t("profile.nameAdd");
+  const initial = hasName
+    ? user.name!.trim().charAt(0).toUpperCase()
+    : (user.email?.charAt(0) || "?").toUpperCase();
 
   return (
     <ScreenContainer>
@@ -189,11 +154,19 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* User Card */}
-        <View
-          style={{
+        {/* Identity card — tap to edit name */}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/profile/edit-name");
+          }}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={hasName ? user.name! : t("profile.nameAdd")}
+          accessibilityHint={t("profile.editProfileHint")}
+          style={({ pressed }) => ({
             marginHorizontal: 24,
-            marginBottom: 32,
+            marginBottom: 12,
             paddingVertical: 16,
             paddingHorizontal: 16,
             backgroundColor: colors.surface,
@@ -203,7 +176,8 @@ export default function ProfileScreen() {
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
-          }}
+            opacity: pressed ? 0.6 : 1,
+          })}
         >
           <View
             style={{
@@ -220,7 +194,15 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 4 }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "600",
+                color: hasName ? colors.foreground : colors.muted,
+                marginBottom: isPremium ? 6 : 0,
+              }}
+              numberOfLines={1}
+            >
               {displayName}
             </Text>
             {isPremium && (
@@ -234,15 +216,44 @@ export default function ProfileScreen() {
                 }}
               >
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accent }}>
-                  Premium
+                  {t("profile.premium")}
                 </Text>
               </View>
             )}
-            <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>
-              {t("profile.bookCountSummary", { count: bookCount })} · {t("profile.momentCountSummary", { count: momentCount })}
-            </Text>
           </View>
-        </View>
+          <Text style={{ fontSize: 20, color: colors.muted, marginLeft: 4 }}>›</Text>
+        </Pressable>
+
+        {/* Library stats — tap to jump to Kitaplarım */}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/(tabs)");
+          }}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={`${t("profile.bookCountSummary", { count: bookCount })}, ${t("profile.momentCountSummary", { count: momentCount })}`}
+          accessibilityHint={t("profile.viewLibraryHint")}
+          style={({ pressed }) => ({
+            marginHorizontal: 24,
+            marginBottom: 32,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            borderWidth: 0.5,
+            borderColor: colors.border,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 15, color: colors.foreground }}>
+            {t("profile.bookCountSummary", { count: bookCount })} · {t("profile.momentCountSummary", { count: momentCount })}
+          </Text>
+          <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
+        </Pressable>
 
         {/* Settings Section */}
         <View style={{ marginHorizontal: 24, marginBottom: 24 }}>
@@ -380,11 +391,11 @@ export default function ProfileScreen() {
               accessibilityLabel={a11y.logout.label}
               accessibilityHint={a11y.logout.hint}
             >
-              <Text style={{ fontSize: 16, color: colors.error }}>
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
                 {t("auth.signOut")}
               </Text>
               {isLoggingOut ? (
-                <ActivityIndicator size="small" color={colors.error} />
+                <ActivityIndicator size="small" color={colors.muted} />
               ) : (
                 <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
               )}
@@ -421,10 +432,14 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
             </Pressable>
 
-            {/* Delete Account Row */}
+            {/* Account Row — Hesabı Sil buradan çıkarıldı; ayrı bir "Hesap"
+                sayfasında danger-zone olarak yaşıyor. Kullanıcı yanlışlıkla
+                hesabını silmesin. */}
             <Pressable
-              onPress={handleDeleteAccount}
-              disabled={isDeletingAccount}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/profile/account");
+              }}
               style={({ pressed }) => [
                 {
                   paddingHorizontal: 16,
@@ -432,22 +447,17 @@ export default function ProfileScreen() {
                   flexDirection: "row",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  opacity: pressed || isDeletingAccount ? 0.6 : 1,
+                  opacity: pressed ? 0.6 : 1,
                 },
               ]}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={t("profile.deleteAccount")}
-              accessibilityHint={t("profile.deleteAccountHint")}
+              accessibilityLabel={t("profile.account")}
             >
-              <Text style={{ fontSize: 16, color: colors.error, opacity: 0.7 }}>
-                {t("profile.deleteAccount")}
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                {t("profile.account")}
               </Text>
-              {isDeletingAccount ? (
-                <ActivityIndicator size="small" color={colors.error} />
-              ) : (
-                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
-              )}
+              <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
             </Pressable>
           </View>
         </View>

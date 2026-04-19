@@ -30,6 +30,7 @@ function getClient(): S3Client {
   });
 }
 import { invokeLLM } from "./_core/llm";
+import { isUserPremium } from "./_core/premium";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -53,6 +54,33 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  // ============================================
+  // PROFILE
+  // ============================================
+  profile: router({
+    /**
+     * Kullanıcının adını güncelle.
+     *
+     * Apple Sign-In `fullName`'i yalnızca ilk girişte verir. Kullanıcı ilk
+     * girişte isim paylaşmayı reddettiyse ya da sonra değiştirmek istiyorsa
+     * tek yol bu endpoint. Client'ta `app/profile/edit-name.tsx` çağırıyor;
+     * başarıdan sonra `auth.me` query'si invalidate edilir.
+     *
+     * 60 karakter sınırı: DB sütunu text olsa da UI tek satır avatarla kart
+     * içinde render ediliyor; daha uzun değerler görsel hasara yol açıyor.
+     */
+    updateName: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(60),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUser(ctx.user.id, { name: input.name });
+        return { success: true, name: input.name } as const;
+      }),
   }),
 
   // ============================================
@@ -382,8 +410,8 @@ export const appRouter = router({
     generateNote: ocrLimitedProcedure
       .input(z.object({ ocrText: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        // Premium kontrolü
-        if (ctx.user.isPremium !== 1) {
+        // Premium kontrolü — DB flag VEYA allowlist (test email) premium sayar.
+        if (!isUserPremium(ctx.user)) {
           throw new Error("This feature requires premium subscription");
         }
 
@@ -533,9 +561,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Premium gate — machine-readable code so the client can branch
-        // on premium vs. unexpected failure.
-        if (ctx.user.isPremium !== 1) {
+        // Premium gate — DB flag VEYA test allowlist. Machine-readable code
+        // so the client can branch on premium vs. unexpected failure.
+        if (!isUserPremium(ctx.user)) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "PREMIUM_REQUIRED",
@@ -665,9 +693,12 @@ ${dateLabel}: ${m.createdAt}
      */
     status: protectedProcedure.query(async ({ ctx }) => {
       const user = await db.getUserById(ctx.user.id);
+      // Allowlist'i burada da uygula ki UI premium yetenekleri açsın —
+      // aksi halde client "free" görür, premium ekrana yönlendirir.
+      const resolved = user ?? ctx.user;
       return {
-        isPremium: (user?.isPremium ?? 0) === 1,
-        openId: user?.openId ?? ctx.user.openId,
+        isPremium: isUserPremium(resolved),
+        openId: resolved.openId,
       };
     }),
 
