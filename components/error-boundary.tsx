@@ -49,12 +49,22 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         return this.props.fallback;
       }
 
+      const err = this.state.error;
+      const errMsg = err?.message ?? String(err);
+      const errStack = err?.stack ?? "(no stack)";
       return (
         <View style={styles.container}>
           <Text style={styles.title}>Bir şeyler yanlış gitti</Text>
           <Text style={styles.subtitle}>
             Bu sorun otomatik olarak raporlandı.
           </Text>
+          {/* TEMP: surface the real error so we can diagnose post-login crash */}
+          <View style={styles.debugBox}>
+            <Text style={styles.debugLabel}>Error:</Text>
+            <Text style={styles.debugText} selectable>{errMsg}</Text>
+            <Text style={[styles.debugLabel, { marginTop: 8 }]}>Stack (first 500 chars):</Text>
+            <Text style={styles.debugText} selectable>{errStack.slice(0, 500)}</Text>
+          </View>
           <Pressable
             onPress={this.handleReset}
             style={({ pressed }) => [styles.button, pressed && { opacity: 0.7 }]}
@@ -103,5 +113,23 @@ const styles = StyleSheet.create({
     color: "#FFFDF7",
     fontSize: 15,
     fontWeight: "600",
+  },
+  debugBox: {
+    backgroundColor: "#F5F0E8",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    width: "100%",
+    maxHeight: 300,
+  },
+  debugLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#6B6560",
+  },
+  debugText: {
+    fontSize: 11,
+    fontFamily: "Menlo",
+    color: "#2D2A26",
   },
 });
