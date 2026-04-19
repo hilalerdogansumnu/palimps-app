@@ -30,6 +30,7 @@ import { router, useSegments } from "expo-router";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { OnboardingScreens } from "@/components/onboarding-screens";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { useColors } from "@/hooks/use-colors";
 import { View, ActivityIndicator } from "react-native";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -43,6 +44,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, user } = useAuth();
   const segments = useSegments();
   const { isOnboardingCompleted, isLoading: onboardingLoading, completeOnboarding } = useOnboarding();
+  const colors = useColors();
 
   // Tie the RevenueCat customer record to our internal openId so the
   // webhook can flip the premium flag when Apple confirms the purchase.
@@ -69,11 +71,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, loading, segments]);
 
-  // Show loading while checking onboarding status
+  // Show loading while checking onboarding status.
+  // Use themed colors so dark-mode users don't see a white flash on cold start.
   if (onboardingLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
-        <ActivityIndicator size="large" color="#0a7ea4" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

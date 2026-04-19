@@ -37,6 +37,7 @@
     "yearsAgo": "{{count}} yıl önce"
   },
   "bookDetail": {
+    "title": "Kitap",
     "moments": "Anlar",
     "noMomentsYet": "Henüz an yok",
     "addFirstMoment": "İlk anınızı ekleyin",
@@ -85,7 +86,9 @@
     "titleEmpty": "Kitap adı boş olamaz.",
     "permissionRequired": "İzin Gerekli",
     "galleryPermission": "Fotoğraf seçmek için galeri erişim izni gereklidir.",
-    "cameraPermission": "Fotoğraf çekmek için kamera erişim izni gereklidir."
+    "cameraPermission": "Fotoğraf çekmek için kamera erişim izni gereklidir.",
+    "coverUploadFailedTitle": "Kapak yüklenemedi",
+    "coverUploadFailedMessage": "Kitap kaydedildi ama kapak fotoğrafı yüklenemedi. Daha sonra kitap sayfasından ekleyebilirsin."
   },
   "addMoment": {
     "title": "Yeni An",
@@ -159,7 +162,9 @@
     "deleteAccountHint": "Tüm verilerinizi kalıcı olarak siler",
     "deleteAccountConfirmTitle": "Hesabı Sil",
     "deleteAccountConfirmMessage": "Tüm kitaplarınız, okuma anlarınız ve verileriniz kalıcı olarak silinecek. Bu işlem geri alınamaz.",
-    "deleteAccountError": "Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin."
+    "deleteAccountError": "Hesap silinirken bir hata oluştu. Lütfen tekrar deneyin.",
+    "privacyPolicy": "Gizlilik Politikası",
+    "privacyPolicyHint": "Gizlilik politikası sayfasını açar"
   },
   "subscription": {
     "management": "Abonelik Yönetimi",
@@ -250,6 +255,8 @@
     "dailyPushBody": "Bugün bir an kaydetmeyi unuttun. Kitabın seni bekliyor.",
     "weeklyPushTitle": "Haftalık okuma özeti",
     "weeklyPushBody": "Bu hafta kaç an yakaladın? Bak bakalım.",
+    "streakPushTitle": "Serin kırılmak üzere",
+    "streakPushBody": "Bugün henüz bir an kaydetmedin. Serini koru.",
     "days": { "sun": "Paz", "mon": "Pzt", "tue": "Sal", "wed": "Çar", "thu": "Per", "fri": "Cum", "sat": "Cmt" },
     "a11y": {
       "hourDecrease": "Saati azalt",

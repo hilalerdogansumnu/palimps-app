@@ -114,7 +114,7 @@ export default function PremiumScreen() {
               </Text>
             </View>
             <Text style={{ fontSize: 16, color: colors.muted, marginBottom: 16 }}>
-              Okuma hafızanızın tüm gücünü açığa çıkarın
+              {t("premium.subtitle")}
             </Text>
           </View>
 
@@ -251,7 +251,7 @@ export default function PremiumScreen() {
                   style={{ paddingVertical: 12 }}
                 >
                   <Text style={{ fontSize: 13, color: colors.primary, textAlign: "center" }}>
-                    Önceki satın almayı geri yükle
+                    {t("premium.restorePurchase")}
                   </Text>
                 </TouchableOpacity>
               )}

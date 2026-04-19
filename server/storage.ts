@@ -46,7 +46,7 @@ function normalizeKey(relKey: string): string {
   return relKey.replace(/^\/+/, "");
 }
 
-function buildPublicUrl(key: string): string {
+export function buildPublicUrl(key: string): string {
   if (!ENV.r2PublicBaseUrl) {
     throw new Error(
       "R2_PUBLIC_BASE_URL is not configured. Set it to the public URL prefix of your R2 bucket " +

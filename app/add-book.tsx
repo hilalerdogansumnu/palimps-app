@@ -12,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { storePhoto } from "@/lib/photo-storage";
+import { captureException } from "@/lib/_core/sentry";
 
 export default function AddBookScreen() {
   const colors = useColors();
@@ -23,16 +24,10 @@ export default function AddBookScreen() {
 
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
 
-  const createBookMutation = trpc.books.create.useMutation({
-    onSuccess: (newBook) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace(`/book/${newBook.id}` as any);
-    },
-    onError: (error) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(t("addBook.error"), error.message || t("addBook.createError"));
-    },
-  });
+  // onSuccess/onError moved to handleSubmit so we can sequence the
+  // "cover didn't upload" warning BEFORE navigating — otherwise the alert
+  // would pop up on the book detail screen, which is disorienting.
+  const createBookMutation = trpc.books.create.useMutation();
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -77,6 +72,7 @@ export default function AddBookScreen() {
     setIsSubmitting(true);
     try {
       let coverImageUrl: string | undefined;
+      let coverUploadFailed = false;
 
       // Fotoğraf varsa: yerel işle + presigned URL ile S3'e yükle
       if (coverImageUri) {
@@ -84,8 +80,8 @@ export default function AddBookScreen() {
           // 1. Yerel olarak işle (resize + compress)
           const stored = await storePhoto(coverImageUri, "cover");
 
-          // 2. Presigned URL al
-          const { presignedUrl, key } = await getPresignedUrlMutation.mutateAsync({
+          // 2. Presigned URL al — sunucu uploadedPublicUrl'i de dönüyor
+          const { presignedUrl, publicUrl } = await getPresignedUrlMutation.mutateAsync({
             fileName: "cover.jpg",
             fileType: "image/jpeg",
             fileSize: 500_000, // ~500KB tahmini
@@ -94,26 +90,56 @@ export default function AddBookScreen() {
           // 3. S3'e yükle (fetch PUT)
           const fileContent = await fetch(stored.fullPath);
           const blob = await fileContent.blob();
-          await fetch(presignedUrl, {
+          const uploadRes = await fetch(presignedUrl, {
             method: "PUT",
             body: blob,
             headers: { "Content-Type": "image/jpeg" },
           });
+          if (!uploadRes.ok) {
+            throw new Error(`UPLOAD_HTTP_${uploadRes.status}`);
+          }
 
-          // 4. Public URL oluştur (key'den)
-          const r2PublicBase = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
-          coverImageUrl = r2PublicBase ? `${r2PublicBase}/${key}` : undefined;
+          // 4. Sunucunun verdiği public URL'i kullan (istemci artık R2 base'i bilmiyor)
+          coverImageUrl = publicUrl;
         } catch (uploadError) {
-          console.warn("[AddBook] Presigned upload failed, skipping cover:", uploadError);
-          // Upload başarısız olsa bile kitabı kaydet (kapaksız)
+          // Kapak upload fail oldu: kullanıcıya söyleyeceğiz ama kitabı yine kaydedeceğiz.
+          // Sessizce yutmayalım — Sentry'e logla ki upload regression'ı tespit edebilelim.
+          coverUploadFailed = true;
+          captureException(
+            uploadError instanceof Error ? uploadError : new Error(String(uploadError)),
+            { operation: "addBook.coverUpload", hasUri: String(!!coverImageUri) },
+          );
         }
       }
 
-      await createBookMutation.mutateAsync({
-        title: title.trim(),
-        author: author.trim() || undefined,
-        ...(coverImageUrl ? { coverImageUrl } : {}),
-      });
+      let newBook;
+      try {
+        newBook = await createBookMutation.mutateAsync({
+          title: title.trim(),
+          author: author.trim() || undefined,
+          ...(coverImageUrl ? { coverImageUrl } : {}),
+        });
+      } catch (createError: any) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(t("addBook.error"), createError?.message || t("addBook.createError"));
+        return;
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Navigate now — eğer kapak yüklenemediyse uyarıyı navigasyondan sonra
+      // detay sayfasında göster. Bu sayede kullanıcı kitabını görür + sorunu fark eder.
+      router.replace(`/book/${newBook.id}` as any);
+
+      if (coverUploadFailed) {
+        // Biraz bekleyerek alert'i stack'e koy — Expo Router transition ile çakışmasın.
+        setTimeout(() => {
+          Alert.alert(
+            t("addBook.coverUploadFailedTitle"),
+            t("addBook.coverUploadFailedMessage"),
+          );
+        }, 400);
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -22,7 +22,7 @@ type Message = {
 
 export default function ChatScreen() {
   const colors = useColors();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
 
@@ -59,7 +59,9 @@ export default function ChatScreen() {
     }
 
     try {
-      const response = await sendMutation.mutateAsync({ message: textToSend });
+      // Server uses this to pick reply language + translate data labels.
+      const locale = i18n.language?.startsWith("en") ? "en" : "tr";
+      const response = await sendMutation.mutateAsync({ message: textToSend, locale });
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -255,7 +257,7 @@ export default function ChatScreen() {
         {/* Header */}
         <View style={{ paddingVertical: 16, alignItems: "center" }}>
           <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
-            Asistan
+            {t("chat.title")}
           </Text>
         </View>
 
@@ -264,7 +266,7 @@ export default function ChatScreen() {
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: 12 }}><Text style={{ fontSize: 32 }}>◻</Text></View>
             <Text style={{ fontSize: 16, fontWeight: "500", color: colors.muted, textAlign: "center", marginBottom: 24 }}>
-              Okuma verileriniz hakkında sorular sorun
+              {t("chat.subtitle")}
             </Text>
 
             {/* Quick Reply Chips — 2x2 Grid */}

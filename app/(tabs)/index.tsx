@@ -203,7 +203,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View className="pt-8 pb-6">
           <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground, marginBottom: 24 }}>
-            Kitaplarım
+            {t("home.title")}
           </Text>
         </View>
 
@@ -237,10 +237,10 @@ export default function HomeScreen() {
             <MaterialIcons name="menu-book" size={36} color={colors.muted} />
           </View>
           <Text style={{ fontSize: 16, color: colors.muted, marginBottom: 8, textAlign: "center" }}>
-            Henüz kitap yok
+            {t("home.emptyState")}
           </Text>
           <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", marginBottom: 24 }}>
-            Okuma yolculuğunuza başlayın
+            {t("home.emptyStateDesc")}
           </Text>
           <Pressable
             onPress={handleAddBook}
@@ -259,7 +259,7 @@ export default function HomeScreen() {
             accessibilityHint={a11y.addBook.hint}
           >
             <Text style={{ fontSize: 16, color: "white", fontWeight: "600" }}>
-              İlk Kitabınızı Ekleyin
+              {t("home.emptyStateAction")}
             </Text>
           </Pressable>
         </View>
@@ -321,7 +321,7 @@ export default function HomeScreen() {
       {/* Header - iOS Large Title Style */}
       <View style={{ paddingTop: 16, paddingBottom: 12 }}>
         <Text style={{ fontSize: 28, fontWeight: "700", color: colors.foreground }}>
-          Kitaplarım
+          {t("home.title")}
         </Text>
       </View>
 
@@ -517,6 +517,9 @@ export default function HomeScreen() {
             <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable
                 onPress={() => setBookToDelete(null)}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("common.cancel")}
                 style={({ pressed }) => [
                   {
                     flex: 1,
@@ -536,12 +539,16 @@ export default function HomeScreen() {
               <Pressable
                 onPress={handleDeleteBook}
                 disabled={deleteBookMutation.isPending}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("common.delete")}
+                accessibilityState={{ disabled: deleteBookMutation.isPending, busy: deleteBookMutation.isPending }}
                 style={({ pressed }) => [
                   {
                     flex: 1,
                     paddingVertical: 12,
                     borderRadius: 8,
-                    backgroundColor: "#EF4444",
+                    backgroundColor: colors.error,
                     opacity: pressed || deleteBookMutation.isPending ? 0.6 : 1,
                   },
                 ]}

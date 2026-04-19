@@ -37,6 +37,7 @@
     "yearsAgo": "{{count}} years ago"
   },
   "bookDetail": {
+    "title": "Book",
     "moments": "Moments",
     "noMomentsYet": "No moments yet",
     "addFirstMoment": "Add your first moment",
@@ -85,7 +86,9 @@
     "titleEmpty": "Book title cannot be empty.",
     "permissionRequired": "Permission Required",
     "galleryPermission": "Gallery access permission is required to select a photo.",
-    "cameraPermission": "Camera access permission is required to take a photo."
+    "cameraPermission": "Camera access permission is required to take a photo.",
+    "coverUploadFailedTitle": "Cover didn't upload",
+    "coverUploadFailedMessage": "Your book was saved, but the cover photo couldn't be uploaded. You can add a cover later from the book page."
   },
   "addMoment": {
     "title": "New Moment",
@@ -159,7 +162,9 @@
     "deleteAccountHint": "Permanently deletes all of your data",
     "deleteAccountConfirmTitle": "Delete Account",
     "deleteAccountConfirmMessage": "All your books, reading moments, and data will be permanently deleted. This action cannot be undone.",
-    "deleteAccountError": "Couldn't delete your account. Please try again."
+    "deleteAccountError": "Couldn't delete your account. Please try again.",
+    "privacyPolicy": "Privacy Policy",
+    "privacyPolicyHint": "Opens the privacy policy page"
   },
   "subscription": {
     "management": "Subscription Management",
@@ -250,6 +255,8 @@
     "dailyPushBody": "You haven't saved a moment today. Your book is waiting.",
     "weeklyPushTitle": "Weekly reading summary",
     "weeklyPushBody": "How many moments did you catch this week? Let's see.",
+    "streakPushTitle": "Your streak is about to break",
+    "streakPushBody": "You haven't saved a moment today. Keep your streak alive.",
     "days": { "sun": "Sun", "mon": "Mon", "tue": "Tue", "wed": "Wed", "thu": "Thu", "fri": "Fri", "sat": "Sat" },
     "a11y": {
       "hourDecrease": "Decrease hour",

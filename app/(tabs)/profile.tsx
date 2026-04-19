@@ -412,11 +412,11 @@ export default function ProfileScreen() {
               ]}
               accessible={true}
               accessibilityRole="link"
-              accessibilityLabel="Gizlilik Politikası"
-              accessibilityHint="Gizlilik politikası sayfasını açar"
+              accessibilityLabel={t("profile.privacyPolicy")}
+              accessibilityHint={t("profile.privacyPolicyHint")}
             >
               <Text style={{ fontSize: 16, color: colors.foreground }}>
-                Gizlilik Politikası
+                {t("profile.privacyPolicy")}
               </Text>
               <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
             </Pressable>

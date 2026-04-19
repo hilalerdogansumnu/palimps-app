@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
@@ -44,11 +45,14 @@ async function scheduleStreakAlert(): Promise<void> {
 
     // Schedule 22 hours from now
     const trigger = new Date(Date.now() + 22 * 60 * 60 * 1000);
+    // Use i18n.t() (not the hook) so this function stays usable outside
+    // React render context. Locale is whatever the user has active when
+    // the moment is saved — push copy matches UI language.
     await Notifications.scheduleNotificationAsync({
       identifier: NOTIF_STREAK_ALERT,
       content: {
-        title: "Serin kırmak üzeresin",
-        body: "Bugün henüz bir an kaydetmedin. Serinini koru.",
+        title: i18n.t("notifications.streakPushTitle"),
+        body: i18n.t("notifications.streakPushBody"),
         sound: false,
       },
       trigger: {
@@ -196,7 +200,6 @@ export default function AddMomentScreen() {
     else if (err.message.startsWith("UPLOAD_HTTP_4")) messageKey = "errors.uploadBadRequest";
     else if (err.message.startsWith("UPLOAD_HTTP_5")) messageKey = "errors.serverError";
     else if (err.message === "PRESIGN_FAILED") messageKey = "errors.serverError";
-    else if (err.message === "R2_CONFIG_MISSING") messageKey = "errors.configError";
 
     captureException(err, {
       operation: "addMoment.handleSubmit",
@@ -228,7 +231,7 @@ export default function AddMomentScreen() {
 
       // 2. Presigned URL al
       phase = "presign";
-      let presigned: { presignedUrl: string; key: string };
+      let presigned: { presignedUrl: string; key: string; publicUrl: string };
       try {
         presigned = await getPresignedUrlMutation.mutateAsync({
           fileName: "page.jpg",
@@ -242,7 +245,7 @@ export default function AddMomentScreen() {
         (e as any).cause = err;
         throw e;
       }
-      const { presignedUrl, key } = presigned;
+      const { presignedUrl, publicUrl: uploadedPageImageUrl } = presigned;
 
       // 3. R2'ye yükle — AbortController ile 30s timeout
       phase = "r2Put";
@@ -274,13 +277,6 @@ export default function AddMomentScreen() {
       if (!uploadResponse.ok) {
         throw new Error(`UPLOAD_HTTP_${uploadResponse.status}`);
       }
-
-      phase = "r2Url";
-      const r2PublicBase = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
-      if (!r2PublicBase) {
-        throw new Error("R2_CONFIG_MISSING");
-      }
-      const uploadedPageImageUrl = `${r2PublicBase}/${key}`;
 
       // 4. Create moment (server-side OCR runs inside this mutation)
       phase = "createMoment";

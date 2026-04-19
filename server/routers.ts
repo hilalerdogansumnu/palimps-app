@@ -5,7 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { storagePut } from "./storage";
+import { buildPublicUrl, storagePut } from "./storage";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
@@ -206,7 +206,12 @@ export const appRouter = router({
           { expiresIn: 3600 } // 1 hour
         );
 
-        return { presignedUrl, key };
+        // Server-side public URL — client no longer needs to know the R2 base.
+        // If R2_PUBLIC_BASE_URL isn't configured, fail fast here (with a clear
+        // server error) rather than letting the client build a broken URL.
+        const publicUrl = buildPublicUrl(key);
+
+        return { presignedUrl, key, publicUrl };
       }),
   }),
 
@@ -508,6 +513,9 @@ export const appRouter = router({
       .input(
         z.object({
           message: z.string().min(1).max(2000),
+          // Client sends the active UI language so the assistant replies in
+          // the user's language. Defaults to "tr" — primary market.
+          locale: z.enum(["tr", "en"]).optional().default("tr"),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -520,6 +528,8 @@ export const appRouter = router({
           });
         }
 
+        const locale = input.locale;
+
         // Kullanıcının tüm kitaplarını ve okuma anlarını al
         const books = await db.getUserBooks(ctx.user.id);
         const allMoments = await Promise.all(
@@ -527,27 +537,46 @@ export const appRouter = router({
         );
         const moments = allMoments.flat();
 
-        // Kullanıcı verilerini context olarak hazırla
-        const userContext = `
-Kullanıcının Okuma Verileri:
+        // Kullanıcı verilerini context olarak hazırla — data labels EN even for
+        // TR users; model interprets them either way. Only prose switches on locale.
+        const header = locale === "en" ? "User's Reading Data" : "Kullanıcının Okuma Verileri";
+        const booksLabel = locale === "en" ? "Books" : "Kitaplar";
+        const momentsLabel = locale === "en" ? "Reading Moments" : "Okuma Anları";
+        const countSuffix = locale === "en" ? "" : " adet";
+        const unknownBook = locale === "en" ? "Unknown" : "Bilinmeyen";
+        const ocrLabel = locale === "en" ? "OCR Text" : "OCR Metni";
+        const noteLabel = locale === "en" ? "Note" : "Kullanıcı Notu";
+        const dateLabel = locale === "en" ? "Date" : "Tarih";
+        const none = locale === "en" ? "None" : "Yok";
+        const bookTag = locale === "en" ? "Book" : "Kitap";
 
-Kitaplar (${books.length} adet):
+        const userContext = `
+${header}:
+
+${booksLabel} (${books.length}${countSuffix}):
 ${books.map((b) => `- "${b.title}" ${b.author ? `by ${b.author}` : ""}`).join("\n")}
 
-Okuma Anları (${moments.length} adet):
+${momentsLabel} (${moments.length}${countSuffix}):
 ${moments
   .slice(0, 50) // Son 50 okuma anı
   .map((m) => {
     const book = books.find((b) => b.id === m.bookId);
     return `
-[Kitap: ${book?.title || "Bilinmeyen"}]
-OCR Metni: ${m.ocrText || "Yok"}
-Kullanıcı Notu: ${m.userNote || "Yok"}
-Tarih: ${m.createdAt}
+[${bookTag}: ${book?.title || unknownBook}]
+${ocrLabel}: ${m.ocrText || none}
+${noteLabel}: ${m.userNote || none}
+${dateLabel}: ${m.createdAt}
 `;
   })
   .join("\n---\n")}
 `;
+
+        // System prompt switches on the user's UI locale so the model's
+        // reply language matches what the user reads in the app.
+        const systemPrompt =
+          locale === "en"
+            ? `You are a reading assistant. You answer the user's questions about the books they read and the reading moments they capture. You can analyze their data, produce summaries, and make recommendations. Reply in English.${userContext}`
+            : `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`;
 
         // LLM'e gönder — wrap to surface actionable error codes instead of
         // leaking stack traces to the client.
@@ -555,14 +584,8 @@ Tarih: ${m.createdAt}
         try {
           response = await invokeLLM({
             messages: [
-              {
-                role: "system",
-                content: `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`,
-              },
-              {
-                role: "user",
-                content: input.message,
-              },
+              { role: "system", content: systemPrompt },
+              { role: "user", content: input.message },
             ],
           });
         } catch (err) {

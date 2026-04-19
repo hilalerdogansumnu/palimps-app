@@ -71,7 +71,17 @@ async function startServer() {
   registerRevenueCatRoutes(app);
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, timestamp: Date.now() });
+    // Minimal config sanity signal — just booleans, NEVER the actual keys.
+    // Lets us curl the live server and confirm whether the LLM path is
+    // wired before chasing "chat is broken" from the client side.
+    res.json({
+      ok: true,
+      timestamp: Date.now(),
+      config: {
+        gemini: Boolean(process.env.GEMINI_API_KEY),
+        r2: Boolean(process.env.R2_PUBLIC_BASE_URL && process.env.R2_ACCESS_KEY_ID),
+      },
+    });
   });
 
   app.use(
