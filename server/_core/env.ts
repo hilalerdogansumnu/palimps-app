@@ -74,8 +74,16 @@ export const ENV = {
   //
   // Production note: keep this list TIGHT — every address here skips the paywall.
   // Remove pre-launch or keep to internal @palimps domain only.
+  //
+  // Aliases: PREMIUM_TEST_EMAILS is canonical; PREMIUM_USER_EMAILS is accepted
+  // as a fallback because the 50320 Railway config used the shorter name — we
+  // don't want a variable-name typo to silently disable the allowlist.
   // ─────────────────────────────────────────────────────────────────────────
-  premiumTestEmails: (process.env.PREMIUM_TEST_EMAILS ?? "")
+  premiumTestEmails: (
+    process.env.PREMIUM_TEST_EMAILS ??
+    process.env.PREMIUM_USER_EMAILS ??
+    ""
+  )
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),

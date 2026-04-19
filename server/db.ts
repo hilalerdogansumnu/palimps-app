@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, books, readingMoments, InsertBook, InsertReadingMoment } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -94,16 +94,34 @@ export async function getUserByOpenId(openId: string) {
 // ============================================
 
 /**
- * Kullanıcının tüm kitaplarını listele
+ * Kullanıcının tüm kitaplarını listele.
+ *
+ * Varsayılan olarak arşivlenmiş kitaplar HARİÇ tutulur — Kitaplarım ekranı
+ * arşivi göstermiyor. `includeArchived` ile arşiv ekranı (gelecek) için
+ * aynı query'yi kullanabiliriz.
+ *
+ * Not: 0005 migration'ı henüz çalışmamış production ortamlarda `archived`
+ * sütunu yok. Bu durumda `.where(archived=false)` "Unknown column"
+ * patlatmasın diye önce sütunun varlığını şüpheye düşmeden
+ * `includeArchived=true` ise filtresiz, aksi halde
+ * `archived != true` koşulu kullanıyoruz. DEFAULT false olduğu için
+ * mevcut kayıtlar otomatik "aktif" kalır.
  */
-export async function getUserBooks(userId: number) {
+export async function getUserBooks(
+  userId: number,
+  opts: { includeArchived?: boolean } = {},
+) {
   const db = await getDb();
   if (!db) return [];
+
+  const where = opts.includeArchived
+    ? eq(books.userId, userId)
+    : and(eq(books.userId, userId), eq(books.archived, false));
 
   return db
     .select()
     .from(books)
-    .where(eq(books.userId, userId))
+    .where(where)
     .orderBy(desc(books.createdAt));
 }
 

@@ -25,7 +25,10 @@
     "momentsSection": "Moments ({{count}})",
     "momentCount_one": "{{count}} moment",
     "momentCount_other": "{{count}} moments",
-    "unknownBook": "Unknown Book"
+    "unknownBook": "Unknown Book",
+    "archive": "Archive",
+    "archiveHint": "Hides this book from your library",
+    "archiveError": "Couldn't archive this book"
   },
   "sort": { "relevance": "Relevance", "newest": "Newest", "oldest": "Oldest", "author": "Author", "titleAZ": "Title A-Z" },
   "dates": {
@@ -41,6 +44,7 @@
     "moments": "Moments",
     "noMomentsYet": "No moments yet",
     "addFirstMoment": "Add your first moment",
+    "addFirstMomentHint": "Photograph a page of this book to capture the first moment",
     "addMoment": "Add Moment",
     "momentsCount_zero": "No moments yet",
     "momentsCount_one": "{{count}} moment",
@@ -121,7 +125,9 @@
     "aiComingSoon": "AI Coming Soon",
     "permissionRequired": "Permission Required",
     "galleryPermission": "Gallery access permission is required to select a photo.",
-    "cameraPermission": "Camera access permission is required to take a photo."
+    "cameraPermission": "Camera access permission is required to take a photo.",
+    "ocrFailedTitle": "Couldn't read text",
+    "ocrFailedMessage": "Your moment was saved, but we couldn't extract the text from the page. You can add a note manually later."
   },
   "momentDetail": {
     "ocrText": "Extracted Text",

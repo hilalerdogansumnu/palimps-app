@@ -36,7 +36,21 @@ export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    /**
+     * Current signed-in user. Client reads `isPremium` to render gated UI
+     * (assistant, AI note, etc.). We MUST resolve that flag through
+     * `isUserPremium` here — otherwise the allowlist (PREMIUM_TEST_EMAILS)
+     * never reaches the client and founder/QA accounts see the paywall
+     * despite being listed. 50320 kullanıcı raporu.
+     */
+    me: publicProcedure.query((opts) => {
+      const user = opts.ctx.user;
+      if (!user) return user;
+      return {
+        ...user,
+        isPremium: isUserPremium(user) ? 1 : 0,
+      };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -214,6 +228,33 @@ export const appRouter = router({
         await db.deleteBook(input.id);
         return { success: true };
       }),
+
+    /**
+     * Kitabı arşivle — Kitaplarım listesinden gizler ama DB'de saklar.
+     * Kullanıcı swipe-left ile "Arşivle" eylemini tetikleyince çağrılır.
+     * Geri yükleme için `unarchive` var; arşiv ekranı ileriki bir sürümde.
+     */
+    archive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
+        await db.updateBook(input.id, { archived: true });
+        return { success: true } as const;
+      }),
+
+    unarchive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const book = await db.getBookById(input.id);
+        if (!book || book.userId !== ctx.user.id) {
+          throw new Error("Book not found");
+        }
+        await db.updateBook(input.id, { archived: false });
+        return { success: true } as const;
+      }),
   }),
 
   // ============================================
@@ -331,54 +372,68 @@ export const appRouter = router({
         // 2. OCR işlemi (LLM ile) — ucuz flash-lite tier'ında çalışır (workload
         // routing). Full flash sadece asistan sohbeti için; sayfa OCR'ında
         // kalite farkı hissedilmiyor, maliyet ~20x düşüyor.
+        //
+        // 50320 bugfix: Gemini'ye HAM public URL yerine SIGNED URL geçiyoruz.
+        // R2 bucket public config sırasında propagation/cache/custom-domain
+        // hiccup'ları yaşadığımızda eski kitaplarda OCR çalışıp yenilerde
+        // çalışmama durumu oluşuyordu. Signed URL bucket public config'den
+        // bağımsız çalışır — intermittent failure kapanır.
+        //
+        // Ayrıca tek retry ekleniyor: ilk çağrı transient (network/rate/
+        // temporary model unavailability) hata verirse 1.5s sonra tekrar
+        // deneriz. İkinci başarısızlıkta sessizce metni null bırakırız
+        // (client onSuccess'te kullanıcıya "OCR yapılamadı" uyarısı gösterir).
         let ocrText: string | null = null;
-        try {
+        const ocrImageUrl = (await toDisplayUrl(pageImageUrl)) ?? pageImageUrl;
+        const ocrPrompt = [
+          "Bu kitap sayfasındaki metni OKUNABİLİR bir şekilde çıkar.",
+          "",
+          "KURALLAR:",
+          "1. Satır sonunda tire (-) ile bölünmüş kelimeleri BİRLEŞTİR. Örnek: 'di-\\nzim' → 'dizim'.",
+          "2. Paragraf içindeki satır sonlarını KALDIR — metni akıcı cümleler halinde yaz. Bir paragraf tek bir satırda akmalı.",
+          "3. Paragraflar arasına tek bir boş satır koy.",
+          "4. Noktalama işaretlerini, tırnakları ve diyalog tire'lerini (—) koru.",
+          "5. Üst/alt bilgi, sayfa numarası, bölüm başlığı ve kitap başlığını ATLA.",
+          "6. Çeviri yapma, yorum ekleme, '\"\"\"' veya benzer kod blokları kullanma.",
+          "",
+          "Sadece düzenlenmiş metni döndür, başka hiçbir şey ekleme.",
+        ].join("\n");
+
+        const runOcr = async (): Promise<string | null> => {
           const ocrResponse = await invokeLLM({
             model: ENV.geminiModelOcr,
             messages: [
               {
                 role: "user",
                 content: [
-                  {
-                    type: "text",
-                    // OCR prompt — sadece karakterleri değil, okunabilir bir
-                    // metin üretmesi için net kurallar veriyoruz.
-                    // Layout artefaktları (tire ile bölünmüş kelime, sol-blok
-                    // line wrap) 50319'da kullanıcı tarafından raporlandı.
-                    text: [
-                      "Bu kitap sayfasındaki metni OKUNABİLİR bir şekilde çıkar.",
-                      "",
-                      "KURALLAR:",
-                      "1. Satır sonunda tire (-) ile bölünmüş kelimeleri BİRLEŞTİR. Örnek: 'di-\\nzim' → 'dizim'.",
-                      "2. Paragraf içindeki satır sonlarını KALDIR — metni akıcı cümleler halinde yaz. Bir paragraf tek bir satırda akmalı.",
-                      "3. Paragraflar arasına tek bir boş satır koy.",
-                      "4. Noktalama işaretlerini, tırnakları ve diyalog tire'lerini (—) koru.",
-                      "5. Üst/alt bilgi, sayfa numarası, bölüm başlığı ve kitap başlığını ATLA.",
-                      "6. Çeviri yapma, yorum ekleme, '\"\"\"' veya benzer kod blokları kullanma.",
-                      "",
-                      "Sadece düzenlenmiş metni döndür, başka hiçbir şey ekleme.",
-                    ].join("\n"),
-                  },
+                  { type: "text", text: ocrPrompt },
                   {
                     type: "image_url",
-                    image_url: {
-                      url: pageImageUrl,
-                      detail: "high",
-                    },
+                    image_url: { url: ocrImageUrl, detail: "high" },
                   },
                 ],
               },
             ],
           });
-
           const firstChoice = ocrResponse.choices[0];
-          if (firstChoice && firstChoice.message) {
-            const content = firstChoice.message.content;
-            ocrText = typeof content === 'string' ? content : JSON.stringify(content);
-          }
+          if (!firstChoice || !firstChoice.message) return null;
+          const content = firstChoice.message.content;
+          const text = typeof content === "string" ? content : JSON.stringify(content);
+          return text && text.trim().length > 0 ? text : null;
+        };
+
+        try {
+          ocrText = await runOcr();
         } catch (error) {
-          console.error("OCR failed:", error);
-          // OCR başarısız olsa bile devam et
+          console.error("[OCR] first attempt failed:", error);
+          await new Promise((r) => setTimeout(r, 1500));
+          try {
+            ocrText = await runOcr();
+          } catch (retryError) {
+            console.error("[OCR] retry also failed:", retryError);
+            // OCR başarısız olsa bile devam et — client null ocrText görünce
+            // kullanıcıya bildirecek.
+          }
         }
 
         // 3. Okuma anını veritabanına kaydet

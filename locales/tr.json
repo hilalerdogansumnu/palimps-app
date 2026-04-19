@@ -25,7 +25,10 @@
     "momentsSection": "Anlar ({{count}})",
     "momentCount_one": "{{count}} an",
     "momentCount_other": "{{count}} an",
-    "unknownBook": "Bilinmeyen Kitap"
+    "unknownBook": "Bilinmeyen Kitap",
+    "archive": "Arşivle",
+    "archiveHint": "Bu kitabı Kitaplarım listesinden gizler",
+    "archiveError": "Kitap arşivlenemedi"
   },
   "sort": { "relevance": "İlgililik", "newest": "En Yeni", "oldest": "En Eski", "author": "Yazar", "titleAZ": "Başlık A-Z" },
   "dates": {
@@ -41,6 +44,7 @@
     "moments": "Anlar",
     "noMomentsYet": "Henüz an yok",
     "addFirstMoment": "İlk anınızı ekleyin",
+    "addFirstMomentHint": "Kitabın bir sayfasını fotoğraflayarak ilk anı oluştur",
     "addMoment": "An Ekle",
     "momentsCount_zero": "Henüz an yok",
     "momentsCount_one": "{{count}} an",
@@ -121,7 +125,9 @@
     "aiComingSoon": "AI Yakında",
     "permissionRequired": "İzin Gerekli",
     "galleryPermission": "Fotoğraf seçmek için galeri erişim izni gereklidir.",
-    "cameraPermission": "Fotoğraf çekmek için kamera erişim izni gereklidir."
+    "cameraPermission": "Fotoğraf çekmek için kamera erişim izni gereklidir.",
+    "ocrFailedTitle": "Metin çıkarılamadı",
+    "ocrFailedMessage": "An kaydedildi ama sayfadaki metin şu an okunamadı. Notunu sonra elle ekleyebilirsin."
   },
   "momentDetail": {
     "ocrText": "Çıkarılan Metin",

@@ -29,6 +29,7 @@ export default function AddBookScreen() {
   // CropModal freeform ve dikey kapaklara çok daha iyi uyuyor. (50319: user feedback)
   const [rawPickedUri, setRawPickedUri] = useState<string | null>(null);
 
+  const utils = trpc.useUtils();
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
 
   // onSuccess/onError moved to handleSubmit so we can sequence the
@@ -135,6 +136,11 @@ export default function AddBookScreen() {
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Kitaplarım listesini invalidate et ki geri döndüğünde yeni kitap
+      // EN ÜSTTE görünsün — aksi halde kullanıcı aşağı scroll etmek zorunda
+      // kalıyor. (50320 kullanıcı geri bildirimi.)
+      await utils.books.list.invalidate();
 
       // Navigate now — eğer kapak yüklenemediyse uyarıyı navigasyondan sonra
       // detay sayfasında göster. Bu sayede kullanıcı kitabını görür + sorunu fark eder.

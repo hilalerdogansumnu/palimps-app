@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -48,6 +48,12 @@ export const books = mysqlTable("books", {
   title: varchar("title", { length: 500 }).notNull(),
   author: varchar("author", { length: 255 }),
   coverImageUrl: text("coverImageUrl"), // S3 URL
+  /**
+   * Archived books are hidden from the default library list (swipe-to-archive
+   * flow). They're preserved in the DB so the user can restore them later
+   * from a dedicated "Arşiv" screen (roadmap).
+   */
+  archived: boolean("archived").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

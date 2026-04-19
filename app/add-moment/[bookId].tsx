@@ -84,15 +84,37 @@ export default function AddMomentScreen() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const { isPremium } = useSubscription();
 
+  const utils = trpc.useUtils();
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
 
   const createMomentMutation = trpc.readingMoments.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setOcrText(data.ocrText);
       setIsOcrComplete(true);
       // Streak alert: schedule a reminder 22 hours from now if user has streak alerts enabled
       scheduleStreakAlert();
+
+      // Cache invalidation — yeni an kitabın detay sayfasında anında
+      // görünsün diye listByBook'u bust et. Ayrıca kitabın ilk fotoğrafı
+      // auto-cover olarak set edildiyse getById + books.list de yenilensin;
+      // böylece kullanıcı geri döndüğünde kapak görülmüş olur. (50320 geri bildirim.)
+      await Promise.all([
+        utils.readingMoments.listByBook.invalidate({ bookId: bookIdNum }),
+        utils.books.getById.invalidate({ id: bookIdNum }),
+        utils.books.list.invalidate(),
+      ]);
+
+      // Eğer OCR başarısız olduysa kullanıcıya sessizce bildir — an kaydedildi
+      // ama metin çıkarılamadı. Alert yerine hafif bir uyarı çünkü an yine de
+      // photo + note ile değerli. Retry user'ın inisiyatifinde.
+      if (!data.ocrText || data.ocrText.trim().length === 0) {
+        Alert.alert(
+          t("addMoment.ocrFailedTitle"),
+          t("addMoment.ocrFailedMessage"),
+        );
+      }
+
       router.back();
     },
     // onError intentionally omitted: handleSubmit's try/catch routes failures

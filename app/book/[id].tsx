@@ -214,7 +214,10 @@ export default function BookDetailScreen() {
           </View>
         </View>
 
-        {/* Empty state */}
+        {/* Empty state — tek bir prominent CTA (iOS 2026 trend). FAB bu
+            ekranda yer almıyor; ilk an eklemek "first-run" bir aksiyon
+            olduğu için centered button çok daha davetkar. Populated listte
+            FAB'i koruyoruz çünkü oradaki aksiyon "repeat" (daha fazla ekle). */}
         <View className="flex-1 items-center justify-center">
           <Text className="text-base text-muted mb-8 text-center">
             {t("bookDetail.noMomentsYet")}
@@ -222,6 +225,10 @@ export default function BookDetailScreen() {
           <Pressable
             onPress={handleAddMoment}
             className="px-6 py-3 rounded-full"
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t("bookDetail.addFirstMoment")}
+            accessibilityHint={t("bookDetail.addFirstMomentHint")}
             style={({ pressed }) => [
               {
                 backgroundColor: colors.primary,
@@ -235,28 +242,6 @@ export default function BookDetailScreen() {
             </Text>
           </Pressable>
         </View>
-
-        {/* FAB */}
-        <Pressable
-          onPress={handleAddMoment}
-          style={({ pressed }) => [
-            {
-              position: "absolute",
-              bottom: 32,
-              right: 24,
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: colors.primary,
-              justifyContent: "center",
-              alignItems: "center",
-              opacity: pressed ? 0.8 : 1,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-            },
-          ]}
-        >
-          <Text className="text-2xl text-background">+</Text>
-        </Pressable>
         </View>
       </ScreenContainer>
     );

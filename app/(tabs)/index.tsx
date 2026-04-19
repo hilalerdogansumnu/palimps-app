@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert, RefreshControl } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert, RefreshControl, Animated } from "react-native";
+import { Swipeable, RectButton } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -71,6 +72,27 @@ export default function HomeScreen() {
       setBookToDelete(null);
     },
   });
+
+  const archiveBookMutation = trpc.books.archive.useMutation({
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      refetch();
+    },
+    onError: (error) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t("common.error"), error.message || t("home.archiveError"));
+    },
+  });
+
+  const handleArchiveBook = React.useCallback(
+    (bookId: number) => {
+      // Optimistic haptic önce, mutation arkada. Kullanıcı anlık "tamam"
+      // hissini alır — Supercell-tier "juice".
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      archiveBookMutation.mutate({ id: bookId });
+    },
+    [archiveBookMutation],
+  );
 
   const handleBookPress = (bookId: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -442,42 +464,115 @@ export default function HomeScreen() {
               tintColor={colors.muted}
             />
           }
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => handleBookPress(item.id)}
-              onLongPress={() => handleBookLongPress(item.id)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
-                {/* Cover image or placeholder */}
-                <BookCover uri={item.coverImageUrl} title={item.title} size="md" />
-                {/* Content */}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>
-                    {item.title}
-                  </Text>
-                  {item.author && (
-                    <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>
-                      {item.author}
+          renderItem={({ item }) => {
+            // iOS Mail / Notes'la aynı swipe-left pattern'i. Sola çekince
+            // amber "Arşivle" butonu açılır. Tam eşiğe çekilirse (onSwipeableOpen
+            // = "right") arşivleme otomatik tetiklenir; kısmi çekişte
+            // kullanıcı butona bastığında arşivlenir.
+            //
+            // Render fonksiyonu progress parametresiyle buton genişliğini
+            // anime etmeye izin veriyor — Animated.interpolate kullanıyoruz
+            // ki swipe mesafesiyle doğru orantılı büyüsün (Apple-native his).
+            const renderRightActions = (
+              _progress: Animated.AnimatedInterpolation<number>,
+              dragX: Animated.AnimatedInterpolation<number>,
+            ) => {
+              const translateX = dragX.interpolate({
+                inputRange: [-96, 0],
+                outputRange: [0, 96],
+                extrapolate: "clamp",
+              });
+              return (
+                <Animated.View
+                  style={{
+                    width: 96,
+                    transform: [{ translateX }],
+                    justifyContent: "center",
+                  }}
+                >
+                  <RectButton
+                    onPress={() => handleArchiveBook(item.id)}
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.accent,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 16,
+                    }}
+                  >
+                    <MaterialIcons name="archive" size={22} color="white" />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "white",
+                        fontWeight: "600",
+                        marginTop: 4,
+                      }}
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel={t("home.archive")}
+                      accessibilityHint={t("home.archiveHint")}
+                    >
+                      {t("home.archive")}
                     </Text>
-                  )}
-                  <Text style={{ fontSize: 13, color: colors.muted }}>
-                    {item.momentCount} an
-                  </Text>
-                </View>
-                {/* Chevron */}
-                <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
-              </View>
-              {/* Separator - inset from left */}
-              <View
-                style={{
-                  height: 0.5,
-                  backgroundColor: colors.border,
-                  marginLeft: 64,
+                  </RectButton>
+                </Animated.View>
+              );
+            };
+
+            return (
+              <Swipeable
+                ref={(ref) => {
+                  // Her satır kendi ref'ini kaydetmiyor; sadece açıkken
+                  // hangisi olduğunu takip ediyoruz (onSwipeableWillOpen).
+                  if (ref === null) return;
                 }}
-              />
-            </Pressable>
-          )}
+                friction={2}
+                rightThreshold={40}
+                renderRightActions={renderRightActions}
+                onSwipeableWillOpen={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Pressable
+                  onPress={() => handleBookPress(item.id)}
+                  onLongPress={() => handleBookLongPress(item.id)}
+                  style={({ pressed }) => [
+                    { opacity: pressed ? 0.6 : 1, backgroundColor: colors.background },
+                  ]}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 0 }}>
+                    {/* Cover image or placeholder */}
+                    <BookCover uri={item.coverImageUrl} title={item.title} size="md" />
+                    {/* Content */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>
+                        {item.title}
+                      </Text>
+                      {item.author && (
+                        <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>
+                          {item.author}
+                        </Text>
+                      )}
+                      <Text style={{ fontSize: 13, color: colors.muted }}>
+                        {item.momentCount} an
+                      </Text>
+                    </View>
+                    {/* Chevron */}
+                    <Text style={{ fontSize: 20, color: colors.muted }}>›</Text>
+                  </View>
+                  {/* Separator - inset from left */}
+                  <View
+                    style={{
+                      height: 0.5,
+                      backgroundColor: colors.border,
+                      marginLeft: 64,
+                    }}
+                  />
+                </Pressable>
+              </Swipeable>
+            );
+          }}
           ItemSeparatorComponent={() => <View />}
         />
       )}
