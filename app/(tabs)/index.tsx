@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
@@ -35,6 +35,23 @@ export default function HomeScreen() {
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [sortBy, setSortBy] = React.useState<SortOption>("date-newest");
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  /**
+   * Pull-to-refresh — kullanıcı listeyi aşağı çekerek manuel sync yapabilir.
+   * useQuery ayrıca mount'ta ve focus'ta otomatik yeniler; bu sadece "şu
+   * anda yeniden çek" demek için duruyor. Haptik feedback iOS native Mail'e
+   * benzer bir his veriyor.
+   */
+  const handleRefresh = React.useCallback(async () => {
+    setIsRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetch]);
 
   // Backend search API
   const { data: searchResults, isLoading: searchLoading } = trpc.search.all.useQuery(
@@ -418,6 +435,13 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.muted}
+            />
+          }
           renderItem={({ item }) => (
             <Pressable
               onPress={() => handleBookPress(item.id)}

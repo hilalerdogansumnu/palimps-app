@@ -9,6 +9,7 @@ import { a11y } from "@/lib/accessibility";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
+import { CropModal } from "@/components/crop-modal";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,6 +23,11 @@ export default function AddBookScreen() {
   const [author, setAuthor] = useState("");
   const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Picker → CropModal → coverImageUri. Kullanıcı picker'dan seçtiği ham
+  // fotoğrafı önce CropModal'da istediği gibi kırpıyor. iOS ImagePicker'ın
+  // `allowsEditing` seçimi 1:1 square'e kilitli ve kitap kapağı için kötü;
+  // CropModal freeform ve dikey kapaklara çok daha iyi uyuyor. (50319: user feedback)
+  const [rawPickedUri, setRawPickedUri] = useState<string | null>(null);
 
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
 
@@ -36,14 +42,14 @@ export default function AddBookScreen() {
       Alert.alert(t("addBook.permissionRequired"), t("addBook.galleryPermission"));
       return;
     }
+    // allowsEditing YOK — CropModal kullanıyoruz (aspect: [2,3] de kaldırıldı,
+    // freeform crop kullanıcıya daha çok kontrol veriyor).
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
+      quality: 0.9,
     });
     if (!result.canceled && result.assets[0].uri) {
-      setCoverImageUri(result.assets[0].uri);
+      setRawPickedUri(result.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -55,12 +61,10 @@ export default function AddBookScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [2, 3],
-      quality: 0.8,
+      quality: 0.9,
     });
     if (!result.canceled && result.assets[0].uri) {
-      setCoverImageUri(result.assets[0].uri);
+      setRawPickedUri(result.assets[0].uri);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -318,6 +322,17 @@ export default function AddBookScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Crop modal — rawPickedUri varsa aç; kullanıcı kırpınca kapak olarak
+          set et, iptal ederse ham uri'yi temizle. */}
+      <CropModal
+        uri={rawPickedUri}
+        onDone={(croppedUri) => {
+          setCoverImageUri(croppedUri);
+          setRawPickedUri(null);
+        }}
+        onCancel={() => setRawPickedUri(null)}
+      />
     </ScreenContainer>
   );
 }

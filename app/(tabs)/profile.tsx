@@ -1,4 +1,5 @@
 import { ActionSheetIOS, ActivityIndicator, Alert, ScrollView, Pressable, View, Text } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useRef, useState } from "react";
@@ -138,11 +139,14 @@ export default function ProfileScreen() {
   // Apple ad vermediyse (yaygın — kullanıcı "Bu bilgiyi gizle" dediyse) header
   // "İsim ekle" CTA'sı gösterir; tap ile edit-name ekranına git. İsim varsa
   // Apple'dan gelen tam ad.
+  //
+  // Avatar fallback: isim varsa ilk harfi (kişiselleştirme). İsim yoksa Apple
+  // private-relay email'in ilk harfini (ör. "c3xy@privaterelay…" → "C")
+  // göstermek saçma — 50319'da kullanıcı raporladı. Bu durumda PALIMPS
+  // logosuna düş.
   const hasName = !!user.name?.trim();
   const displayName = user.name?.trim() || t("profile.nameAdd");
-  const initial = hasName
-    ? user.name!.trim().charAt(0).toUpperCase()
-    : (user.email?.charAt(0) || "?").toUpperCase();
+  const initial = hasName ? user.name!.trim().charAt(0).toUpperCase() : null;
 
   return (
     <ScreenContainer>
@@ -187,11 +191,21 @@ export default function ProfileScreen() {
               backgroundColor: colors.primary + "33",
               alignItems: "center",
               justifyContent: "center",
+              overflow: "hidden",
             }}
           >
-            <Text style={{ fontSize: 24, fontWeight: "700", color: colors.primary }}>
-              {initial}
-            </Text>
+            {initial ? (
+              <Text style={{ fontSize: 24, fontWeight: "700", color: colors.primary }}>
+                {initial}
+              </Text>
+            ) : (
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={{ width: 56, height: 56 }}
+                contentFit="cover"
+                accessibilityLabel="PALIMPS"
+              />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text

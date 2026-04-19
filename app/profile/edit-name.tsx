@@ -49,15 +49,21 @@ export default function EditNameScreen() {
     try {
       await updateNameMutation.mutateAsync({ name: trimmed });
 
-      // Native'de useAuth cached AsyncStorage'tan okuyor — backend güncellense
+      // Native'de useAuth cached SecureStore'dan okuyor — backend güncellense
       // bile yeniden açılana kadar eski isim görünürdü. Web'de API.getMe'ye
       // düşüyor; refresh() iki durumu da kapsıyor. Cache'i de update edelim
       // ki refresh native'de zaten güncel cache'i okusun.
+      //
+      // notifyAuthChange: useAuth hook'u her ekranda ayrı state'e sahip
+      // (profile.tsx'in useAuth instance'ı bizim refresh()'imize body-level'da
+      // bağlı değil). Pub-sub ile tüm listener'ları tetikleyelim ki profile
+      // ekranı da ismi anında yansıtsın — 50319'da bu bug raporlandı.
       if (user) {
         await Auth.setUserInfo({ ...user, name: trimmed });
       }
       await utils.auth.me.invalidate();
       await refresh();
+      Auth.notifyAuthChange();
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();

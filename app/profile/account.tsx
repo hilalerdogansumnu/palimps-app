@@ -153,65 +153,48 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        {/* Danger zone — set apart, kırmızı başlık + açıklama + buton */}
+        {/* Delete account — iOS HIG "inset grouped" pattern: tek satır
+            destructive button (ortalanmış, kırmızı), altında küçük footer
+            açıklaması. "Tehlikeli Bölge" header'ı kaldırıldı çünkü iOS
+            Settings'te de böyle bir başlık yok — tek satırda yeterince net. */}
         <View style={{ marginHorizontal: 24, marginTop: 8 }}>
+          <Pressable
+            onPress={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            style={({ pressed }) => ({
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              paddingVertical: 14,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 0.5,
+              borderColor: colors.border,
+              opacity: pressed || isDeletingAccount ? 0.6 : 1,
+            })}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t("profile.deleteAccount")}
+            accessibilityHint={t("profile.deleteAccountHint")}
+          >
+            {isDeletingAccount ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <Text style={{ fontSize: 16, color: colors.error, fontWeight: "400" }}>
+                {t("profile.deleteAccount")}
+              </Text>
+            )}
+          </Pressable>
           <Text
             style={{
               fontSize: 12,
-              fontWeight: "600",
-              color: colors.error,
-              marginBottom: 8,
-              marginLeft: 4,
-              textTransform: "uppercase",
-              letterSpacing: 1,
+              color: colors.muted,
+              lineHeight: 17,
+              marginTop: 8,
+              marginHorizontal: 16,
             }}
           >
-            {t("profile.dangerZone")}
+            {t("profile.dangerZoneDesc")}
           </Text>
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
-              overflow: "hidden",
-              borderWidth: 0.5,
-              borderColor: colors.border,
-            }}
-          >
-            <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 }}>
-              <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 19 }}>
-                {t("profile.dangerZoneDesc")}
-              </Text>
-            </View>
-            <Pressable
-              onPress={handleDeleteAccount}
-              disabled={isDeletingAccount}
-              style={({ pressed }) => [
-                {
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  borderTopWidth: 0.5,
-                  borderTopColor: colors.border,
-                  opacity: pressed || isDeletingAccount ? 0.6 : 1,
-                },
-              ]}
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.deleteAccount")}
-              accessibilityHint={t("profile.deleteAccountHint")}
-            >
-              <Text style={{ fontSize: 16, color: colors.error, fontWeight: "600" }}>
-                {t("profile.deleteAccount")}
-              </Text>
-              {isDeletingAccount ? (
-                <ActivityIndicator size="small" color={colors.error} />
-              ) : (
-                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
-              )}
-            </Pressable>
-          </View>
         </View>
       </ScrollView>
     </ScreenContainer>

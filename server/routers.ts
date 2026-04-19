@@ -11,7 +11,7 @@ import {
   router,
 } from "./_core/trpc";
 import * as db from "./db";
-import { buildPublicUrl, storagePut } from "./storage";
+import { buildPublicUrl, storagePut, toDisplayUrl } from "./storage";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
@@ -92,13 +92,18 @@ export const appRouter = router({
      */
     list: protectedProcedure.query(async ({ ctx }) => {
       const books = await db.getUserBooks(ctx.user.id);
-      
-      // Her kitap için okuma anı sayısını ekle
+
+      // Her kitap için okuma anı sayısını + signed cover URL ekle.
+      // toDisplayUrl signed URL üretir (R2 bucket public olmasa bile çalışır).
       const booksWithCounts = await Promise.all(
         books.map(async (book) => {
-          const momentCount = await db.getReadingMomentCount(book.id);
+          const [momentCount, coverImageUrl] = await Promise.all([
+            db.getReadingMomentCount(book.id),
+            toDisplayUrl(book.coverImageUrl),
+          ]);
           return {
             ...book,
+            coverImageUrl,
             momentCount,
           };
         })
@@ -117,7 +122,12 @@ export const appRouter = router({
         if (!book || book.userId !== ctx.user.id) {
           throw new Error("Book not found");
         }
-        return book;
+        // Kapak URL'ini signed URL'e çevir — R2 bucket public olmasa bile
+        // render edilsin diye. Detay için storage.ts#toDisplayUrl.
+        return {
+          ...book,
+          coverImageUrl: await toDisplayUrl(book.coverImageUrl),
+        };
       }),
 
     /**
@@ -263,7 +273,14 @@ export const appRouter = router({
         if (!book || book.userId !== ctx.user.id) {
           throw new Error("Book not found");
         }
-        return db.getReadingMomentsByBook(input.bookId);
+        const moments = await db.getReadingMomentsByBook(input.bookId);
+        // Sayfa fotolarını signed URL'e çevir — kapak problemiyle aynı neden.
+        return Promise.all(
+          moments.map(async (m) => ({
+            ...m,
+            pageImageUrl: (await toDisplayUrl(m.pageImageUrl)) ?? m.pageImageUrl,
+          })),
+        );
       }),
 
     /**
@@ -276,7 +293,10 @@ export const appRouter = router({
         if (!moment || moment.userId !== ctx.user.id) {
           throw new Error("Reading moment not found");
         }
-        return moment;
+        return {
+          ...moment,
+          pageImageUrl: (await toDisplayUrl(moment.pageImageUrl)) ?? moment.pageImageUrl,
+        };
       }),
 
     /**
@@ -321,7 +341,23 @@ export const appRouter = router({
                 content: [
                   {
                     type: "text",
-                    text: "Bu kitap sayfasındaki tüm metni aynen çıkar. Sadece metni ver, başka bir şey ekleme.",
+                    // OCR prompt — sadece karakterleri değil, okunabilir bir
+                    // metin üretmesi için net kurallar veriyoruz.
+                    // Layout artefaktları (tire ile bölünmüş kelime, sol-blok
+                    // line wrap) 50319'da kullanıcı tarafından raporlandı.
+                    text: [
+                      "Bu kitap sayfasındaki metni OKUNABİLİR bir şekilde çıkar.",
+                      "",
+                      "KURALLAR:",
+                      "1. Satır sonunda tire (-) ile bölünmüş kelimeleri BİRLEŞTİR. Örnek: 'di-\\nzim' → 'dizim'.",
+                      "2. Paragraf içindeki satır sonlarını KALDIR — metni akıcı cümleler halinde yaz. Bir paragraf tek bir satırda akmalı.",
+                      "3. Paragraflar arasına tek bir boş satır koy.",
+                      "4. Noktalama işaretlerini, tırnakları ve diyalog tire'lerini (—) koru.",
+                      "5. Üst/alt bilgi, sayfa numarası, bölüm başlığı ve kitap başlığını ATLA.",
+                      "6. Çeviri yapma, yorum ekleme, '\"\"\"' veya benzer kod blokları kullanma.",
+                      "",
+                      "Sadece düzenlenmiş metni döndür, başka hiçbir şey ekleme.",
+                    ].join("\n"),
                   },
                   {
                     type: "image_url",

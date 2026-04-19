@@ -1,9 +1,9 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, Image } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, Image, RefreshControl } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
 
@@ -21,10 +21,27 @@ export default function BookDetailScreen() {
   const bookId = parseInt(id, 10);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: book, isLoading: bookLoading } = trpc.books.getById.useQuery({ id: bookId });
+  const { data: book, isLoading: bookLoading, refetch: refetchBook } = trpc.books.getById.useQuery({ id: bookId });
   const { data: moments, isLoading: momentsLoading, refetch } = trpc.readingMoments.listByBook.useQuery(
     { bookId },
   );
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  /**
+   * Pull-to-refresh — kitap + moment listesini paralel yenile. Kapak URL'si
+   * signed ve 7 gün TTL'li; çok eski bir kitap açılırken URL süresi dolmuşsa
+   * bu swipe yeni imza çıkaracak. 50319'da kullanıcı "aşağı çekince güncelle"
+   * talebini ilettiği için eklendi.
+   */
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Promise.all([refetchBook(), refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchBook, refetch]);
 
   const handleAddMoment = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -307,6 +324,13 @@ export default function BookDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.muted}
+          />
+        }
         renderItem={({ item }) => (
           <Pressable
             onPress={() => handleMomentPress(item.id)}

@@ -112,3 +112,54 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   );
   return { key, url };
 }
+
+// R2 caps presigned URL expiry at 7 days. We use the maximum so a client that
+// opens an old book after a week still gets an image on first render; after
+// that expo-image cache carries the bitmap indefinitely.
+const SIGNED_URL_EXPIRY = 60 * 60 * 24 * 7;
+
+/**
+ * Resolve a stored image reference (a legacy full public URL, or a bare R2
+ * key) to a short-lived signed GET URL for display.
+ *
+ * Why this exists — 50316/17/18/19 all shipped with covers that uploaded
+ * cleanly but failed to render on device. Root cause most likely candidates
+ * are (a) R2 bucket not actually configured for public access, or (b) the
+ * custom domain in R2_PUBLIC_BASE_URL not wired correctly. Signed URLs
+ * short-circuit both: they work regardless of bucket public config because
+ * each request carries its own AWS signature.
+ *
+ * Contract:
+ *   - null/empty → null
+ *   - stored as R2 key ("uploads/…jpg") → fresh signed URL
+ *   - stored as URL under our R2_PUBLIC_BASE_URL → strip prefix, sign the key
+ *   - stored as an external URL (not ours) → returned unchanged
+ *   - any error → stored value returned unchanged (onError handler surfaces it)
+ */
+export async function toDisplayUrl(
+  stored: string | null | undefined,
+): Promise<string | null> {
+  if (!stored) return null;
+  try {
+    let key: string = stored;
+    if (/^https?:\/\//i.test(stored)) {
+      const base = (ENV.r2PublicBaseUrl ?? "").replace(/\/+$/, "");
+      if (base && stored.startsWith(base + "/")) {
+        key = stored.slice(base.length + 1);
+      } else {
+        // External URL we didn't mint — pass through unchanged.
+        return stored;
+      }
+    }
+
+    const client = getClient();
+    return await getSignedUrl(
+      client,
+      new GetObjectCommand({ Bucket: ENV.r2BucketName, Key: normalizeKey(key) }),
+      { expiresIn: SIGNED_URL_EXPIRY },
+    );
+  } catch (err) {
+    console.error("[storage] toDisplayUrl failed for", stored, err);
+    return stored;
+  }
+}
