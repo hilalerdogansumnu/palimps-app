@@ -1,6 +1,6 @@
 import "@/global.css";
 import "@/lib/i18n";
-import { initSentry } from "@/lib/_core/sentry";
+import { initSentry, setUserContext } from "@/lib/_core/sentry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Initialize Sentry for crash reporting
@@ -50,7 +50,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (user?.openId) {
       identifyPurchasesUser(user.openId);
       // Set user context in Sentry for crash reporting
-      const { setUserContext } = require("@/lib/_core/sentry");
       setUserContext(user.openId);
     }
   }, [user?.openId]);

@@ -47,17 +47,25 @@ export function initSentry() {
     },
   });
 
-  // Set user context if available
-  const setUserContext = (userId?: string) => {
-    if (userId) {
-      Sentry.setUser({ id: userId });
-    } else {
-      Sentry.setUser(null);
-    }
-  };
+}
 
-  // Export for use in auth flow
-  return { setUserContext };
+/**
+ * Set or clear the Sentry user context. Call after login with the user's
+ * openId, and on sign-out with no argument / null to clear.
+ *
+ * Module-level export so it can be imported normally instead of reached
+ * through `initSentry()`'s return value. (AMND-2026-001: the previous
+ * pattern — local closure returned from initSentry, re-read via
+ * `require(...).setUserContext` inside a useEffect — resolved to
+ * `undefined` in the production bundle and crashed the post-login tree
+ * with "TypeError: undefined is not a function" at commitHookEffectListMount.)
+ */
+export function setUserContext(userId?: string | null) {
+  if (userId) {
+    Sentry.setUser({ id: userId });
+  } else {
+    Sentry.setUser(null);
+  }
 }
 
 /**

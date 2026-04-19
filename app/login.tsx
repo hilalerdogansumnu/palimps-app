@@ -100,9 +100,7 @@ export default function LoginScreen() {
         // User cancelled the sheet — quietly return.
       } else {
         console.error("[Login/Apple] failed:", err);
-        // TEMP: show real error to diagnose TestFlight auth failures
-        const detail = err?.message ?? String(err);
-        Alert.alert(t("auth.errorTitle"), `${t("auth.appleError")}\n\n${detail}`);
+        Alert.alert(t("auth.errorTitle"), t("auth.appleError"));
       }
     } finally {
       setIsLoading(false);
