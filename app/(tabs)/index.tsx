@@ -1,9 +1,10 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert, Image } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, TextInput, ScrollView, Alert } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { BookCover } from "@/components/book-cover";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
@@ -315,14 +316,6 @@ export default function HomeScreen() {
   const showSearchResults = searchQuery.length > 0;
   const hasSearchResults = sortedSearchResults && (sortedSearchResults.books.length > 0 || sortedSearchResults.moments.length > 0);
 
-  // Helper function to get initials from book title
-  const getBookInitials = (title: string): string => {
-    const words = title.trim().split(/\s+/);
-    if (words.length === 0) return "??";
-    if (words.length === 1) return title.substring(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  };
-
   return (
     <ScreenContainer className="px-6">
       {/* Header - iOS Large Title Style */}
@@ -389,18 +382,7 @@ export default function HomeScreen() {
                   style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    {book.coverImageUrl ? (
-                      <Image
-                        source={{ uri: book.coverImageUrl }}
-                        style={{ width: 48, height: 72, borderRadius: 6, backgroundColor: colors.surface }}
-                      />
-                    ) : (
-                      <View style={{ width: 60, height: 90, borderRadius: 8, backgroundColor: colors.accent + "20", justifyContent: "center", alignItems: "center" }}>
-                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.accent }}>
-                          {getBookInitials(book.title)}
-                        </Text>
-                      </View>
-                    )}
+                    <BookCover uri={book.coverImageUrl} title={book.title} size="sm" />
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>{book.title}</Text>
                       {book.author && <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 2 }}>{book.author}</Text>}
@@ -444,38 +426,7 @@ export default function HomeScreen() {
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
                 {/* Cover image or placeholder */}
-                {item.coverImageUrl ? (
-                  <Image
-                    source={{ uri: item.coverImageUrl }}
-                    style={{
-                      width: 60,
-                      height: 90,
-                      borderRadius: 6,
-                      backgroundColor: colors.surface,
-                    }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 60,
-                      height: 90,
-                      borderRadius: 6,
-                      backgroundColor: colors.accent + "20",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "700",
-                        color: colors.accent,
-                      }}
-                    >
-                      {getBookInitials(item.title)}
-                    </Text>
-                  </View>
-                )}
+                <BookCover uri={item.coverImageUrl} title={item.title} size="md" />
                 {/* Content */}
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground, marginBottom: 2 }}>

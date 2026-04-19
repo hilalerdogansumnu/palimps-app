@@ -308,9 +308,24 @@ export default function OCREditScreen() {
                 minHeight: 120,
               }}
             >
-              <Text style={getTextStyleProps()}>
-                {state.text || t("addMoment.notePlaceholder")}
-              </Text>
+              {state.text.trim() ? (
+                <Text style={getTextStyleProps()}>{state.text}</Text>
+              ) : (
+                // Explicit empty-state for preview. Do NOT fall back to the
+                // user-note placeholder here — that leaks the wrong copy onto
+                // this field and makes the screen look like the page has
+                // already been read. See P0-2 / QA video 0:25.
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontStyle: "italic",
+                    color: colors.muted,
+                    lineHeight: 20,
+                  }}
+                >
+                  {t("ocrEdit.previewEmpty")}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -322,7 +337,11 @@ export default function OCREditScreen() {
             <TextInput
               value={state.text}
               onChangeText={(text) => setState((prev) => ({ ...prev, text }))}
-              placeholder={t("addMoment.notePlaceholder")}
+              // Field-specific placeholder — the previous copy reused
+              // addMoment.notePlaceholder ("Bu sayfa hakkındaki
+              // düşünceleriniz…") which is the user-note wording and made the
+              // extracted-text field look like it held user input.
+              placeholder={t("ocrEdit.extractedTextPlaceholder")}
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={8}

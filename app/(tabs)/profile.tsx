@@ -1,10 +1,11 @@
-import { ActivityIndicator, Alert, ScrollView, Pressable, View, Text } from "react-native";
+import { ActionSheetIOS, ActivityIndicator, Alert, ScrollView, Pressable, View, Text } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
 import { saveLanguage } from "@/lib/i18n";
+import { captureException } from "@/lib/_core/sentry";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -26,7 +27,13 @@ export default function ProfileScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  // P0-5 re-entrancy guard: a fast double-tap on Çıkış Yap / Hesabı Sil
+  // previously fired Alert.alert twice, stacking two native alerts and
+  // producing the ghost-text artifact seen in the QA video at 2:11-2:12.
+  // Refs instead of state to avoid an extra render on every tap.
+  const logoutPromptOpenRef = useRef(false);
+  const deletePromptOpenRef = useRef(false);
 
   const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
 
@@ -36,28 +43,78 @@ export default function ProfileScreen() {
 
   const currentLanguageName = LANGUAGES.find((l) => l.code === currentLanguage)?.name || "English";
 
-  const handleLanguageChange = async (languageCode: string) => {
+  const applyLanguage = async (languageCode: string) => {
+    if (languageCode === currentLanguage) return;
     try {
       await i18n.changeLanguage(languageCode);
       await saveLanguage(languageCode);
       setCurrentLanguage(languageCode);
-      setShowLanguagePicker(false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      // silently fail
+      // P1-1: Previously a silent catch hid failures. Language persistence
+      // failures are rare but not invisible — tell the user and capture it.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      captureException(
+        error instanceof Error ? error : new Error("applyLanguage failed"),
+        { surface: "profile.language", languageCode },
+      );
+      Alert.alert(t("common.error"), t("profile.languageChangeError"));
     }
   };
 
+  /**
+   * Present a native iOS action sheet for language selection. Previously the
+   * picker rendered as an inline panel at the bottom of the ScrollView —
+   * disconnected from the row the user tapped and not dismissible without
+   * making a selection. ActionSheetIOS matches iOS Settings conventions:
+   * the current language shows a trailing check in the button label and the
+   * user can cancel at any time.
+   */
+  const handleOpenLanguagePicker = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const languages = LANGUAGES;
+    const options = [
+      ...languages.map((l) =>
+        l.code === currentLanguage ? `${l.name}  ✓` : l.name,
+      ),
+      t("common.cancel"),
+    ];
+    const cancelButtonIndex = options.length - 1;
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: t("profile.language"),
+        options,
+        cancelButtonIndex,
+        userInterfaceStyle: colors.background === "#000000" ? "dark" : undefined,
+      },
+      (selectedIndex) => {
+        if (selectedIndex === cancelButtonIndex || selectedIndex === undefined) return;
+        const picked = languages[selectedIndex];
+        if (picked) applyLanguage(picked.code);
+      },
+    );
+  };
+
   const handleDeleteAccount = () => {
+    if (deletePromptOpenRef.current) return;
+    deletePromptOpenRef.current = true;
     Alert.alert(
       t("profile.deleteAccountConfirmTitle"),
       t("profile.deleteAccountConfirmMessage"),
       [
-        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.cancel"),
+          style: "cancel",
+          onPress: () => {
+            deletePromptOpenRef.current = false;
+          },
+        },
         {
           text: t("profile.deleteAccount"),
           style: "destructive",
           onPress: async () => {
+            deletePromptOpenRef.current = false;
             setIsDeletingAccount(true);
             try {
               await deleteAccountMutation.mutateAsync();
@@ -71,20 +128,29 @@ export default function ProfileScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const handleLogout = () => {
+    if (logoutPromptOpenRef.current) return;
+    logoutPromptOpenRef.current = true;
     Alert.alert(
       t("auth.signOut"),
       t("auth.signOutConfirm"),
       [
-        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.cancel"),
+          style: "cancel",
+          onPress: () => {
+            logoutPromptOpenRef.current = false;
+          },
+        },
         {
           text: t("auth.signOut"),
           style: "destructive",
           onPress: async () => {
+            logoutPromptOpenRef.current = false;
             setIsLoggingOut(true);
             try {
               await logout();
@@ -97,7 +163,7 @@ export default function ProfileScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -119,7 +185,7 @@ export default function ProfileScreen() {
         {/* Header — iOS Large Title */}
         <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 }}>
           <Text style={{ fontSize: 28, fontWeight: "bold", color: colors.foreground }}>
-            Profil
+            {t("profile.title")}
           </Text>
         </View>
 
@@ -173,7 +239,7 @@ export default function ProfileScreen() {
               </View>
             )}
             <Text style={{ fontSize: 14, color: colors.muted, marginTop: 8 }}>
-              {bookCount} kitap · {momentCount} an
+              {t("profile.bookCountSummary", { count: bookCount })} · {t("profile.momentCountSummary", { count: momentCount })}
             </Text>
           </View>
         </View>
@@ -191,7 +257,7 @@ export default function ProfileScreen() {
               letterSpacing: 1,
             }}
           >
-            AYARLAR
+            {t("profile.settings")}
           </Text>
           <View
             style={{
@@ -233,10 +299,7 @@ export default function ProfileScreen() {
 
             {/* Language Row */}
             <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowLanguagePicker(true);
-              }}
+              onPress={handleOpenLanguagePicker}
               style={({ pressed }) => [
                 {
                   paddingHorizontal: 16,
@@ -255,7 +318,7 @@ export default function ProfileScreen() {
               accessibilityHint={a11y.language.hint}
             >
               <Text style={{ fontSize: 16, color: colors.foreground }}>
-                Dil
+                {t("profile.language")}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text style={{ fontSize: 14, color: colors.muted, marginRight: 4 }}>
@@ -290,7 +353,7 @@ export default function ProfileScreen() {
                 accessibilityHint={a11y.upgradePremium.hint}
               >
                 <Text style={{ fontSize: 16, color: colors.foreground, fontWeight: "600" }}>
-                  Premium'e Yükselt
+                  {t("profile.upgradePremium")}
                 </Text>
                 <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
               </Pressable>
@@ -374,11 +437,11 @@ export default function ProfileScreen() {
               ]}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Hesabı Sil"
-              accessibilityHint="Tüm verilerinizi kalıcı olarak siler"
+              accessibilityLabel={t("profile.deleteAccount")}
+              accessibilityHint={t("profile.deleteAccountHint")}
             >
               <Text style={{ fontSize: 16, color: colors.error, opacity: 0.7 }}>
-                Hesabı Sil
+                {t("profile.deleteAccount")}
               </Text>
               {isDeletingAccount ? (
                 <ActivityIndicator size="small" color={colors.error} />
@@ -388,51 +451,6 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
         </View>
-
-        {/* Language Picker Modal */}
-        {showLanguagePicker && (
-          <View
-            style={{
-              marginHorizontal: 24,
-              marginBottom: 24,
-              backgroundColor: colors.surface,
-              borderRadius: 16,
-              borderWidth: 0.5,
-              borderColor: colors.border,
-              overflow: "hidden",
-            }}
-          >
-            {LANGUAGES.map((lang, index) => (
-              <Pressable
-                key={lang.code}
-                onPress={() => handleLanguageChange(lang.code)}
-                style={({ pressed }) => [
-                  {
-                    paddingHorizontal: 16,
-                    paddingVertical: 16,
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    borderBottomWidth: index < LANGUAGES.length - 1 ? 0.5 : 0,
-                    borderBottomColor: colors.border,
-                    opacity: pressed ? 0.6 : 1,
-                  },
-                ]}
-                accessible={true}
-                accessibilityRole="radio"
-                accessibilityLabel={lang.name}
-                accessibilityState={{ selected: currentLanguage === lang.code }}
-              >
-                <Text style={{ fontSize: 16, color: colors.foreground }}>
-                  {lang.name}
-                </Text>
-                {currentLanguage === lang.code && (
-                  <Text style={{ fontSize: 18, color: colors.primary }}>✓</Text>
-                )}
-              </Pressable>
-            ))}
-          </View>
-        )}
 
         {/* Footer spacing */}
         <View style={{ height: 32 }} />

@@ -9,6 +9,7 @@ import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
+import { BookCover } from "@/components/book-cover";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { a11y } from "@/lib/accessibility";
@@ -133,14 +134,28 @@ export default function BookDetailScreen() {
     return d.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
   };
 
-  // Helper to generate initials placeholder
-  const getInitials = (title: string) => {
-    return title
-      .split(" ")
-      .slice(0, 2)
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase();
+  // Book meta line: "5 an · 3 gün önce eklendi"
+  // Returns the localized, pluralized "Added X ago" string for a given date.
+  const formatAddedAgo = (date: Date | string | number): string => {
+    const created = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    const day = 24 * 60 * 60 * 1000;
+    const days = Math.floor(diffMs / day);
+    if (days <= 0) return t("bookDetail.addedToday");
+    if (days === 1) return t("bookDetail.addedYesterday");
+    if (days < 7) return t("bookDetail.addedDaysAgo", { count: days });
+    if (days < 30) return t("bookDetail.addedWeeksAgo", { count: Math.floor(days / 7) });
+    if (days < 365) return t("bookDetail.addedMonthsAgo", { count: Math.floor(days / 30) });
+    return t("bookDetail.addedYearsAgo", { count: Math.floor(days / 365) });
+  };
+
+  // Composes "{N an} · {added-ago}" — skips the moments segment when count is 0
+  // so the empty-state hero below doesn't duplicate "Henüz an yok".
+  const renderBookMeta = (momentsLen: number, createdAt: Date | string | number) => {
+    const addedAgo = formatAddedAgo(createdAt);
+    if (momentsLen === 0) return addedAgo;
+    return `${t("bookDetail.momentsCount", { count: momentsLen })} · ${addedAgo}`;
   };
 
   // Empty state
@@ -166,26 +181,7 @@ export default function BookDetailScreen() {
 
         {/* Book info section */}
         <View className="mb-10 flex-row gap-4">
-          {book.coverImageUrl ? (
-            <Image
-              source={{ uri: book.coverImageUrl }}
-              style={{ width: 90, height: 135, borderRadius: 12 }}
-              resizeMode="cover"
-            />
-          ) : (
-            <View
-              style={{
-                width: 90,
-                height: 135,
-                borderRadius: 12,
-                backgroundColor: colors.primary,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text className="text-lg font-bold text-background">{getInitials(book.title)}</Text>
-            </View>
-          )}
+          <BookCover uri={book.coverImageUrl} title={book.title} size="lg" />
           <View className="flex-1 justify-center">
             <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.foreground }} className="mb-1">
               {book.title}
@@ -196,7 +192,7 @@ export default function BookDetailScreen() {
               </Text>
             )}
             <Text style={{ fontSize: 13, color: colors.muted }}>
-              {t("bookDetail.momentsCount")} · {t("bookDetail.addedAgo")}
+              {renderBookMeta(moments?.length ?? 0, book.createdAt)}
             </Text>
           </View>
         </View>
@@ -269,26 +265,7 @@ export default function BookDetailScreen() {
       <View className="px-6 flex-1">
       {/* Book info section */}
       <View className="mb-10 flex-row gap-4">
-        {book.coverImageUrl ? (
-          <Image
-            source={{ uri: book.coverImageUrl }}
-            style={{ width: 90, height: 135, borderRadius: 12 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <View
-            style={{
-              width: 90,
-              height: 135,
-              borderRadius: 12,
-              backgroundColor: colors.primary,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text className="text-lg font-bold text-background">{getInitials(book.title)}</Text>
-          </View>
-        )}
+        <BookCover uri={book.coverImageUrl} title={book.title} size="lg" />
         <View className="flex-1 justify-center">
           <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.foreground }} className="mb-1">
             {book.title}
@@ -299,7 +276,7 @@ export default function BookDetailScreen() {
             </Text>
           )}
           <Text style={{ fontSize: 13, color: colors.muted }}>
-            {t("bookDetail.momentsCount")} · {t("bookDetail.addedAgo")}
+            {renderBookMeta(moments?.length ?? 0, book.createdAt)}
           </Text>
         </View>
       </View>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -510,9 +511,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Premium kontrolü
+        // Premium gate — machine-readable code so the client can branch
+        // on premium vs. unexpected failure.
         if (ctx.user.isPremium !== 1) {
-          throw new Error("Chat requires premium subscription");
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "PREMIUM_REQUIRED",
+          });
         }
 
         // Kullanıcının tüm kitaplarını ve okuma anlarını al
@@ -544,27 +549,50 @@ Tarih: ${m.createdAt}
   .join("\n---\n")}
 `;
 
-        // LLM'e gönder
-        const response = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content: `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`,
-            },
-            {
-              role: "user",
-              content: input.message,
-            },
-          ],
-        });
+        // LLM'e gönder — wrap to surface actionable error codes instead of
+        // leaking stack traces to the client.
+        let response;
+        try {
+          response = await invokeLLM({
+            messages: [
+              {
+                role: "system",
+                content: `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`,
+              },
+              {
+                role: "user",
+                content: input.message,
+              },
+            ],
+          });
+        } catch (err) {
+          console.error("[chat.send] invokeLLM failed", {
+            userId: ctx.user.id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "LLM_UNAVAILABLE",
+            cause: err,
+          });
+        }
 
         const firstChoice = response.choices[0];
+        if (!firstChoice || !firstChoice.message) {
+          console.error("[chat.send] LLM returned empty choices", {
+            userId: ctx.user.id,
+            finishReason: firstChoice?.finish_reason,
+          });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "LLM_EMPTY_RESPONSE",
+          });
+        }
+
         const reply =
-          firstChoice && firstChoice.message
-            ? typeof firstChoice.message.content === "string"
-              ? firstChoice.message.content
-              : JSON.stringify(firstChoice.message.content)
-            : "Üzülürüm, bir hata oluştu.";
+          typeof firstChoice.message.content === "string"
+            ? firstChoice.message.content
+            : JSON.stringify(firstChoice.message.content);
 
         return {
           reply,

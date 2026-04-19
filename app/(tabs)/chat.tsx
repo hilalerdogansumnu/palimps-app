@@ -2,16 +2,22 @@ import { View, Text, FlatList, TextInput, Pressable, ActivityIndicator, Keyboard
 import { useState, useMemo } from "react";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { captureException } from "@/lib/_core/sentry";
+
+type MessageKind = "normal" | "error" | "premiumRequired";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  kind?: MessageKind;
+  retryPrompt?: string;
 };
 
 export default function ChatScreen() {
@@ -29,41 +35,80 @@ export default function ChatScreen() {
   
   const sendMutation = trpc.chat.send.useMutation();
 
-  const handleSend = async (message?: string) => {
-    const textToSend = message || inputText.trim();
+  const handleSend = async (message?: string, options?: { isRetry?: boolean }) => {
+    const textToSend = (message || inputText.trim()).trim();
     if (!textToSend) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Kullanıcı mesajını ekle
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: textToSend,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
+    // On retry, drop prior error/premium cards so the transcript doesn't
+    // accumulate dead system messages.
+    if (options?.isRetry) {
+      setMessages((prev) =>
+        prev.filter((m) => m.kind !== "error" && m.kind !== "premiumRequired"),
+      );
+    } else {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: textToSend,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      setInputText("");
+    }
 
     try {
-      // AI'dan cevap al
       const response = await sendMutation.mutateAsync({ message: textToSend });
-      
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: response.reply,
         timestamp: response.timestamp,
+        kind: "normal",
       };
       setMessages((prev) => [...prev, assistantMessage]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // tRPC attaches `data.code` and exposes the server `message` string.
+      const trpcCode = (error as any)?.data?.code as string | undefined;
+      const trpcMessage = (error as any)?.message as string | undefined;
+
+      if (trpcCode === "FORBIDDEN" && trpcMessage === "PREMIUM_REQUIRED") {
+        const premiumMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: t("chat.premiumRequiredBody"),
+          timestamp: new Date().toISOString(),
+          kind: "premiumRequired",
+          retryPrompt: textToSend,
+        };
+        setMessages((prev) => [...prev, premiumMessage]);
+        return;
+      }
+
+      // Unexpected server / network / LLM failure — capture for observability.
+      const isKnownServerError =
+        trpcMessage === "LLM_UNAVAILABLE" || trpcMessage === "LLM_EMPTY_RESPONSE";
+      captureException(
+        error instanceof Error ? error : new Error(trpcMessage || "chat.send failed"),
+        {
+          surface: "chat",
+          trpcCode: trpcCode ?? null,
+          trpcMessage: trpcMessage ?? null,
+          isKnownServerError,
+        },
+      );
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: t("chat.errorMessage"),
+        content: isKnownServerError ? t("chat.errorUnavailable") : t("chat.errorMessage"),
         timestamp: new Date().toISOString(),
+        kind: "error",
+        retryPrompt: textToSend,
       };
       setMessages((prev) => [...prev, errorMessage]);
     }
@@ -73,8 +118,30 @@ export default function ChatScreen() {
     handleSend(reply);
   };
 
+  const handleRetry = (prompt: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    handleSend(prompt, { isRetry: true });
+  };
+
+  const handleGoPremium = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/premium");
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
+    const isError = item.kind === "error";
+    const isPremium = item.kind === "premiumRequired";
+    const showsRetry = isError && !!item.retryPrompt;
+    const showsPremiumCta = isPremium;
+
+    const bubbleBg = isUser
+      ? colors.primary
+      : isError
+        ? colors.surface
+        : colors.surface;
+    const bubbleBorder = isError ? colors.error : colors.border;
+
     return (
       <View
         style={{
@@ -86,9 +153,9 @@ export default function ChatScreen() {
         <View
           style={{
             maxWidth: "85%",
-            backgroundColor: isUser ? colors.primary : colors.surface,
-            borderWidth: isUser ? 0 : 0.5,
-            borderColor: isUser ? undefined : colors.border,
+            backgroundColor: bubbleBg,
+            borderWidth: isUser ? 0 : isError ? 1 : 0.5,
+            borderColor: isUser ? undefined : bubbleBorder,
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 8,
@@ -96,16 +163,71 @@ export default function ChatScreen() {
             borderBottomLeftRadius: isUser ? 12 : 4,
           }}
         >
+          {isPremium && (
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.accent,
+                marginBottom: 4,
+              }}
+            >
+              {t("chat.premiumRequiredTitle")}
+            </Text>
+          )}
           <Text
             style={{
               fontSize: 16,
               lineHeight: 22,
-              color: isUser ? "white" : colors.foreground,
+              color: isUser ? "white" : isError ? colors.error : colors.foreground,
             }}
           >
             {item.content}
           </Text>
         </View>
+
+        {showsRetry && (
+          <Pressable
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t("chat.retry")}
+            onPress={() => handleRetry(item.retryPrompt!)}
+            disabled={sendMutation.isPending}
+            style={({ pressed }) => ({
+              marginTop: 6,
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              borderRadius: 8,
+              opacity: sendMutation.isPending ? 0.5 : pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
+              {t("chat.retry")}
+            </Text>
+          </Pressable>
+        )}
+
+        {showsPremiumCta && (
+          <Pressable
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t("chat.premiumCta")}
+            onPress={handleGoPremium}
+            style={({ pressed }) => ({
+              marginTop: 8,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              backgroundColor: colors.accent,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "white" }}>
+              {t("chat.premiumCta")}
+            </Text>
+          </Pressable>
+        )}
+
         <Text
           style={{
             fontSize: 12,

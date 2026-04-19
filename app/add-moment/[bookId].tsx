@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useSubscription } from "@/hooks/use-subscription";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { storePhoto } from "@/lib/photo-storage";
+import { captureException } from "@/lib/_core/sentry";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -85,10 +86,9 @@ export default function AddMomentScreen() {
       scheduleStreakAlert();
       router.back();
     },
-    onError: (error) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(t("addMoment.error"), error.message || t("addMoment.createError"));
-    },
+    // onError intentionally omitted: handleSubmit's try/catch routes failures
+    // through handleUploadError, which decides alert copy + Sentry context +
+    // retry. Having a local Alert here would double-fire on upload errors.
   });
 
   const generateNoteMutation = trpc.ai.generateNote.useMutation({
@@ -141,10 +141,13 @@ export default function AddMomentScreen() {
       setOcrText(null);
       setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push({
-        pathname: "/ocr-edit",
-        params: { photoUri, bookId, ocrText: "" },
-      } as any);
+      // P0-6: Previously pushed to "/ocr-edit" with an empty ocrText — that
+      // screen's Save just router.back()'d without returning edits, so every
+      // keystroke was discarded. Server-side OCR runs inside
+      // readingMoments.create (see server/routers.ts:272-304); the raw OCR
+      // text is saved to the DB and surfaced in book detail, so the user
+      // doesn't need to see/edit it inline. If we add an editable OCR review
+      // later, wire it as a promise-based roundtrip, not fire-and-forget.
     }
   };
 
@@ -164,11 +167,51 @@ export default function AddMomentScreen() {
       setOcrText(null);
       setIsOcrComplete(false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push({
-        pathname: "/ocr-edit",
-        params: { photoUri, bookId, ocrText: "" },
-      } as any);
+      // P0-6: See handlePickImage — same dead-detour removal. Stays in
+      // add-moment; server-side OCR runs on submit.
     }
+  };
+
+  // Upload timeout: long enough for a large photo on a slow 4G link, short
+  // enough that the user doesn't stare at a silent spinner forever. The
+  // observability SKILL's "no silent failures" rule drives the 30s cap — past
+  // this point we explicitly tell the user rather than waiting.
+  const UPLOAD_TIMEOUT_MS = 30_000;
+
+  /**
+   * Categorised upload-error alert with Sentry context + Retry CTA.
+   * P0-3 fix: the previous implementation surfaced a single generic
+   * "Fotoğraf yüklenemedi. Lütfen tekrar dene." for every failure mode — no
+   * Sentry event, no retry affordance, no distinction between network /
+   * server / config. See AMND-2026-001 L1: silent failures are how users
+   * lose trust.
+   */
+  const handleUploadError = (error: unknown, phase: string) => {
+    const err = error instanceof Error ? error : new Error(String(error));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+    let messageKey = "errors.photoUploadFailed";
+    if (err.message === "UPLOAD_TIMEOUT") messageKey = "errors.uploadTimeout";
+    else if (err.message === "NETWORK_ERROR") messageKey = "errors.networkError";
+    else if (err.message.startsWith("UPLOAD_HTTP_4")) messageKey = "errors.uploadBadRequest";
+    else if (err.message.startsWith("UPLOAD_HTTP_5")) messageKey = "errors.serverError";
+    else if (err.message === "PRESIGN_FAILED") messageKey = "errors.serverError";
+    else if (err.message === "R2_CONFIG_MISSING") messageKey = "errors.configError";
+
+    captureException(err, {
+      operation: "addMoment.handleSubmit",
+      bookId: bookIdNum,
+      phase,
+    });
+
+    Alert.alert(
+      t("common.error"),
+      t(messageKey),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("errors.retry"), onPress: handleSubmit },
+      ],
+    );
   };
 
   const handleSubmit = async () => {
@@ -177,45 +220,77 @@ export default function AddMomentScreen() {
       return;
     }
     setIsSubmitting(true);
+    let phase: string = "init";
     try {
       // 1. Yerel olarak işle (resize + compress)
+      phase = "storePhoto";
       const stored = await storePhoto(pageImageUri, "page");
 
       // 2. Presigned URL al
-      const { presignedUrl, key } = await getPresignedUrlMutation.mutateAsync({
-        fileName: "page.jpg",
-        fileType: "image/jpeg",
-        fileSize: 800_000,
-      });
+      phase = "presign";
+      let presigned: { presignedUrl: string; key: string };
+      try {
+        presigned = await getPresignedUrlMutation.mutateAsync({
+          fileName: "page.jpg",
+          fileType: "image/jpeg",
+          fileSize: 800_000,
+        });
+      } catch (err) {
+        // Preserve the underlying message for Sentry, but tag the phase so
+        // handleUploadError can pick the right user-facing copy.
+        const e = new Error("PRESIGN_FAILED");
+        (e as any).cause = err;
+        throw e;
+      }
+      const { presignedUrl, key } = presigned;
 
-      // 3. R2'ye yükle
+      // 3. R2'ye yükle — AbortController ile 30s timeout
+      phase = "r2Put";
       const fileContent = await fetch(stored.fullPath);
       const blob = await fileContent.blob();
-      const uploadResponse = await fetch(presignedUrl, {
-        method: "PUT",
-        body: blob,
-        headers: { "Content-Type": "image/jpeg" },
-      });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch(presignedUrl, {
+          method: "PUT",
+          body: blob,
+          headers: { "Content-Type": "image/jpeg" },
+          signal: controller.signal,
+        });
+      } catch (err) {
+        clearTimeout(timeoutId);
+        // AbortError shape differs across RN fetch polyfill versions; check
+        // both the name and the signal state.
+        const aborted = (err as any)?.name === "AbortError" || controller.signal.aborted;
+        if (aborted) throw new Error("UPLOAD_TIMEOUT");
+        // Any other fetch throw is a network failure (DNS, offline, TLS).
+        const e = new Error("NETWORK_ERROR");
+        (e as any).cause = err;
+        throw e;
+      }
+      clearTimeout(timeoutId);
       if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status}`);
+        throw new Error(`UPLOAD_HTTP_${uploadResponse.status}`);
       }
 
+      phase = "r2Url";
       const r2PublicBase = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
       if (!r2PublicBase) {
-        throw new Error("R2 public URL not configured");
+        throw new Error("R2_CONFIG_MISSING");
       }
       const uploadedPageImageUrl = `${r2PublicBase}/${key}`;
 
+      // 4. Create moment (server-side OCR runs inside this mutation)
+      phase = "createMoment";
       await createMomentMutation.mutateAsync({
         bookId: bookIdNum,
         pageImageUrl: uploadedPageImageUrl,
         userNote: userNote.trim() || undefined,
       });
     } catch (error) {
-      // Surface upload failures rather than silently falling back to base64.
-      // Sentry catches the unhandled rejection; user gets a warm retry prompt.
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(t("common.error"), t("errors.photoUploadFailed"));
+      handleUploadError(error, phase);
     } finally {
       setIsSubmitting(false);
     }
