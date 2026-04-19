@@ -91,6 +91,22 @@ export default function ChatScreen() {
         return;
       }
 
+      // Rate limit (saatlik 20 mesaj tavanı). Retry affordance eklemiyoruz —
+      // saat içinde tekrar denemek yine fail eder, retry haptic spam'i olur.
+      const isRateLimit =
+        trpcCode === "TOO_MANY_REQUESTS" || trpcMessage === "RATE_LIMIT_EXCEEDED";
+      if (isRateLimit) {
+        const rateLimitMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: t("chat.errorRateLimit"),
+          timestamp: new Date().toISOString(),
+          kind: "error",
+        };
+        setMessages((prev) => [...prev, rateLimitMessage]);
+        return;
+      }
+
       // Unexpected server / network / LLM failure — capture for observability.
       const isKnownServerError =
         trpcMessage === "LLM_UNAVAILABLE" || trpcMessage === "LLM_EMPTY_RESPONSE";

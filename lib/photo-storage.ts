@@ -62,8 +62,12 @@ export async function storePhoto(
       targetWidth = 90;
       targetHeight = 135;
     } else {
-      // Page: max 1200px on long side, maintain aspect ratio
-      const maxDim = 1200;
+      // Page: max 1024px on long side, maintain aspect ratio.
+      // 1024 is the Gemini OCR sweet spot — lower than this hurts recall on
+      // small print, higher just burns tokens without meaningful accuracy
+      // gain. Gemini brief Faz 1.3 ~$3 → ~$0.17 per 1000 pages hedefinin
+      // client-side yarısı.
+      const maxDim = 1024;
       const isPortrait = origHeight >= origWidth;
       if (isPortrait) {
         targetHeight = Math.min(origHeight, maxDim);
@@ -77,10 +81,14 @@ export async function storePhoto(
     // Generate unique ID
     const photoId = `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Full-size image (compressed JPEG)
-    const fullResult = await ImageManipulator.manipulateAsync(uri, [
-      { resize: { width: targetWidth, height: targetHeight } },
-    ]);
+    // Full-size image — JPEG at 0.85 quality. Visually lossless on text while
+    // ~40% smaller than the default 1.0 output; keeps upload time + storage
+    // down without hurting OCR extraction quality.
+    const fullResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: targetWidth, height: targetHeight } }],
+      { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
+    );
 
     const fullPath = `${PHOTOS_DIR}${photoId}-full.jpg`;
     await FileSystem.copyAsync({

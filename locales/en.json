@@ -223,6 +223,7 @@
     "thinking": "Thinking...",
     "errorMessage": "Couldn't reach the assistant. Please try again.",
     "errorUnavailable": "The assistant is temporarily unavailable. Please try again shortly.",
+    "errorRateLimit": "You've hit the hourly chat limit. Try again in an hour.",
     "retry": "Try Again",
     "premiumRequiredTitle": "Premium required",
     "premiumRequiredBody": "The assistant is a premium feature. Upgrade to analyze your reading data and chat without limits.",
@@ -316,6 +317,7 @@
     "uploadBadRequest": "The photo wasn't accepted. Retake it and try again.",
     "serverError": "Something's off on our side. Mind trying again in a moment?",
     "configError": "There's a missing piece in the app's setup. Please let us know if this keeps happening.",
+    "rateLimitOcr": "You've hit today's photo limit. Please try again tomorrow.",
     "retry": "Try Again"
   },
   "common": {

@@ -32,11 +32,21 @@ export const ENV = {
 
   // ─────────────────────────────────────────────────────────────────────────
   // AI — Google Gemini (direct)
+  //
+  // Model routing: OCR workload (kitap sayfası foto → metin) ucuz flash-lite
+  // modeline gider, chat workload (asistan sohbeti) karmaşık sorularda flash'a
+  // yükselir. Faz 2'de context caching açılınca asistan başına %30-50 tasarruf.
+  //
+  // Back-compat: GEMINI_MODEL set'liyse OCR + CHAT default'u olarak kullanılır,
+  // böylece geçiş sırasında Railway'de env çakışırsa uygulama kırılmaz.
   // ─────────────────────────────────────────────────────────────────────────
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
   geminiBaseUrl:
     process.env.GEMINI_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+  geminiModelOcr:
+    process.env.GEMINI_MODEL_OCR ?? process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite",
+  geminiModelChat:
+    process.env.GEMINI_MODEL_CHAT ?? process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
 
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)

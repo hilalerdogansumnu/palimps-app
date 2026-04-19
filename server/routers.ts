@@ -3,7 +3,13 @@ import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import {
+  publicProcedure,
+  protectedProcedure,
+  chatLimitedProcedure,
+  ocrLimitedProcedure,
+  router,
+} from "./_core/trpc";
 import * as db from "./db";
 import { buildPublicUrl, storagePut } from "./storage";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -246,9 +252,9 @@ export const appRouter = router({
       }),
 
     /**
-     * Yeni okuma anı oluştur
+     * Yeni okuma anı oluştur — OCR rate-limited (kullanıcı başına 50/gün).
      */
-    create: protectedProcedure
+    create: ocrLimitedProcedure
       .input(
         z.object({
           bookId: z.number(),
@@ -274,10 +280,13 @@ export const appRouter = router({
           pageImageUrl = uploadResult.url;
         }
 
-        // 2. OCR işlemi (LLM ile)
+        // 2. OCR işlemi (LLM ile) — ucuz flash-lite tier'ında çalışır (workload
+        // routing). Full flash sadece asistan sohbeti için; sayfa OCR'ında
+        // kalite farkı hissedilmiyor, maliyet ~20x düşüyor.
         let ocrText: string | null = null;
         try {
           const ocrResponse = await invokeLLM({
+            model: ENV.geminiModelOcr,
             messages: [
               {
                 role: "user",
@@ -367,9 +376,10 @@ export const appRouter = router({
   // ============================================
   ai: router({
     /**
-     * OCR metninden otomatik not oluştur (Premium özelliği)
+     * OCR metninden otomatik not oluştur (Premium özelliği).
+     * OCR bucket'ını paylaşır — 50/gün tavanı aynı.
      */
-    generateNote: protectedProcedure
+    generateNote: ocrLimitedProcedure
       .input(z.object({ ocrText: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         // Premium kontrolü
@@ -378,7 +388,10 @@ export const appRouter = router({
         }
 
         try {
+          // AI note üretimi kısa bir özet — flash-lite fazlasıyla yeterli ve
+          // OCR workload'ının yanında aynı ucuz tier'dan gitmesi mantıklı.
           const response = await invokeLLM({
+            model: ENV.geminiModelOcr,
             messages: [
               {
                 role: "system",
@@ -507,9 +520,10 @@ export const appRouter = router({
   // ============================================
   chat: router({
     /**
-     * Kullanıcının okuma verisi ile sohbet et
+     * Kullanıcının okuma verisi ile sohbet et — chat rate-limited
+     * (kullanıcı başına 20/saat).
      */
-    send: protectedProcedure
+    send: chatLimitedProcedure
       .input(
         z.object({
           message: z.string().min(1).max(2000),
@@ -578,11 +592,25 @@ ${dateLabel}: ${m.createdAt}
             ? `You are a reading assistant. You answer the user's questions about the books they read and the reading moments they capture. You can analyze their data, produce summaries, and make recommendations. Reply in English.${userContext}`
             : `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`;
 
+        // Basit router: kısa + tek cümlelik soru → flash-lite (ucuz), uzun /
+        // analitik sorular → full flash (kalite). Heuristic her iki dil için
+        // keyword taraması yapıyor; false-negative maliyet farkı kabul
+        // edilebilir — kötü yönlendirirsek kullanıcı flash-lite'ın kısa
+        // cevabını görür, dünyanın sonu değil.
+        const msg = input.message.trim();
+        const complexityKeywords =
+          locale === "en"
+            ? /(compare|recommend|recommendation|analy[sz]e|why|how|explain|summar[iy])/i
+            : /(karşılaştır|öner|öneri|analiz|neden|nasıl|açıkla|özetle)/i;
+        const isSimple = msg.length < 120 && !complexityKeywords.test(msg);
+        const chatModel = isSimple ? ENV.geminiModelOcr : ENV.geminiModelChat;
+
         // LLM'e gönder — wrap to surface actionable error codes instead of
         // leaking stack traces to the client.
         let response;
         try {
           response = await invokeLLM({
+            model: chatModel,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: input.message },
@@ -591,6 +619,7 @@ ${dateLabel}: ${m.createdAt}
         } catch (err) {
           console.error("[chat.send] invokeLLM failed", {
             userId: ctx.user.id,
+            model: chatModel,
             error: err instanceof Error ? err.message : String(err),
           });
           throw new TRPCError({

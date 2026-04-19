@@ -80,6 +80,7 @@
     "react-native-svg": "15.12.1",
     "react-native-web": "~0.21.2",
     "react-native-worklets": "0.5.1",
+    "rate-limiter-flexible": "^5.0.4",
     "superjson": "^1.13.3",
     "tailwind-merge": "^2.6.0",
     "zod": "^4.2.1"

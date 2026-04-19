@@ -63,6 +63,10 @@ export type InvokeParams = {
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
   response_format?: ResponseFormat;
+  // Optional model override. If omitted, falls back to ENV.geminiModelChat —
+  // use this to route OCR workloads to the cheaper flash-lite tier, and let
+  // chat keep full flash for quality on complex queries.
+  model?: string;
 };
 
 export type ToolCall = {
@@ -264,10 +268,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     output_schema,
     responseFormat,
     response_format,
+    model,
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: ENV.geminiModel,
+    // Caller-provided model wins; chat model is the safe default for
+    // anything that hasn't opted into routing yet.
+    model: model ?? ENV.geminiModelChat,
     messages: messages.map(normalizeMessage),
   };
 

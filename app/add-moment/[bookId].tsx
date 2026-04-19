@@ -194,8 +194,16 @@ export default function AddMomentScreen() {
     const err = error instanceof Error ? error : new Error(String(error));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
+    // tRPC rate-limit hataları Error.message = "RATE_LIMIT_EXCEEDED" taşır
+    // ve (error as any).data.code === "TOO_MANY_REQUESTS" olur. Bu mesaj
+    // retry'a anlam yüklemez — "yarın tekrar dene" + cancel sunalım.
+    const trpcCode = (error as any)?.data?.code as string | undefined;
+    const isRateLimit =
+      trpcCode === "TOO_MANY_REQUESTS" || err.message === "RATE_LIMIT_EXCEEDED";
+
     let messageKey = "errors.photoUploadFailed";
-    if (err.message === "UPLOAD_TIMEOUT") messageKey = "errors.uploadTimeout";
+    if (isRateLimit) messageKey = "errors.rateLimitOcr";
+    else if (err.message === "UPLOAD_TIMEOUT") messageKey = "errors.uploadTimeout";
     else if (err.message === "NETWORK_ERROR") messageKey = "errors.networkError";
     else if (err.message.startsWith("UPLOAD_HTTP_4")) messageKey = "errors.uploadBadRequest";
     else if (err.message.startsWith("UPLOAD_HTTP_5")) messageKey = "errors.serverError";
@@ -205,15 +213,18 @@ export default function AddMomentScreen() {
       operation: "addMoment.handleSubmit",
       bookId: bookIdNum,
       phase,
+      isRateLimit: String(isRateLimit),
     });
 
     Alert.alert(
       t("common.error"),
       t(messageKey),
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("errors.retry"), onPress: handleSubmit },
-      ],
+      isRateLimit
+        ? [{ text: t("common.cancel"), style: "cancel" }]
+        : [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("errors.retry"), onPress: handleSubmit },
+          ],
     );
   };
 
