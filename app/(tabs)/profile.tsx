@@ -140,13 +140,13 @@ export default function ProfileScreen() {
   // "İsim ekle" CTA'sı gösterir; tap ile edit-name ekranına git. İsim varsa
   // Apple'dan gelen tam ad.
   //
-  // Avatar fallback: isim varsa ilk harfi (kişiselleştirme). İsim yoksa Apple
-  // private-relay email'in ilk harfini (ör. "c3xy@privaterelay…" → "C")
-  // göstermek saçma — 50319'da kullanıcı raporladı. Bu durumda PALIMPS
-  // logosuna düş.
+  // Avatar: her zaman PALIMPS logosu. İsim ilk harfi göstermiyoruz çünkü
+  // (a) Apple private-relay email'li kullanıcılarda "C3xy@privaterelay…"
+  // harfi anlamsız ve (b) marka tekrarı (logo = ikon spot'u) Supercell-tier
+  // kimlik pekiştirmesi. Logo kendi mor gradyanıyla geliyor — ayrı tint
+  // backgroundı gerek yok, aksine "çift mor" görünümü yaratır.
   const hasName = !!user.name?.trim();
   const displayName = user.name?.trim() || t("profile.nameAdd");
-  const initial = hasName ? user.name!.trim().charAt(0).toUpperCase() : null;
 
   return (
     <ScreenContainer>
@@ -188,24 +188,17 @@ export default function ProfileScreen() {
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: colors.primary + "33",
               alignItems: "center",
               justifyContent: "center",
               overflow: "hidden",
             }}
           >
-            {initial ? (
-              <Text style={{ fontSize: 24, fontWeight: "700", color: colors.primary }}>
-                {initial}
-              </Text>
-            ) : (
-              <Image
-                source={require("@/assets/images/icon.png")}
-                style={{ width: 56, height: 56 }}
-                contentFit="cover"
-                accessibilityLabel="PALIMPS"
-              />
-            )}
+            <Image
+              source={require("@/assets/images/icon.png")}
+              style={{ width: 56, height: 56 }}
+              contentFit="cover"
+              accessibilityLabel="PALIMPS"
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text
