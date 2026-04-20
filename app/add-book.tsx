@@ -11,6 +11,7 @@ import { a11y } from "@/lib/accessibility";
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
 import { CropModal } from "@/components/crop-modal";
+import { UpsellSheet, type UpsellKind } from "@/components/upsell-sheet";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -36,6 +37,9 @@ export default function AddBookScreen() {
   const [wasAutoFilled, setWasAutoFilled] = useState(false);
   const hasUserEditedTitleRef = useRef(false);
   const hasUserEditedAuthorRef = useRef(false);
+  // Freemium cap'ine takılınca upsell sheet — "Şimdi değil" dedi diye kitap
+  // form'u kaybolmasın; kullanıcı sheet'i kapatıp manuel iptal etsin.
+  const [upsellKind, setUpsellKind] = useState<UpsellKind | null>(null);
 
   const utils = trpc.useUtils();
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
@@ -193,6 +197,14 @@ export default function AddBookScreen() {
           ...(coverImageUrl ? { coverImageUrl } : {}),
         });
       } catch (createError: any) {
+        // Freemium cap — upsell sheet aç, Alert kullanma. Haptic de error yerine
+        // impactMedium: bu bir hata değil, bir davet.
+        const code = createError?.message;
+        if (code === "BOOK_LIMIT_REACHED" || code === "BOOK_MONTHLY_LIMIT") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          setUpsellKind(code === "BOOK_LIMIT_REACHED" ? "bookLimit" : "bookMonthlyLimit");
+          return;
+        }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert(t("addBook.error"), createError?.message || t("addBook.createError"));
         return;
@@ -456,6 +468,12 @@ export default function AddBookScreen() {
           void runCoverMetadataExtraction(croppedUri);
         }}
         onCancel={() => setRawPickedUri(null)}
+      />
+
+      <UpsellSheet
+        visible={upsellKind !== null}
+        kind={upsellKind ?? "bookLimit"}
+        onClose={() => setUpsellKind(null)}
       />
     </ScreenContainer>
   );

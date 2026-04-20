@@ -239,6 +239,40 @@
     "later": "Maybe Later",
     "premiumRequired": "AI-powered note generation is a premium feature. Would you like to upgrade?"
   },
+  "freemium": {
+    "upgradeCta": "Go Premium",
+    "laterCta": "Not now",
+    "bookLimit": {
+      "title": "Your 5 active books are full",
+      "body": "Free accounts keep 5 books active at a time. Archive a finished one to open a slot — or upgrade for unlimited.",
+      "archiveHint": "Tip: swipe a book in your library to archive it"
+    },
+    "bookMonthlyLimit": {
+      "title": "Whoa — slow down a little",
+      "body": "You've added a lot of books this month. Try again in a bit; we're just smoothing things out on our side."
+    },
+    "momentLimit": {
+      "title": "10 moments captured in this book",
+      "body": "Free accounts hold 10 moments per book. Delete one, or upgrade to keep going without limits."
+    },
+    "momentSanityCap": {
+      "title": "This book is at capacity",
+      "body": "You've captured a remarkable number of moments here. Try starting a new book for this reading session."
+    },
+    "assistantQuota": {
+      "title": "You love Memory, huh?",
+      "body": "You've used all 10 free Memory questions. Upgrade to ask as many as you want — your reading data, your conversation.",
+      "remaining_one": "{{count}} Memory question left",
+      "remaining_other": "{{count}} Memory questions left"
+    },
+    "usage": {
+      "title": "Free usage",
+      "booksLabel": "Books",
+      "assistantLabel": "Memory questions",
+      "unitSlash": "/",
+      "lifetimeNote": "Memory questions are lifetime — no monthly reset."
+    }
+  },
   "chat": {
     "title": "Assistant",
     "subtitle": "Ask questions about your reading data",

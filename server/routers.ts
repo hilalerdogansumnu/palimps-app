@@ -32,6 +32,24 @@ function getClient(): S3Client {
 import { invokeLLM } from "./_core/llm";
 import { isUserPremium } from "./_core/premium";
 
+/**
+ * Freemium paket limitleri — tek yerden okunur ki pazarlama/UX değiştiğinde
+ * hesaplar eşzamanlı güncellensin. Free cap'leri GÖRÜNÜR (upsell copy'de
+ * gösterilir), Pro cap'leri GİZLİ (sadece abuse-guard).
+ */
+export const FREEMIUM_LIMITS = {
+  free: {
+    activeBooks: 5,
+    momentsPerBook: 10,
+    assistantQuestionsLifetime: 10,
+  },
+  pro: {
+    booksPerMonth: 100, // rolling 30-day window, gizli
+    momentsPerBookSanity: 500, // gizli
+  },
+} as const;
+const PRO_BOOK_WINDOW_DAYS = 30;
+
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -145,7 +163,14 @@ export const appRouter = router({
       }),
 
     /**
-     * Yeni kitap oluştur
+     * Yeni kitap oluştur. Freemium enforcement (50325):
+     *   Free → max 5 AKTİF kitap (archived sayılmaz, rotasyon serbest)
+     *   Pro  → 30-day rolling 100 kitap (abuse-guard, gizli)
+     *
+     * FORBIDDEN "BOOK_LIMIT_REACHED" client tarafında upsell bottom-sheet
+     * açar. Archived kitabı geri döndürerek slot açma path'i yok — manuel
+     * kullanıcı-driven. Client zaten pre-flight kontrol ediyor, bu server
+     * check yetkisizce denenen edge case'ler için son savunma.
      */
     create: protectedProcedure
       .input(
@@ -157,6 +182,26 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const premium = isUserPremium(ctx.user);
+        if (premium) {
+          const since = new Date(Date.now() - PRO_BOOK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+          const recentCount = await db.countBooksCreatedSince(ctx.user.id, since);
+          if (recentCount >= FREEMIUM_LIMITS.pro.booksPerMonth) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "BOOK_MONTHLY_LIMIT",
+            });
+          }
+        } else {
+          const activeCount = await db.countActiveBooks(ctx.user.id);
+          if (activeCount >= FREEMIUM_LIMITS.free.activeBooks) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "BOOK_LIMIT_REACHED",
+            });
+          }
+        }
+
         let coverImageUrl: string | undefined;
 
         // Presigned URL ile yüklendiyse direkt kullan
@@ -459,6 +504,26 @@ export const appRouter = router({
         if (!input.pageImageBase64 && !input.pageImageUrl) {
           throw new Error("pageImageBase64 veya pageImageUrl zorunlu");
         }
+
+        // Ownership + freemium cap check. Kitap bu kullanıcınınsa ve cap
+        // aşılmadıysa devam; aksi halde FORBIDDEN ile client upsell açar.
+        // (50325 freemium enforcement)
+        const targetBook = await db.getBookById(input.bookId);
+        if (!targetBook || targetBook.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
+        }
+        const premium = isUserPremium(ctx.user);
+        const momentCap = premium
+          ? FREEMIUM_LIMITS.pro.momentsPerBookSanity
+          : FREEMIUM_LIMITS.free.momentsPerBook;
+        const existingCount = await db.getReadingMomentCount(input.bookId);
+        if (existingCount >= momentCap) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: premium ? "MOMENT_SANITY_CAP" : "MOMENT_LIMIT_REACHED",
+          });
+        }
+
         // 1. Sayfa fotoğrafını S3'e yükle
         let pageImageUrl: string;
         if (input.pageImageUrl) {
@@ -755,13 +820,21 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Premium gate — DB flag VEYA test allowlist. Machine-readable code
-        // so the client can branch on premium vs. unexpected failure.
-        if (!isUserPremium(ctx.user)) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "PREMIUM_REQUIRED",
-          });
+        // Freemium paket (50325): Hafıza asistanı free user'a da AÇIK, ama
+        // lifetime 10 başarılı cevap ile sınırlı. Pro'da lifetime cap yok;
+        // sadece middleware tarafındaki abuse-guard (40/saat + 300/gün)
+        // geçerli.
+        const premium = isUserPremium(ctx.user);
+        let currentQuotaUsed = 0;
+        if (!premium) {
+          const user = await db.getUserById(ctx.user.id);
+          currentQuotaUsed = user?.freeAssistantQuestionsUsed ?? 0;
+          if (currentQuotaUsed >= FREEMIUM_LIMITS.free.assistantQuestionsLifetime) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "ASSISTANT_QUOTA_EXHAUSTED",
+            });
+          }
         }
 
         const locale = input.locale;
@@ -868,9 +941,31 @@ ${dateLabel}: ${m.createdAt}
             ? firstChoice.message.content
             : JSON.stringify(firstChoice.message.content);
 
+        // Successful LLM response — SADECE bu noktada lifetime sayacı
+        // artırılır. Infra hatası (timeout/empty choices/quota) user'ın
+        // hakkından düşmez; trust-building move. Increment başarısız olursa
+        // response'u bozma — worst case: user bir free soru fazla kullanır,
+        // bu bir Apple-quality trade-off.
+        let quotaRemaining: number | null = null;
+        if (!premium) {
+          try {
+            await db.incrementFreeAssistantQuestions(ctx.user.id);
+          } catch (incErr) {
+            console.error("[chat.send] failed to increment quota", {
+              userId: ctx.user.id,
+              error: incErr instanceof Error ? incErr.message : String(incErr),
+            });
+          }
+          quotaRemaining = Math.max(
+            0,
+            FREEMIUM_LIMITS.free.assistantQuestionsLifetime - (currentQuotaUsed + 1),
+          );
+        }
+
         return {
           reply,
           timestamp: new Date().toISOString(),
+          quotaRemaining,
         };
       }),
   }),
@@ -893,6 +988,48 @@ ${dateLabel}: ${m.createdAt}
       return {
         isPremium: isUserPremium(resolved),
         openId: resolved.openId,
+      };
+    }),
+
+    /**
+     * Freemium kullanım sayacları — profil > hesap ekranındaki zarif progress
+     * kartı için. Sadece free user için göster (Pro'da `isPremium: true`
+     * dönüyor, client kartı gizliyor).
+     *
+     * Book sayacı AKTİF kitaplar — archive flow ile slot açmak hâlâ mümkün
+     * olduğundan rolling bir gösterge olmalı, toplam değil.
+     *
+     * Assistant sayacı lifetime — limit DEĞİŞMEZ (reset yok); upgrade
+     * etmeden geri alınmaz. Copy bu gerçeği açıkça söylemeli.
+     */
+    usage: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserById(ctx.user.id);
+      const resolved = user ?? ctx.user;
+      const premium = isUserPremium(resolved);
+
+      if (premium) {
+        // Pro user sayaç görmez — client kartı hiç render etmiyor, yine de
+        // contract şekli aynı kalsın diye null dönüyoruz.
+        return {
+          isPremium: true as const,
+          books: null,
+          assistantQuestions: null,
+        };
+      }
+
+      const activeBooks = await db.countActiveBooks(ctx.user.id);
+      const questionsUsed = user?.freeAssistantQuestionsUsed ?? 0;
+
+      return {
+        isPremium: false as const,
+        books: {
+          used: activeBooks,
+          limit: FREEMIUM_LIMITS.free.activeBooks,
+        },
+        assistantQuestions: {
+          used: questionsUsed,
+          limit: FREEMIUM_LIMITS.free.assistantQuestionsLifetime,
+        },
       };
     }),
 

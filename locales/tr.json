@@ -239,6 +239,40 @@
     "later": "Belki Sonra",
     "premiumRequired": "AI destekli not oluşturma premium bir özelliktir. Premium'a yükseltmek ister misiniz?"
   },
+  "freemium": {
+    "upgradeCta": "Premium'a Geç",
+    "laterCta": "Şimdi Değil",
+    "bookLimit": {
+      "title": "5 aktif kitabın doldu",
+      "body": "Ücretsiz planda aynı anda 5 kitap aktif tutulur. Bitirdiğin bir kitabı arşivleyince yer açılır — ya da Premium ile sınırı kaldır.",
+      "archiveHint": "İpucu: Kitaplarım'da bir kitabı sola kaydırarak arşivleyebilirsin"
+    },
+    "bookMonthlyLimit": {
+      "title": "Biraz yavaşla",
+      "body": "Bu ay çok kitap ekledin. Birazdan tekrar dene; biz tarafta ufak bir pürüzü düzeltiyoruz."
+    },
+    "momentLimit": {
+      "title": "Bu kitap için 10 an kaydettin",
+      "body": "Ücretsiz planda her kitaba 10 an sığar. Bir anı silip yer açabilir ya da Premium ile sınırsız devam edebilirsin."
+    },
+    "momentSanityCap": {
+      "title": "Bu kitap doldu",
+      "body": "Bu kitapta gerçekten çok an biriktirdin. Bu okuma seansı için yeni bir kitaba başlamayı dene."
+    },
+    "assistantQuota": {
+      "title": "Hafıza'yı sevdin galiba",
+      "body": "10 ücretsiz Hafıza sorunu kullandın. Dilediğin kadar sormak için Premium'a geç — okuma verin, senin konuşman.",
+      "remaining_one": "{{count}} Hafıza sorusu kaldı",
+      "remaining_other": "{{count}} Hafıza sorusu kaldı"
+    },
+    "usage": {
+      "title": "Ücretsiz kullanım",
+      "booksLabel": "Kitap",
+      "assistantLabel": "Hafıza sorusu",
+      "unitSlash": "/",
+      "lifetimeNote": "Hafıza soruları ömür boyu — aylık sıfırlama yok."
+    }
+  },
   "chat": {
     "title": "Asistan",
     "subtitle": "Okuma verileriniz hakkında sorular sorun",

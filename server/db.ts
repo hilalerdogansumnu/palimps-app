@@ -1,4 +1,4 @@
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, books, readingMoments, InsertBook, InsertReadingMoment } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -362,4 +362,61 @@ export async function getUserById(userId: number) {
     .limit(1);
 
   return user || null;
+}
+
+// ============================================
+// FREEMIUM COUNTERS
+// ============================================
+
+/**
+ * Kullanıcının aktif (arşivlenmemiş) kitap sayısını döndür.
+ * Ücretsiz tier 5 aktif kitap cap'inde kullanılır — arşivleyince slot açılır.
+ */
+export async function countActiveBooks(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const rows = await db
+    .select({ id: books.id })
+    .from(books)
+    .where(and(eq(books.userId, userId), eq(books.archived, false)));
+
+  return rows.length;
+}
+
+/**
+ * Son N gün içinde (rolling window) bu kullanıcı tarafından oluşturulmuş
+ * kitap sayısını döndür. Pro tier 100/ay (30 gün) sanity cap'i için.
+ * Archived olsa bile sayılır — bu bir yaratım sayacı, stok değil.
+ */
+export async function countBooksCreatedSince(
+  userId: number,
+  since: Date,
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const rows = await db
+    .select({ id: books.id })
+    .from(books)
+    .where(and(eq(books.userId, userId), gte(books.createdAt, since)));
+
+  return rows.length;
+}
+
+/**
+ * `freeAssistantQuestionsUsed` sayacını atomik olarak bir artır.
+ * SUCCESSFUL LLM cevabından sonra çağrılır — user shouldn't lose a question
+ * to infrastructure errors. Pro kullanıcıda hiç çağrılmaz.
+ */
+export async function incrementFreeAssistantQuestions(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(users)
+    .set({
+      freeAssistantQuestionsUsed: sql`${users.freeAssistantQuestionsUsed} + 1`,
+    })
+    .where(eq(users.id, userId));
 }

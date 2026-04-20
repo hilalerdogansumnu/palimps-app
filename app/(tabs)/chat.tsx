@@ -7,9 +7,14 @@ import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { useSubscription } from "@/hooks/use-subscription";
 import { captureException } from "@/lib/_core/sentry";
 
-type MessageKind = "normal" | "error" | "premiumRequired";
+// "quotaExhausted" = free user 10 lifetime Hafıza sorusunu tüketti; upsell CTA
+// renderlanır. Legacy "premiumRequired" kind'ini artık üretmiyoruz — free user
+// artık asistana erişebiliyor — ama copy/CTA tasarımı aynı olduğu için tek
+// "upsell" kolunu kullanıyoruz.
+type MessageKind = "normal" | "error" | "quotaExhausted";
 
 type Message = {
   id: string;
@@ -23,6 +28,7 @@ type Message = {
 export default function ChatScreen() {
   const colors = useColors();
   const { t, i18n } = useTranslation();
+  const { isPremium, isFree } = useSubscription();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
 
@@ -32,7 +38,21 @@ export default function ChatScreen() {
     t("chat.example3"),
     t("chat.example4"),
   ], [t]);
-  
+
+  // Hafıza kullanım sayacı — sadece free user için. İlk açılışta server'dan
+  // gelen usage ile dolar; her başarılı mesajda response.quotaRemaining ile
+  // düşer. Pro user için query enabled değil → network noise yok.
+  const usageQuery = trpc.subscriptions.usage.useQuery(undefined, {
+    enabled: isFree,
+    staleTime: 30_000,
+  });
+  const serverRemaining =
+    usageQuery.data && usageQuery.data.isPremium === false
+      ? Math.max(0, usageQuery.data.assistantQuestions.limit - usageQuery.data.assistantQuestions.used)
+      : null;
+  const [localRemaining, setLocalRemaining] = useState<number | null>(null);
+  const remainingQuestions = localRemaining ?? serverRemaining;
+
   const sendMutation = trpc.chat.send.useMutation();
 
   const handleSend = async (message?: string, options?: { isRetry?: boolean }) => {
@@ -41,11 +61,11 @@ export default function ChatScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // On retry, drop prior error/premium cards so the transcript doesn't
+    // On retry, drop prior error/upsell cards so the transcript doesn't
     // accumulate dead system messages.
     if (options?.isRetry) {
       setMessages((prev) =>
-        prev.filter((m) => m.kind !== "error" && m.kind !== "premiumRequired"),
+        prev.filter((m) => m.kind !== "error" && m.kind !== "quotaExhausted"),
       );
     } else {
       const userMessage: Message = {
@@ -71,6 +91,11 @@ export default function ChatScreen() {
         kind: "normal",
       };
       setMessages((prev) => [...prev, assistantMessage]);
+      // Server free user için quotaRemaining döner; optimistic UI update
+      // (query refetch beklemeden sayacı düşür). Pro user için null.
+      if (typeof response.quotaRemaining === "number") {
+        setLocalRemaining(response.quotaRemaining);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -78,16 +103,19 @@ export default function ChatScreen() {
       const trpcCode = (error as any)?.data?.code as string | undefined;
       const trpcMessage = (error as any)?.message as string | undefined;
 
-      if (trpcCode === "FORBIDDEN" && trpcMessage === "PREMIUM_REQUIRED") {
-        const premiumMessage: Message = {
+      // 50325: Free user lifetime 10 Hafıza sorusunu tüketti. Upsell CTA'lı
+      // in-transcript kart göster; retry yok (cap absolute). Pro upgrade
+      // route.push('/premium') → CTA üzerinden.
+      if (trpcCode === "FORBIDDEN" && trpcMessage === "ASSISTANT_QUOTA_EXHAUSTED") {
+        const quotaMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: t("chat.premiumRequiredBody"),
+          content: t("freemium.assistantQuota.body"),
           timestamp: new Date().toISOString(),
-          kind: "premiumRequired",
-          retryPrompt: textToSend,
+          kind: "quotaExhausted",
         };
-        setMessages((prev) => [...prev, premiumMessage]);
+        setMessages((prev) => [...prev, quotaMessage]);
+        setLocalRemaining(0);
         return;
       }
 
@@ -149,9 +177,9 @@ export default function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
     const isError = item.kind === "error";
-    const isPremium = item.kind === "premiumRequired";
+    const isQuotaUpsell = item.kind === "quotaExhausted";
     const showsRetry = isError && !!item.retryPrompt;
-    const showsPremiumCta = isPremium;
+    const showsPremiumCta = isQuotaUpsell;
 
     const bubbleBg = isUser
       ? colors.primary
@@ -181,7 +209,7 @@ export default function ChatScreen() {
             borderBottomLeftRadius: isUser ? 12 : 4,
           }}
         >
-          {isPremium && (
+          {isQuotaUpsell && (
             <Text
               style={{
                 fontSize: 13,
@@ -190,7 +218,7 @@ export default function ChatScreen() {
                 marginBottom: 4,
               }}
             >
-              {t("chat.premiumRequiredTitle")}
+              {t("freemium.assistantQuota.title")}
             </Text>
           )}
           <Text
@@ -275,6 +303,21 @@ export default function ChatScreen() {
           <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
             {t("chat.title")}
           </Text>
+          {/* Free user sayacı — Linear tarzı: sessiz, fonksiyonel, kaygı yaratmayan.
+              Sayı bittiğinde (0) da göster çünkü kullanıcı neden gönderemediğini anlasın. */}
+          {!isPremium && remainingQuestions !== null && (
+            <Text
+              accessible
+              accessibilityRole="text"
+              style={{
+                fontSize: 12,
+                color: colors.muted,
+                marginTop: 2,
+              }}
+            >
+              {t("freemium.assistantQuota.remaining", { count: remainingQuestions })}
+            </Text>
+          )}
         </View>
 
         {/* Messages */}

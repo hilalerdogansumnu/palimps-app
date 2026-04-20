@@ -22,6 +22,14 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   isPremium: int("isPremium").default(0).notNull(), // 0 = free, 1 = premium
   /**
+   * Freemium lifetime counter: number of SUCCESSFUL Hafıza assistant
+   * responses this user has consumed. Free tier cap = 10. Never decremented;
+   * upgrading to Pro bypasses the gate entirely (Pro path doesn't read it).
+   * Increment ONLY after a successful LLM response — user shouldn't lose
+   * a question to our infrastructure errors.
+   */
+  freeAssistantQuestionsUsed: int("freeAssistantQuestionsUsed").default(0).notNull(),
+  /**
    * RevenueCat product identifier of the currently active entitlement.
    * Set by the webhook on activation events, cleared on cancellation.
    */

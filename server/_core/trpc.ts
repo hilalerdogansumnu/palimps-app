@@ -3,7 +3,14 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { RateLimiterAbstract } from "rate-limiter-flexible";
 import type { TrpcContext } from "./context";
-import { chatLimiter, ocrLimiter } from "./rateLimit";
+import {
+  chatLimiterFree,
+  chatLimiterProHour,
+  chatLimiterProDay,
+  ocrLimiterFree,
+  ocrLimiterPro,
+} from "./rateLimit";
+import { isUserPremium } from "./premium";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -30,17 +37,25 @@ const requireUser = t.middleware(async (opts) => {
 export const protectedProcedure = t.procedure.use(requireUser);
 
 /**
- * Per-user rate-limit middleware factory. Composes on top of requireUser so
- * we always have a stable id to bucket against. Aşımda TRPCError
- * TOO_MANY_REQUESTS "RATE_LIMIT_EXCEEDED" döner — client buna göre UI mesajı
- * gösterebilir.
+ * Tier-aware rate-limit middleware. Composes on top of requireUser so we
+ * always have a stable id to bucket against.
+ *
+ * - Free kullanıcı → `freeLimiter` (tek bucket)
+ * - Premium kullanıcı → `proLimiters` (birden çok bucket, hepsi geçilmeli)
+ *
+ * Aşımda TRPCError TOO_MANY_REQUESTS "RATE_LIMIT_EXCEEDED" döner — client
+ * buna göre UI mesajı gösterir. Premium için çift katmanlı limit ("saatlik"
+ * burst + "günlük" sustained) abuse farklı şekillerde engellenir; honest
+ * power user ikisini de kolay geçer.
  */
-function rateLimitMiddleware(limiter: RateLimiterAbstract) {
+function tieredRateLimitMiddleware(
+  freeLimiter: RateLimiterAbstract,
+  proLimiters: RateLimiterAbstract[],
+) {
   return t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    // Paired with requireUser via `.use(requireUser).use(rateLimitMiddleware(...))`,
-    // but keep a safety net in case someone wires this onto a public procedure.
+    // Paired with requireUser upstream, but keep a safety net.
     if (!ctx.user) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
@@ -48,8 +63,21 @@ function rateLimitMiddleware(limiter: RateLimiterAbstract) {
       });
     }
 
+    const premium = isUserPremium(ctx.user);
+    const key = String(ctx.user.id);
+
     try {
-      await limiter.consume(String(ctx.user.id));
+      if (premium) {
+        // Premium: tüm pro bucket'lardan geçmeli — herhangi biri dolarsa
+        // zaten abuse, block. Paralel yerine sıralı çünkü consume() idempotent
+        // değil; paralel olsa tek bucket'ta ilerlese bile diğerinde quota
+        // yakılmış olur.
+        for (const limiter of proLimiters) {
+          await limiter.consume(key);
+        }
+      } else {
+        await freeLimiter.consume(key);
+      }
     } catch (rejRes: unknown) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
@@ -58,8 +86,7 @@ function rateLimitMiddleware(limiter: RateLimiterAbstract) {
       });
     }
 
-    // Narrow `user` to non-null in downstream handlers — mirrors requireUser
-    // so chained procedures keep the same ergonomics as protectedProcedure.
+    // Narrow `user` to non-null in downstream handlers.
     return next({
       ctx: {
         ...ctx,
@@ -69,13 +96,19 @@ function rateLimitMiddleware(limiter: RateLimiterAbstract) {
   });
 }
 
-// Chat: kullanıcı başına saatte 20 mesaj (rateLimit.ts'te bucket).
-export const chatLimitedProcedure = protectedProcedure.use(rateLimitMiddleware(chatLimiter));
+// Chat: free 20/saat abuse-guard, pro 40/saat + 300/gün gizli tavan.
+// Free user zaten 10 lifetime Hafıza sorusu cap'inde; bu bucket sadece
+// scripted probing'e karşı.
+export const chatLimitedProcedure = protectedProcedure.use(
+  tieredRateLimitMiddleware(chatLimiterFree, [chatLimiterProHour, chatLimiterProDay]),
+);
 
-// OCR + AI note: kullanıcı başına günde 50 istek. readingMoments.create ve
-// ai.generateNote aynı bucket'ı paylaşıyor — ikisi de aynı ucuz LLM tier'a
-// gidiyor, tek tavan yeterli.
-export const ocrLimitedProcedure = protectedProcedure.use(rateLimitMiddleware(ocrLimiter));
+// OCR + AI note: free 50/gün, pro 100/gün. readingMoments.create,
+// ai.generateNote ve books.extractCoverMetadata aynı bucket'ı paylaşıyor —
+// üçü de aynı ucuz LLM tier'a gidiyor, tek tavan yeterli.
+export const ocrLimitedProcedure = protectedProcedure.use(
+  tieredRateLimitMiddleware(ocrLimiterFree, [ocrLimiterPro]),
+);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {

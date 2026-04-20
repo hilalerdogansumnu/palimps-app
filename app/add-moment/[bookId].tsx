@@ -20,6 +20,7 @@ import i18n from "@/lib/i18n";
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
 import { CropModal } from "@/components/crop-modal";
+import { UpsellSheet, type UpsellKind } from "@/components/upsell-sheet";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -82,6 +83,9 @@ export default function AddMomentScreen() {
   const [ocrText, setOcrText] = useState<string | null>(null);
   const [isOcrComplete, setIsOcrComplete] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  // Freemium moment cap upsell — MOMENT_LIMIT_REACHED (free 10/kitap) veya
+  // MOMENT_SANITY_CAP (pro 500/kitap, nadir).
+  const [upsellKind, setUpsellKind] = useState<UpsellKind | null>(null);
   const { isPremium } = useSubscription();
 
   const utils = trpc.useUtils();
@@ -220,12 +224,25 @@ export default function AddMomentScreen() {
    */
   const handleUploadError = (error: unknown, phase: string) => {
     const err = error instanceof Error ? error : new Error(String(error));
+
+    // Freemium moment cap — FORBIDDEN + MOMENT_LIMIT_REACHED / MOMENT_SANITY_CAP.
+    // Alert DEĞİL, upsell sheet aç. Haptic error da değil, medium impact: bu bir
+    // davet, hata değil. (50325)
+    const trpcCode = (error as any)?.data?.code as string | undefined;
+    if (
+      trpcCode === "FORBIDDEN" &&
+      (err.message === "MOMENT_LIMIT_REACHED" || err.message === "MOMENT_SANITY_CAP")
+    ) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setUpsellKind(err.message === "MOMENT_LIMIT_REACHED" ? "momentLimit" : "momentSanityCap");
+      return;
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
     // tRPC rate-limit hataları Error.message = "RATE_LIMIT_EXCEEDED" taşır
     // ve (error as any).data.code === "TOO_MANY_REQUESTS" olur. Bu mesaj
     // retry'a anlam yüklemez — "yarın tekrar dene" + cancel sunalım.
-    const trpcCode = (error as any)?.data?.code as string | undefined;
     const isRateLimit =
       trpcCode === "TOO_MANY_REQUESTS" || err.message === "RATE_LIMIT_EXCEEDED";
 
@@ -524,6 +541,12 @@ export default function AddMomentScreen() {
         uri={pendingCropUri}
         onDone={handleCropDone}
         onCancel={handleCropCancel}
+      />
+
+      <UpsellSheet
+        visible={upsellKind !== null}
+        kind={upsellKind ?? "momentLimit"}
+        onClose={() => setUpsellKind(null)}
       />
     </ScreenContainer>
   );
