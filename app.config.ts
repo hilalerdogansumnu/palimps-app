@@ -55,7 +55,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50321",
+    buildNumber: "50322",
     usesAppleSignIn: true,
     privacyManifests: {
       NSPrivacyTracking: false,
@@ -189,9 +189,13 @@ const config: ExpoConfig = {
         image: "./assets/images/splash-icon.png",
         imageWidth: 200,
         resizeMode: "contain",
-        backgroundColor: "#F8F6FF",
+        // Matches app icon gradient base (#7A5EE5 → #5C3BCC). Picking the
+        // primary violet #6B4CDB keeps launch → icon tap → splash → app a
+        // single tonal beat (Supercell-style continuous launch).
+        backgroundColor: "#6B4CDB",
         dark: {
-          backgroundColor: "#100C1E",
+          // Deep violet (same hue family) for dark appearance.
+          backgroundColor: "#4A2C9E",
         },
       },
     ],
