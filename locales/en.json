@@ -92,7 +92,9 @@
     "galleryPermission": "Gallery access permission is required to select a photo.",
     "cameraPermission": "Camera access permission is required to take a photo.",
     "coverUploadFailedTitle": "Cover didn't upload",
-    "coverUploadFailedMessage": "Your book was saved, but the cover photo couldn't be uploaded. You can add a cover later from the book page."
+    "coverUploadFailedMessage": "Your book was saved, but the cover photo couldn't be uploaded. You can add a cover later from the book page.",
+    "readingFromCover": "Reading from cover…",
+    "autoFilledFromCover": "Filled from cover — edit if needed"
   },
   "addMoment": {
     "title": "New Moment",

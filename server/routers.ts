@@ -230,6 +230,109 @@ export const appRouter = router({
       }),
 
     /**
+     * Kapak fotoğrafından başlık + yazar ayıkla — kullanıcı ekle akışında
+     * kropladıktan HEMEN sonra çağrılır, saniyeler içinde form alanlarını
+     * doldurur. Kullanıcı döndüreni beğenmezse düzeltip kaydedebilir.
+     *
+     * Neden base64 + data URL?
+     * - Bu aşamada henüz R2'ye yüklenmemiş bir görüntü var. R2'ye "geçici"
+     *   yükleyip OCR'dan sonra silmek DQ-02 "sahipsiz kapak" riskini büyütür.
+     * - Gemini OpenAI-compat endpoint `data:image/jpeg;base64,...` URL'lerini
+     *   image_url alanında kabul eder; ekstra roundtrip yok.
+     * - 768×… ~120KB base64 payload, tRPC için sorun değil.
+     *
+     * OCR rate-limit'ini sayfa OCR'ı ile PAYLAŞIR (50/gün). Kapak OCR'ı da
+     * Gemini çağrısı; ayrı sayaç olsaydı abuse yüzeyi açılırdı.
+     */
+    extractCoverMetadata: ocrLimitedProcedure
+      .input(
+        z.object({
+          imageBase64: z
+            .string()
+            .min(1)
+            .max(3_000_000, "Image too large (max ~2.2MB)"),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const dataUrl = `data:image/jpeg;base64,${input.imageBase64}`;
+        const prompt = [
+          "Bu bir kitap kapağı fotoğrafı. Kapaktan şu iki bilgiyi çıkar:",
+          "1. Kitabın ANA başlığı",
+          "2. Yazar adı",
+          "",
+          "KURALLAR:",
+          "- Başlığı olduğu gibi yaz: tırnak, altyazı, slogan ve yayınevi adını DAHİL ETME.",
+          "- Birden çok yazar varsa en belirgin olanı döndür. 'Çeviren' / 'Translated by' / 'Editör' satırlarını ATLA.",
+          "- Kapakta başlık veya yazar okunmuyorsa ilgili alanı boş string ('') döndür. UYDURMA.",
+          "- Çeviri yapma. Başlık Türkçe ise Türkçe, İngilizce ise İngilizce bırak.",
+          "",
+          "Sadece JSON döndür: { \"title\": \"...\", \"author\": \"...\" }",
+        ].join("\n");
+
+        const runExtraction = async (): Promise<{
+          title: string | null;
+          author: string | null;
+        }> => {
+          const response = await invokeLLM({
+            model: ENV.geminiModelOcr,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                  { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+                ],
+              },
+            ],
+            outputSchema: {
+              name: "BookCoverMetadata",
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  author: { type: "string" },
+                },
+                required: ["title", "author"],
+                additionalProperties: false,
+              },
+              strict: true,
+            },
+          });
+          const raw = response.choices[0]?.message?.content;
+          const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+          if (!text) return { title: null, author: null };
+          try {
+            const parsed = JSON.parse(text) as { title?: string; author?: string };
+            const clean = (v: unknown): string | null => {
+              if (typeof v !== "string") return null;
+              const trimmed = v.trim();
+              return trimmed.length > 0 ? trimmed : null;
+            };
+            return { title: clean(parsed.title), author: clean(parsed.author) };
+          } catch {
+            return { title: null, author: null };
+          }
+        };
+
+        // OCR intermittent olabilir — sessiz başarısızlık yerine bir retry.
+        // Sayfa OCR'ında aynı pattern (routers.ts §reading-moment.create).
+        try {
+          return await runExtraction();
+        } catch (error) {
+          console.error("[extractCoverMetadata] first attempt failed:", error);
+          await new Promise((r) => setTimeout(r, 1200));
+          try {
+            return await runExtraction();
+          } catch (retryError) {
+            console.error("[extractCoverMetadata] retry also failed:", retryError);
+            // Sessizce null'lar döndür — client kullanıcıdan manuel yazmasını
+            // bekleyecek; hata pop-up'ı kapak ekleme akışını bozar.
+            return { title: null, author: null };
+          }
+        }
+      }),
+
+    /**
      * Kitabı arşivle — Kitaplarım listesinden gizler ama DB'de saklar.
      * Kullanıcı swipe-left ile "Arşivle" eylemini tetikleyince çağrılır.
      * Geri yükleme için `unarchive` var; arşiv ekranı ileriki bir sürümde.

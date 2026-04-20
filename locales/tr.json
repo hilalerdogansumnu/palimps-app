@@ -92,7 +92,9 @@
     "galleryPermission": "Fotoğraf seçmek için galeri erişim izni gereklidir.",
     "cameraPermission": "Fotoğraf çekmek için kamera erişim izni gereklidir.",
     "coverUploadFailedTitle": "Kapak yüklenemedi",
-    "coverUploadFailedMessage": "Kitap kaydedildi ama kapak fotoğrafı yüklenemedi. Daha sonra kitap sayfasından ekleyebilirsin."
+    "coverUploadFailedMessage": "Kitap kaydedildi ama kapak fotoğrafı yüklenemedi. Daha sonra kitap sayfasından ekleyebilirsin.",
+    "readingFromCover": "Kapak okunuyor…",
+    "autoFilledFromCover": "Kapaktan dolduruldu — düzelterek kaydet"
   },
   "addMoment": {
     "title": "Yeni An",

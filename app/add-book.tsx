@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable, Alert } from "react-native";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import { useTranslation } from "react-i18next";
@@ -28,14 +29,76 @@ export default function AddBookScreen() {
   // `allowsEditing` seçimi 1:1 square'e kilitli ve kitap kapağı için kötü;
   // CropModal freeform ve dikey kapaklara çok daha iyi uyuyor. (50319: user feedback)
   const [rawPickedUri, setRawPickedUri] = useState<string | null>(null);
+  // Kapak kırpıldıktan sonra başlık+yazar OCR ile dolduruluyor. UI bir
+  // pill spinner gösteriyor; kullanıcı bu sırada yazmaya başlarsa
+  // hasUserEditedRef flag'ine bakıp OCR sonucunu ÜZERİNE YAZMIYORUZ.
+  const [isExtractingMetadata, setIsExtractingMetadata] = useState(false);
+  const [wasAutoFilled, setWasAutoFilled] = useState(false);
+  const hasUserEditedTitleRef = useRef(false);
+  const hasUserEditedAuthorRef = useRef(false);
 
   const utils = trpc.useUtils();
   const getPresignedUrlMutation = trpc.upload.getPresignedUrl.useMutation();
+  const extractCoverMetadataMutation =
+    trpc.books.extractCoverMetadata.useMutation();
 
   // onSuccess/onError moved to handleSubmit so we can sequence the
   // "cover didn't upload" warning BEFORE navigating — otherwise the alert
   // would pop up on the book detail screen, which is disorienting.
   const createBookMutation = trpc.books.create.useMutation();
+
+  /**
+   * Kırpılmış kapak fotoğrafını 768px'e küçült, base64'e çevir, Gemini'ye
+   * yolla. Başlık ve/veya yazar boşsa geri dönen değerleri doldurur;
+   * kullanıcı bu sırada yazmaya başladıysa ONA DOKUNMAYIZ.
+   *
+   * Sessiz başarısızlık: hata pop-up göstermiyoruz — kullanıcı elinde
+   * dolmamış alanlar kaldığını zaten görüyor, devam ederse manuel yazar.
+   */
+  const runCoverMetadataExtraction = async (croppedUri: string) => {
+    try {
+      setIsExtractingMetadata(true);
+      // 768px longer edge — title/yazar okumak için yeterli detay, ~120KB
+      // base64. Gemini flash-lite OCR latency p95 bunda 2-3sn.
+      const resized = await ImageManipulator.manipulateAsync(
+        croppedUri,
+        [{ resize: { width: 768 } }],
+        {
+          compress: 0.82,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        },
+      );
+      if (!resized.base64) return;
+
+      const meta = await extractCoverMetadataMutation.mutateAsync({
+        imageBase64: resized.base64,
+      });
+
+      let filledAny = false;
+      if (meta.title && !hasUserEditedTitleRef.current) {
+        setTitle(meta.title);
+        filledAny = true;
+      }
+      if (meta.author && !hasUserEditedAuthorRef.current) {
+        setAuthor(meta.author);
+        filledAny = true;
+      }
+      if (filledAny) {
+        setWasAutoFilled(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      // Rate-limit (TRPCError TOO_MANY_REQUESTS) dahil tüm hataları sessiz
+      // yutuyoruz — Sentry'e breadcrumb olarak düşsün ki regression'ı görelim.
+      captureException(
+        error instanceof Error ? error : new Error(String(error)),
+        { operation: "addBook.coverOcr" },
+      );
+    } finally {
+      setIsExtractingMetadata(false);
+    }
+  };
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -226,6 +289,7 @@ export default function AddBookScreen() {
                     <Pressable
                       onPress={() => {
                         setCoverImageUri(null);
+                        setWasAutoFilled(false);
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
                       style={{
@@ -270,6 +334,49 @@ export default function AddBookScreen() {
             </Pressable>
           </View>
 
+          {/* Cover OCR status pill — kapaktan okunuyor / dolduruldu */}
+          {(isExtractingMetadata || wasAutoFilled) && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "center",
+                marginBottom: 20,
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: isExtractingMetadata
+                  ? colors.primary + "1A"
+                  : colors.success + "22",
+                gap: 8,
+              }}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel={
+                isExtractingMetadata
+                  ? t("addBook.readingFromCover")
+                  : t("addBook.autoFilledFromCover")
+              }
+            >
+              {isExtractingMetadata ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <MaterialIcons name="auto-awesome" size={14} color={colors.success} />
+              )}
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "500",
+                  color: isExtractingMetadata ? colors.primary : colors.success,
+                }}
+              >
+                {isExtractingMetadata
+                  ? t("addBook.readingFromCover")
+                  : t("addBook.autoFilledFromCover")}
+              </Text>
+            </View>
+          )}
+
           {/* Title Input */}
           <View className="mb-5">
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
@@ -277,7 +384,11 @@ export default function AddBookScreen() {
             </Text>
             <TextInput
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(v) => {
+                // Kullanıcı yazdı — artık OCR buraya dokunmasın.
+                hasUserEditedTitleRef.current = true;
+                setTitle(v);
+              }}
               placeholder={t("addBook.enterTitle")}
               placeholderTextColor={colors.muted}
               accessible={true}
@@ -305,7 +416,10 @@ export default function AddBookScreen() {
             </Text>
             <TextInput
               value={author}
-              onChangeText={setAuthor}
+              onChangeText={(v) => {
+                hasUserEditedAuthorRef.current = true;
+                setAuthor(v);
+              }}
               placeholder={t("addBook.enterAuthor")}
               placeholderTextColor={colors.muted}
               accessible={true}
@@ -336,6 +450,10 @@ export default function AddBookScreen() {
         onDone={(croppedUri) => {
           setCoverImageUri(croppedUri);
           setRawPickedUri(null);
+          // Kapak geldi — kullanıcı daha hiçbir şey yazmadıysa (ya da yalnızca
+          // birini yazdıysa) OCR ile tamamlayalım. runCoverMetadataExtraction
+          // hasUserEdited* flag'lerine bakarak üzerine yazmıyor.
+          void runCoverMetadataExtraction(croppedUri);
         }}
         onCancel={() => setRawPickedUri(null)}
       />
