@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -16,6 +17,7 @@ import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
+import { useSubscription } from "@/hooks/use-subscription";
 
 /**
  * Hesap bilgileri + hesap silme ekranı.
@@ -28,8 +30,11 @@ export default function AccountScreen() {
   const colors = useColors();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const { isPremium } = useSubscription();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const deletePromptOpenRef = useRef(false);
+
+  const displayName = user?.name?.trim();
 
   const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
 
@@ -117,6 +122,48 @@ export default function AccountScreen() {
               borderColor: colors.border,
             }}
           >
+            {/* Name row — tappable, takes user to edit-name. Identity kartı
+                artık hesap hub'ına geldiği için isim edit'i bu satırdan
+                erişiliyor (Apple Settings "Name" row deseni). */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/profile/edit-name");
+              }}
+              style={({ pressed }) => ({
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottomWidth: 0.5,
+                borderBottomColor: colors.border,
+                opacity: pressed ? 0.6 : 1,
+              })}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.accountName")}
+              accessibilityHint={t("profile.editProfileHint")}
+            >
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                {t("profile.accountName")}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", maxWidth: "60%" }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: displayName ? colors.muted : colors.muted,
+                    marginRight: 6,
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {displayName || t("profile.nameAdd")}
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
+              </View>
+            </Pressable>
+
             {/* Email row */}
             <View
               style={{
@@ -149,6 +196,8 @@ export default function AccountScreen() {
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "center",
+                borderBottomWidth: 0.5,
+                borderBottomColor: colors.border,
               }}
             >
               <Text style={{ fontSize: 16, color: colors.foreground }}>
@@ -158,6 +207,67 @@ export default function AccountScreen() {
                 {t("profile.accountLoginMethodApple")}
               </Text>
             </View>
+
+            {/* Subscription row — Pro ise native App Store abonelik sayfasını
+                aç (standart iOS pattern); Free ise paywall'a gönder. Pro
+                değeri "Premium" yazar + accent renk — rozet gibi hissettirir
+                ama rozet değil (satır içinde label). */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (isPremium) {
+                  Linking.openURL(
+                    "https://apps.apple.com/account/subscriptions"
+                  ).catch(() => {
+                    // Apple URL scheme çok nadir fail eder (cihaz offline +
+                    // eski iOS kombinasyonu vs.). Sessiz kalmayalım: generic
+                    // error alert — en azından kullanıcı tekrar deneyebilir.
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Error
+                    );
+                    Alert.alert(
+                      t("errors.error"),
+                      t("errors.generic")
+                    );
+                  });
+                } else {
+                  router.push("/premium");
+                }
+              }}
+              style={({ pressed }) => ({
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                opacity: pressed ? 0.6 : 1,
+              })}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.subscription")}
+              accessibilityHint={
+                isPremium
+                  ? t("profile.manageSubscriptionHint")
+                  : t("profile.upgradePremiumHint")
+              }
+            >
+              <Text style={{ fontSize: 16, color: colors.foreground }}>
+                {t("profile.subscription")}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: isPremium ? colors.accent : colors.muted,
+                    fontWeight: isPremium ? "600" : "400",
+                    marginRight: 6,
+                  }}
+                >
+                  {isPremium ? t("profile.premium") : t("profile.subscriptionFree")}
+                </Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
+              </View>
+            </Pressable>
           </View>
         </View>
 

@@ -55,7 +55,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50325",
+    buildNumber: "50326",
     usesAppleSignIn: true,
     privacyManifests: {
       NSPrivacyTracking: false,

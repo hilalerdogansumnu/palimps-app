@@ -136,9 +136,11 @@ export default function ProfileScreen() {
     );
   }
 
-  // Apple ad vermediyse (yaygın — kullanıcı "Bu bilgiyi gizle" dediyse) header
-  // "İsim ekle" CTA'sı gösterir; tap ile edit-name ekranına git. İsim varsa
-  // Apple'dan gelen tam ad.
+  // Identity card — Apple Settings "Apple ID banner" deseni. Kart hesap
+  // hub'ına (/profile/account) götürür; oradan isim/email/abonelik/silme hepsi
+  // erişilebilir. Kartın kendisi sadece isim edit'e gitmiyor çünkü görsel
+  // ağırlığı (56pt avatar + Premium rozeti + ›) kullanıcıya "tam hesap
+  // ayarları"nı vaat ediyor — sadece text input beklentiyi kırar.
   //
   // Avatar: her zaman PALIMPS logosu. İsim ilk harfi göstermiyoruz çünkü
   // (a) Apple private-relay email'li kullanıcılarda "C3xy@privaterelay…"
@@ -158,16 +160,16 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Identity card — tap to edit name */}
+        {/* Identity card — tap to open account hub */}
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push("/profile/edit-name");
+            router.push("/profile/account");
           }}
           accessible
           accessibilityRole="button"
           accessibilityLabel={hasName ? user.name! : t("profile.nameAdd")}
-          accessibilityHint={t("profile.editProfileHint")}
+          accessibilityHint={t("profile.openAccountHint")}
           style={({ pressed }) => ({
             marginHorizontal: 24,
             marginBottom: 12,
@@ -408,7 +410,9 @@ export default function ProfileScreen() {
               )}
             </Pressable>
 
-            {/* Privacy Policy Row */}
+            {/* Privacy Policy Row — settings grubunun son öğesi; alt border
+                yok. Eski "Hesap" row'u kaldırıldı — üstteki identity card artık
+                hesap hub'ına gidiyor (Apple Settings banner deseni). */}
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -423,8 +427,6 @@ export default function ProfileScreen() {
                   flexDirection: "row",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  borderBottomWidth: 0.5,
-                  borderBottomColor: colors.border,
                   opacity: pressed ? 0.6 : 1,
                 },
               ]}
@@ -435,34 +437,6 @@ export default function ProfileScreen() {
             >
               <Text style={{ fontSize: 16, color: colors.foreground }}>
                 {t("profile.privacyPolicy")}
-              </Text>
-              <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
-            </Pressable>
-
-            {/* Account Row — Hesabı Sil buradan çıkarıldı; ayrı bir "Hesap"
-                sayfasında danger-zone olarak yaşıyor. Kullanıcı yanlışlıkla
-                hesabını silmesin. */}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/profile/account");
-              }}
-              style={({ pressed }) => [
-                {
-                  paddingHorizontal: 16,
-                  paddingVertical: 16,
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  opacity: pressed ? 0.6 : 1,
-                },
-              ]}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.account")}
-            >
-              <Text style={{ fontSize: 16, color: colors.foreground }}>
-                {t("profile.account")}
               </Text>
               <Text style={{ fontSize: 14, color: colors.muted }}>›</Text>
             </Pressable>
