@@ -184,6 +184,7 @@
     "accountTitle": "Hesap",
     "accountName": "İsim",
     "accountEmail": "E-posta",
+    "accountEmailHidden": "E-postamı Gizle",
     "accountLoginMethod": "Giriş yöntemi",
     "accountLoginMethodApple": "Apple ile giriş",
     "accountMemberSince": "Üyelik tarihi",

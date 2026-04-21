@@ -36,6 +36,18 @@ export default function AccountScreen() {
 
   const displayName = user?.name?.trim();
 
+  // Apple "Hide My Email" kullanıcıları için relay adresi gösterme —
+  // `cbd9kdmmfh...@privaterelay.appleid.com` gibi random hash kullanıcıya
+  // sıfır bilgi veriyor, üstelik ortadan kesildiği için daha da saçma
+  // görünüyor. Apple'ın kendi Settings > Apple ID ekranında da bu tip
+  // adresler "Hide My Email" etiketiyle gösteriliyor — aynı deseni takip
+  // ediyoruz.
+  const isPrivateRelay =
+    user?.email?.toLowerCase().endsWith("@privaterelay.appleid.com") ?? false;
+  const emailDisplay = isPrivateRelay
+    ? t("profile.accountEmailHidden")
+    : user?.email || t("profile.accountNoEmail");
+
   const deleteAccountMutation = trpc.auth.deleteAccount.useMutation();
 
   // Free user'a ücretsiz kullanım kartı — Linear tarzı: iki satır progress,
@@ -184,7 +196,7 @@ export default function AccountScreen() {
                 numberOfLines={1}
                 ellipsizeMode="middle"
               >
-                {user?.email || t("profile.accountNoEmail")}
+                {emailDisplay}
               </Text>
             </View>
 

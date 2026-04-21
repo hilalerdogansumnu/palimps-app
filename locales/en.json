@@ -184,6 +184,7 @@
     "accountTitle": "Account",
     "accountName": "Name",
     "accountEmail": "Email",
+    "accountEmailHidden": "Hide My Email",
     "accountLoginMethod": "Sign-in method",
     "accountLoginMethodApple": "Sign in with Apple",
     "accountMemberSince": "Member since",
