@@ -48,6 +48,18 @@ export const ENV = {
   geminiModelChat:
     process.env.GEMINI_MODEL_CHAT ?? process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
 
+  // Moment enrichment kill switch (Phase A).
+  //
+  // Default ON. Railway'de ENABLE_MOMENT_ENRICHMENT=false flip edilirse
+  // moments.create akışında OCR sonrası summary + tags üretimi atlanır —
+  // moment yine kaydedilir, sadece enrichment alanları null kalır. Kullanımı:
+  // cost spike, Gemini outage, kalite regression → redeploy beklemeden kapat.
+  //
+  // Kasıtlı olarak "kapalı" → "!== 'false'". Env set edilmemişse (undefined),
+  // boş string ise, veya "true" / "1" ise → true (ON). Sadece explicit "false"
+  // stringi kapatır. Yanlış yazım ("False", "0") kazara kapatmaz.
+  enableMomentEnrichment: process.env.ENABLE_MOMENT_ENRICHMENT !== "false",
+
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)
   // ─────────────────────────────────────────────────────────────────────────
