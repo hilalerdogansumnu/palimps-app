@@ -30,6 +30,11 @@ function getClient(): S3Client {
   });
 }
 import { invokeLLM } from "./_core/llm";
+import {
+  MOMENT_ENRICH_PROMPT,
+  MOMENT_ENRICH_SCHEMA,
+  normalizeTag,
+} from "./_core/prompts";
 import { isUserPremium } from "./_core/premium";
 
 /**
@@ -604,6 +609,93 @@ export const appRouter = router({
           }
         }
 
+        // 2.5. Enrichment (Gemini Phase A) — OCR başarılıysa summary + tags
+        // üretir. Ayrı call: OCR fail → enrichment atlanır; enrichment fail →
+        // moment yine kaydolur (sadece summary/tags null kalır). Kullanıcının
+        // fotoğraf çektiği değerli an asla LLM hatası yüzünden kaybolmaz.
+        //
+        // Çok kısa metinde (≤20 karakter) enrichment çalıştırmıyoruz — tek
+        // kelime pasajlarda tag üretmek gürültü, LLM call maliyeti boşa.
+        //
+        // Kill switch: ENV.enableMomentEnrichment=false → atla. Railway'de
+        // ENABLE_MOMENT_ENRICHMENT=false flip edilebilir (redeploy gerekmez),
+        // cost spike / kalite regression durumunda moment akışını kırmadan
+        // kapatmak için. Default ON.
+        let summary: string | null = null;
+        let tags: string[] | null = null;
+        const enrichableText = ocrText?.trim();
+        if (
+          ENV.enableMomentEnrichment &&
+          enrichableText &&
+          enrichableText.length > 20
+        ) {
+          // Structured observability — enrichment best-effort olduğu için
+          // error DEĞİL warn level. Future palimps-observability-engineer
+          // bu log shape'ini (userId, model, promptName, durationMs, error)
+          // APM/log aggregator'a bağlayacak. Şimdilik console.warn + JSON
+          // field'lar grep/jq dostu.
+          const enrichStart = Date.now();
+          try {
+            const enrichResponse = await invokeLLM({
+              model: ENV.geminiModelOcr,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: MOMENT_ENRICH_PROMPT.replace("{TEXT}", enrichableText),
+                    },
+                  ],
+                },
+              ],
+              responseFormat: {
+                type: "json_schema",
+                json_schema: MOMENT_ENRICH_SCHEMA,
+              },
+            });
+            const choice = enrichResponse.choices[0];
+            const raw = choice?.message?.content;
+            const jsonStr = typeof raw === "string" ? raw : JSON.stringify(raw);
+            const parsed = JSON.parse(jsonStr) as {
+              summary?: unknown;
+              tags?: unknown;
+            };
+            if (typeof parsed.summary === "string" && parsed.summary.trim().length > 0) {
+              // varchar(280) — LLM kural ihlali yaparsa kes, DB'ye sığsın
+              summary = parsed.summary.trim().slice(0, 280);
+            }
+            if (Array.isArray(parsed.tags)) {
+              const cleaned = parsed.tags
+                .filter((t): t is string => typeof t === "string")
+                .map(normalizeTag)
+                .filter((t) => t.length > 0 && t.length <= 40);
+              // En fazla 3 tag — LLM nadiren 4+ döndürürse kırp
+              tags = cleaned.slice(0, 3);
+              // 2'den az tag = anlamlı taksonomi yok, null döndür ki UI chip
+              // alanını hiç göstermesin — yarım görünen 1-chip'ten iyidir
+              if (tags.length < 2) tags = null;
+            }
+          } catch (enrichError) {
+            // Sessizce geç — moment kaydı kritik, enrichment opsiyonel.
+            // PII risk: ocrText / parsed content'i LOG'A YAZMA (user's
+            // private reading notes). Sadece meta — userId (debug için),
+            // model (routing doğruluğunu izlemek için), durationMs
+            // (timeout-shaped pattern'leri yakalamak için), error.message
+            // (stack trace değil — SDK bazen API key'i mesajda sızdırır).
+            console.warn("[moments.create] enrichment failed", {
+              userId: ctx.user.id,
+              model: ENV.geminiModelOcr,
+              promptName: "MOMENT_ENRICH",
+              durationMs: Date.now() - enrichStart,
+              error:
+                enrichError instanceof Error
+                  ? enrichError.message
+                  : String(enrichError),
+            });
+          }
+        }
+
         // 3. Okuma anını veritabanına kaydet
         const momentId = await db.createReadingMoment({
           bookId: input.bookId,
@@ -611,6 +703,8 @@ export const appRouter = router({
           pageImageUrl,
           ocrText,
           userNote: input.userNote,
+          summary,
+          tags,
         });
 
         // 4. Kitabın kapak fotoğrafı yoksa, bu fotoğrafı kapak olarak ayarla
@@ -619,7 +713,7 @@ export const appRouter = router({
           await db.updateBook(input.bookId, { coverImageUrl: pageImageUrl });
         }
 
-        return { id: momentId, ocrText, pageImageUrl };
+        return { id: momentId, ocrText, pageImageUrl, summary, tags };
       }),
 
     /**
