@@ -104,6 +104,13 @@
     "pagePhotoTitle": "Take Page Photo",
     "pagePhotoDesc": "Photograph the entire page, whether underlined or not",
     "ocrProcessing": "Extracting text...",
+    "phase": {
+      "preparing": "Preparing photo...",
+      "uploading": "Uploading photo...",
+      "extracting": "Extracting text...",
+      "enriching": "Enriching...",
+      "finalizing": "Finishing up..."
+    },
     "yourNote": "Your Note (Optional)",
     "notePlaceholder": "Your thoughts about this page...",
     "ocrInfo": "After saving the photo, the text on the page will be automatically extracted.",
@@ -359,7 +366,8 @@
     "title": "Crop Page",
     "confirm": "Crop",
     "hint": "Drag the corners to frame only the page — anything outside is ignored by OCR.",
-    "loadFailed": "Couldn't load the image. Please take the photo again."
+    "loadFailed": "Couldn't load the image. Please take the photo again.",
+    "preparing": "Preparing..."
   },
   "ocrEdit": {
     "title": "Edit Text",
@@ -411,6 +419,8 @@
     "selectPhoto": "Select Photo",
     "more": "More",
     "options": "Options",
+    "readMore": "Read more",
+    "collapse": "Collapse",
     "updateFailed": "Couldn't save your changes. Please try again."
   }
 }

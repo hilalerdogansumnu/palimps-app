@@ -10,6 +10,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { tagDisplay } from "@/lib/tag";
 
 // v6 palette — AN detay semantic tints.
 // Amber family = kitaptan gelen (highlights, OCR, marginalia).
@@ -50,6 +51,25 @@ export default function MomentDetailScreen() {
 
   const [isEditModalVisible, setIsEditModalVisible] = React.useState(false);
   const [editedNote, setEditedNote] = React.useState("");
+  // SAYFA METNİ uzun ise ilk ~500 karakter göster, "Devamını gör" ile aç.
+  // Reading-app: ortalama kitap sayfası OCR'i ~1500-2500 char → 500 fold
+  // kısa özet hissi verir, sayfa tıkanmaz.
+  const [ocrExpanded, setOcrExpanded] = React.useState(false);
+  // VURGULADIKLARINIZ içinde tek tek highlight için expand state. Index
+  // bazlı Set: sayfa açıldığında hiçbiri expanded değil; tap ile eklenir/
+  // çıkarılır. Uzun highlight'lar (>140 char) sayfa akışını yeme riskini
+  // öneriyordu — truncation konseptini Hilal onayladı, 140 char sınır.
+  const [expandedHighlights, setExpandedHighlights] = React.useState<Set<number>>(
+    () => new Set(),
+  );
+  const toggleHighlight = React.useCallback((idx: number) => {
+    setExpandedHighlights((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }, []);
 
   const { data: moment, isLoading, refetch } = trpc.readingMoments.getById.useQuery({ id: momentId });
   const deleteMutation = trpc.readingMoments.delete.useMutation();
@@ -180,18 +200,24 @@ export default function MomentDetailScreen() {
       />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
-        {/* Page Image */}
-        <View className="px-6 mb-6">
-          <Image
-            source={{ uri: moment.pageImageUrl }}
-            style={{
-              width: "100%",
-              maxHeight: 400,
-              borderRadius: 16,
-            }}
-            resizeMode="contain"
-          />
-        </View>
+        {/* Page Image — aspectRatio zorunlu: RN Image height'ı remote asset için
+            async hesaplar; explicit oran olmadan height=0 ile render oluyordu
+            (50328 smoke test: resim hiç görünmüyordu). book/[id].tsx ve
+            tag/[name].tsx zaten 3/2 kullanıyor → parite. */}
+        {moment.pageImageUrl && (
+          <View className="px-6 mb-6">
+            <Image
+              source={{ uri: moment.pageImageUrl }}
+              style={{
+                width: "100%",
+                aspectRatio: 3 / 2,
+                borderRadius: 16,
+                backgroundColor: colors.surface,
+              }}
+              resizeMode="cover"
+            />
+          </View>
+        )}
 
         {/* Summary (Phase A enrichment) — AI-generated, purple family
             AI yıldızı sağ üstte: Gemini/Claude/ChatGPT deseni. Metin sola
@@ -245,69 +271,133 @@ export default function MomentDetailScreen() {
         {/* Highlights (Phase B markings) — vurguladıklarınız
             Tek format: amber stripe + amber-cream bg. Kind ayrımı UI'da
             yok (backend'de saklı, ileride lazım olursa).
-            null veya [] → section gizle (kullanıcı için gürültü). */}
+            null veya [] → section gizle (kullanıcı için gürültü).
+            140 char üstü entry'ler truncate + "Devamını gör" — bazı pasajlar
+            3+ cümle; tümü birden açık olursa sayfa akışı tıkanıyor. */}
         {moment.highlights && moment.highlights.length > 0 && (
           <View className="px-6 mb-6">
             <Text style={sectionLabelStyle(colors.muted)}>
               {t("momentDetail.highlights")}
             </Text>
             <View style={{ gap: 8 }}>
-              {moment.highlights.map((h, idx) => (
-                <View
-                  key={`hl-${idx}`}
-                  style={{
-                    flexDirection: "row",
-                    backgroundColor: V6.highlightsBg,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                  }}
-                >
-                  <View style={{ width: 3, backgroundColor: colors.warning }} />
-                  <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14 }}>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        lineHeight: 21,
-                        color: colors.foreground,
-                      }}
-                    >
-                      {h.text}
-                    </Text>
+              {moment.highlights.map((h, idx) => {
+                const HL_TRUNCATE = 140;
+                const isLong = h.text.length > HL_TRUNCATE;
+                const isExpanded = expandedHighlights.has(idx);
+                const displayText = !isLong || isExpanded
+                  ? h.text
+                  : h.text.slice(0, HL_TRUNCATE).trimEnd() + "…";
+                return (
+                  <View
+                    key={`hl-${idx}`}
+                    style={{
+                      flexDirection: "row",
+                      backgroundColor: V6.highlightsBg,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <View style={{ width: 3, backgroundColor: colors.warning }} />
+                    <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14 }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 21,
+                          color: colors.foreground,
+                        }}
+                      >
+                        {displayText}
+                      </Text>
+                      {isLong && (
+                        <Pressable
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            toggleHighlight(idx);
+                          }}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          style={({ pressed }) => [
+                            { marginTop: 6, opacity: pressed ? 0.5 : 1 },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: "600",
+                              color: colors.primary,
+                            }}
+                          >
+                            {isExpanded ? t("common.collapse") : t("common.readMore")}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
 
         {/* OCR Text — sayfa metni (amber family)
-            Hairline border "kağıt üstünde metin" hissi veriyor. */}
-        {moment.ocrText && (
-          <View className="px-6 mb-6">
-            <Text style={sectionLabelStyle(colors.muted)}>
-              {t("momentDetail.ocrText")}
-            </Text>
-            <View
-              style={{
-                backgroundColor: V6.ocrBg,
-                borderWidth: 0.5,
-                borderColor: V6.ocrBorder,
-                borderRadius: 10,
-                padding: 14,
-              }}
-            >
-              <Text
+            Hairline border "kağıt üstünde metin" hissi veriyor.
+            Uzun metin için truncate + "Devamını gör" toggle: OCR çoğu zaman
+            1500+ char, ekranı tıkıyordu. 500 char threshold ilk ~6 cümle
+            göstermeye yeter; isteyen aşar. */}
+        {moment.ocrText && (() => {
+          const OCR_TRUNCATE = 500;
+          const isLong = moment.ocrText.length > OCR_TRUNCATE;
+          const displayText = ocrExpanded || !isLong
+            ? moment.ocrText
+            : moment.ocrText.slice(0, OCR_TRUNCATE).trimEnd() + "…";
+          return (
+            <View className="px-6 mb-6">
+              <Text style={sectionLabelStyle(colors.muted)}>
+                {t("momentDetail.ocrText")}
+              </Text>
+              <View
                 style={{
-                  fontSize: 13,
-                  lineHeight: 22,
-                  color: V6.ocrText,
+                  backgroundColor: V6.ocrBg,
+                  borderWidth: 0.5,
+                  borderColor: V6.ocrBorder,
+                  borderRadius: 10,
+                  padding: 14,
                 }}
               >
-                {moment.ocrText}
-              </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 22,
+                    color: V6.ocrText,
+                  }}
+                >
+                  {displayText}
+                </Text>
+                {isLong && (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setOcrExpanded((v) => !v);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    style={({ pressed }) => [
+                      { marginTop: 10, opacity: pressed ? 0.5 : 1 },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "600",
+                        color: colors.primary,
+                      }}
+                    >
+                      {ocrExpanded ? t("common.collapse") : t("common.readMore")}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {/* Notes — birleşik (marginalia + user note)
             İşin özü aynı: kullanıcının fikri. Araç farkı formda:
@@ -402,7 +492,7 @@ export default function MomentDetailScreen() {
                     fontWeight: "500",
                   }}
                 >
-                  {tag}
+                  {tagDisplay(tag)}
                 </Text>
               </Pressable>
             ))}

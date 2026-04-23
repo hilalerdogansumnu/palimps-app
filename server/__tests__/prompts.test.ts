@@ -16,15 +16,23 @@ describe("normalizeTag", () => {
     expect(normalizeTag("YALNIZLIK")).toBe("yalnızlık");
   });
 
-  it("strips whitespace and collapses multi-word tags", () => {
-    expect(normalizeTag(" kara mizah ")).toBe("karamizah");
-    expect(normalizeTag("   tek tek   kelimeler  ")).toBe("tektekkelimeler");
+  it("joins multi-word tags with a dash for compound display", () => {
+    // UI'da "Kara Mizah" olarak render edilsin diye boşluklar tire'a
+    // dönüşür (tagDisplay split-on-dash + title-case). Öncesinde tüm
+    // token'ları yapıştırıyordu ("karamizah") → legacy.
+    expect(normalizeTag(" kara mizah ")).toBe("kara-mizah");
+    expect(normalizeTag("   tek tek   kelimeler  ")).toBe("tek-tek-kelimeler");
+    expect(normalizeTag("yapay zeka")).toBe("yapay-zeka");
   });
 
-  it("strips punctuation and special characters", () => {
+  it("strips punctuation but preserves internal dashes (compound tags)", () => {
     expect(normalizeTag("aşk/sevgi")).toBe("aşksevgi");
-    expect(normalizeTag("öz-farkındalık")).toBe("özfarkındalık");
+    // Prompt zaten tire ile üretebilir; normalize tire'yi olduğu gibi korur
+    expect(normalizeTag("öz-farkındalık")).toBe("öz-farkındalık");
     expect(normalizeTag("sevgi!")).toBe("sevgi");
+    // Baş/son tire'leri ve ardışık tire'leri temizler
+    expect(normalizeTag("--aşk--")).toBe("aşk");
+    expect(normalizeTag("a---b")).toBe("a-b");
   });
 
   it("returns empty string for empty/garbage input", () => {
@@ -87,13 +95,19 @@ describe("prompt injection defense", () => {
   it("normalizes SQL-injection-shaped tokens into harmless lowercase tokens", () => {
     // Gemini SQL döndürmez ama tag görünümünde SQL-lookalike bir attack
     // gelirse, Drizzle prepared statement zaten korur; ek olarak normalizeTag
-    // özel karakter/whitespace'i strip eder — görünürlük riski kalmıyor.
+    // tehlikeli karakterleri (tırnak, noktalı virgül, underscore) strip eder
+    // ve boşluğu tire'a dönüştürür. Tire kabul edilebilir (compound separator),
+    // SQL anlamında tehdit değil — chip render'ında "Drop Table Readingmoments"
+    // gibi görünür; görünürlük riski yok, DB'ye de normalize string gider.
     const sqlish = "'; DROP TABLE reading_moments; --";
     const normalized = normalizeTag(sqlish);
     expect(normalized).not.toContain("'");
     expect(normalized).not.toContain(";");
     expect(normalized).not.toContain(" ");
-    expect(normalized).not.toContain("-");
+    expect(normalized).not.toContain("_");
+    // Ardışık tire kolapsına güvenelim: baş/sondaki "--" temizlenmiş
+    expect(normalized.startsWith("-")).toBe(false);
+    expect(normalized.endsWith("-")).toBe(false);
   });
 
   it("short legitimate tags pass through cleanly even in adversarial batch", () => {

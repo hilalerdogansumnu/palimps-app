@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -83,6 +83,39 @@ export default function AddMomentScreen() {
   const [ocrText, setOcrText] = useState<string | null>(null);
   const [isOcrComplete, setIsOcrComplete] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  // Progress label for the inline "what's happening right now" card.
+  // Evolves through the pipeline so the user sees continuous forward motion
+  // instead of a single generic spinner (Hilal feedback 50328 smoke test).
+  //   preparing  → local photo resize/compress (storePhoto)
+  //   uploading  → presigned URL + R2 PUT
+  //   extracting → server createMoment, OCR aşaması
+  //   enriching  → server createMoment, Phase A + B aşaması
+  //   finalizing → DB commit + cache invalidation son 1-2 sn
+  // extracting→enriching→finalizing geçişleri client-side timer ile; server
+  // gerçek aşamayı bildirmiyor (tek bir blocking mutation), ama kullanıcı
+  // için "devam ediyor" hissi yaratır.
+  type UploadPhase =
+    | "idle"
+    | "preparing"
+    | "uploading"
+    | "extracting"
+    | "enriching"
+    | "finalizing";
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>("idle");
+
+  // Server-side createMoment tek mutation; ama içinde OCR + enrichment var
+  // ve toplam 8-15 sn sürebilir. Sabit "Metin çıkarılıyor..." kullanıcıyı
+  // sıkıyor — timer'la label'ı evolve et.
+  useEffect(() => {
+    if (uploadPhase === "extracting") {
+      const t = setTimeout(() => setUploadPhase("enriching"), 3500);
+      return () => clearTimeout(t);
+    }
+    if (uploadPhase === "enriching") {
+      const t = setTimeout(() => setUploadPhase("finalizing"), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [uploadPhase]);
   // Freemium moment cap upsell — MOMENT_LIMIT_REACHED (free 10/kitap) veya
   // MOMENT_SANITY_CAP (pro 500/kitap, nadir).
   const [upsellKind, setUpsellKind] = useState<UpsellKind | null>(null);
@@ -279,6 +312,7 @@ export default function AddMomentScreen() {
       return;
     }
     setIsSubmitting(true);
+    setUploadPhase("preparing");
     let phase: string = "init";
     try {
       // 1. Yerel olarak işle (resize + compress)
@@ -286,6 +320,7 @@ export default function AddMomentScreen() {
       const stored = await storePhoto(pageImageUri, "page");
 
       // 2. Presigned URL al
+      setUploadPhase("uploading");
       phase = "presign";
       let presigned: { presignedUrl: string; key: string; publicUrl: string };
       try {
@@ -337,6 +372,7 @@ export default function AddMomentScreen() {
       }
 
       // 4. Create moment (server-side OCR runs inside this mutation)
+      setUploadPhase("extracting");
       phase = "createMoment";
       await createMomentMutation.mutateAsync({
         bookId: bookIdNum,
@@ -347,6 +383,7 @@ export default function AddMomentScreen() {
       handleUploadError(error, phase);
     } finally {
       setIsSubmitting(false);
+      setUploadPhase("idle");
     }
   };
 
@@ -354,20 +391,17 @@ export default function AddMomentScreen() {
 
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
+      {/* Submitting sırasında "Kaydet" disabled durumda kalsın; sağ üst
+          spinner kaldırıldı — inline "Metin çıkarılıyor..." kartı zaten
+          durumu gösteriyor, iki spinner ikiliyordu. (Hilal smoke test
+          50328: "sağ üst spinner küçük ve belirsiz"). */}
       <NavigationBar
         title={t("addMoment.title")}
         backLabel={t("common.cancel")}
         onBack={() => router.back()}
-        rightLabel={isSubmitting ? undefined : t("addMoment.save")}
+        rightLabel={t("addMoment.save")}
         rightDisabled={!isFormValid || isSubmitting}
         onRight={handleSubmit}
-        rightNode={
-          isSubmitting ? (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          ) : undefined
-        }
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -457,8 +491,10 @@ export default function AddMomentScreen() {
             </Pressable>
           </View>
 
-          {/* OCR Status */}
-          {pageImageUri && isSubmitting && (
+          {/* Progress Status — phase'e göre evolve eder.
+              "Metin çıkarılıyor..." tek başına iken kullanıcı 8-15 sn donmuş
+              hissediyordu; phase label'larıyla motion hissi oluşuyor. */}
+          {pageImageUri && isSubmitting && uploadPhase !== "idle" && (
             <View
               style={{
                 marginBottom: 16,
@@ -471,7 +507,9 @@ export default function AddMomentScreen() {
               }}
             >
               <ActivityIndicator color={colors.muted} size="small" style={{ marginRight: 10 }} />
-              <Text style={{ fontSize: 13, color: colors.muted }}>{t("addMoment.ocrProcessing")}</Text>
+              <Text style={{ fontSize: 13, color: colors.muted }}>
+                {t(`addMoment.phase.${uploadPhase}`)}
+              </Text>
             </View>
           )}
 

@@ -9,6 +9,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { tagDisplay } from "@/lib/tag";
 
 /**
  * Tag detay ekranı — cross-book tema browser.
@@ -66,7 +67,7 @@ export default function TagDetailScreen() {
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
       <NavigationBar
-        title={tag}
+        title={tagDisplay(tag)}
         onBack={() => router.back()}
       />
       {isLoading ? (

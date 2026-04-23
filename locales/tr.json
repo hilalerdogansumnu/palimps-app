@@ -104,6 +104,13 @@
     "pagePhotoTitle": "Sayfayı Fotoğrafla",
     "pagePhotoDesc": "Altını çizili olsun veya olmasın, tüm sayfayı fotoğraflayabilirsiniz",
     "ocrProcessing": "Metin çıkarılıyor...",
+    "phase": {
+      "preparing": "Fotoğraf hazırlanıyor...",
+      "uploading": "Fotoğraf yükleniyor...",
+      "extracting": "Metin çıkarılıyor...",
+      "enriching": "Zenginleştiriliyor...",
+      "finalizing": "Hazırlanıyor..."
+    },
     "yourNote": "Notunuz (Opsiyonel)",
     "notePlaceholder": "Bu sayfa hakkındaki düşünceleriniz...",
     "ocrInfo": "Fotoğrafı kaydettikten sonra, sayfadaki metin otomatik olarak çıkarılacaktır.",
@@ -359,7 +366,8 @@
     "title": "Sayfayı Kırp",
     "confirm": "Kırp",
     "hint": "Köşeleri sürükleyip sadece sayfayı çerçeveye al — dışında kalanlar metne girmez.",
-    "loadFailed": "Fotoğraf yüklenemedi. Lütfen tekrar çek."
+    "loadFailed": "Fotoğraf yüklenemedi. Lütfen tekrar çek.",
+    "preparing": "Hazırlanıyor..."
   },
   "ocrEdit": {
     "title": "Metni Düzenle",
@@ -411,6 +419,8 @@
     "selectPhoto": "Fotoğraf Seç",
     "more": "Daha Fazla",
     "options": "Seçenekler",
+    "readMore": "Devamını gör",
+    "collapse": "Gizle",
     "updateFailed": "Değişiklikler kaydedilemedi. Lütfen tekrar dene."
   }
 }

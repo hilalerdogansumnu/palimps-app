@@ -462,11 +462,42 @@ export function CropModal({ uri, onDone, onCancel }: CropModalProps) {
                 </>
               )}
             </>
-          ) : (
+          ) : uri ? (
+            /* Preparing state — natural size henüz resolve olmadı (özellikle
+               HEIC decode 1-3 sn sürebilir). Önce dim'lenmiş bir preview
+               göster ki siyah ekran olmasın; spinner + "Hazırlanıyor..." ile
+               aktif state net. Natural hazır olunca yukarıdaki full crop UI
+               akışa geçiyor (aynı Image component, layout değişiyor). */
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <ActivityIndicator color="#fff" />
+              <Image
+                source={{ uri }}
+                style={{
+                  width: "88%",
+                  aspectRatio: 3 / 4,
+                  opacity: 0.35,
+                  borderRadius: 12,
+                }}
+                resizeMode="contain"
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(0,0,0,0.55)",
+                }}
+              >
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "500" }}>
+                  {t("crop.preparing")}
+                </Text>
+              </View>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Bottom hint */}
