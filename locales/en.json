@@ -132,8 +132,10 @@
     "ocrFailedMessage": "Your moment was saved, but we couldn't extract the text from the page. You can add a note manually later."
   },
   "momentDetail": {
-    "ocrText": "Extracted Text",
-    "yourNote": "Your Note",
+    "summary": "Summary",
+    "ocrText": "Page Text",
+    "notes": "Your Notes",
+    "highlights": "Highlights",
     "deleteMoment": "Delete Moment",
     "deleting": "Deleting...",
     "deleteTitle": "Delete Moment",
@@ -145,6 +147,9 @@
     "editNote": "Edit Note",
     "notePlaceholder": "Add your thoughts...",
     "saving": "Saving..."
+  },
+  "tagDetail": {
+    "empty": "No moments under this theme yet."
   },
   "profile": {
     "title": "Profile",

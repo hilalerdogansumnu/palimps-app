@@ -60,6 +60,19 @@ export const ENV = {
   // stringi kapatır. Yanlış yazım ("False", "0") kazara kapatmaz.
   enableMomentEnrichment: process.env.ENABLE_MOMENT_ENRICHMENT !== "false",
 
+  // Markings extraction kill switch (Phase B).
+  //
+  // Default ON. Railway'de ENABLE_MARKING_CAPTURE=false flip edilirse
+  // moments.create akışında OCR + enrichment'tan sonra highlights/marginalia
+  // üretimi atlanır — moment yine kaydedilir, sadece markings alanları null
+  // kalır. Kullanım: Gemini full flash cost spike, vision model outage,
+  // kalite regression → redeploy beklemeden kapat.
+  //
+  // Phase A enrichment ile aynı semantik: sadece explicit "false" stringi
+  // kapatır. "False", "0", boş string, undefined → ON. Yanlış yazım kazara
+  // kapatmaz.
+  enableMarkingCapture: process.env.ENABLE_MARKING_CAPTURE !== "false",
+
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)
   // ─────────────────────────────────────────────────────────────────────────

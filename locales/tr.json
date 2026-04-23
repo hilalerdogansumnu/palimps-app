@@ -132,8 +132,10 @@
     "ocrFailedMessage": "An kaydedildi ama sayfadaki metin şu an okunamadı. Notunu sonra elle ekleyebilirsin."
   },
   "momentDetail": {
-    "ocrText": "Çıkarılan Metin",
-    "yourNote": "Notunuz",
+    "summary": "Özet",
+    "ocrText": "Sayfa Metni",
+    "notes": "Notlarınız",
+    "highlights": "Vurguladıklarınız",
     "deleteMoment": "Anı Sil",
     "deleting": "Siliniyor...",
     "deleteTitle": "Anı Sil",
@@ -145,6 +147,9 @@
     "editNote": "Notu Düzenle",
     "notePlaceholder": "Düşüncelerinizi ekleyin...",
     "saving": "Kaydediliyor..."
+  },
+  "tagDetail": {
+    "empty": "Bu tema için henüz an yok."
   },
   "profile": {
     "title": "Profil",

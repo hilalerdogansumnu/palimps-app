@@ -3,12 +3,44 @@ import { Text, View, Pressable, ScrollView, Image, ActivityIndicator, Alert, Mod
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import Svg, { Path } from "react-native-svg";
 import i18n from "@/lib/i18n";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { NavigationBar } from "@/components/navigation-bar";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+
+// v6 palette — AN detay semantic tints.
+// Amber family = kitaptan gelen (highlights, OCR, marginalia).
+// Purple family = AI / dijital (summary, user note).
+// Light-mode tuned; dark mode variants eklenene kadar normal app
+// varsayımı (light) geçerli. Token'a taşıma: theme.config.js'e
+// v6 alanı açıldığında buradan kaldır.
+const V6 = {
+  summaryBg: "#EEEAFF",
+  summaryText: "#2A1F5A",
+  highlightsBg: "#FDF4E3",
+  ocrBg: "#FBF3E0",
+  ocrBorder: "#F5D98A",
+  ocrText: "#3B2A08",
+  marginBg: "#FBF3E0",
+  marginText: "#3B2A08",
+  noteBg: "#EEEAFF",
+  noteText: "#2A1F5A",
+} as const;
+
+// Tek yerden değişsin diye helper — section başlıkları için
+// küçük uppercase label.
+const sectionLabelStyle = (mutedColor: string) =>
+  ({
+    fontSize: 11,
+    color: mutedColor,
+    fontWeight: "500" as const,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  });
 
 export default function MomentDetailScreen() {
   const colors = useColors();
@@ -149,7 +181,7 @@ export default function MomentDetailScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
 
         {/* Page Image */}
-        <View className="px-6 mb-8">
+        <View className="px-6 mb-6">
           <Image
             source={{ uri: moment.pageImageUrl }}
             style={{
@@ -161,33 +193,114 @@ export default function MomentDetailScreen() {
           />
         </View>
 
-        {/* OCR Text Section */}
-        {moment.ocrText && (
-          <View className="px-6 mb-8">
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors.muted,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-                marginBottom: 12,
-              }}
-            >
-              {t("momentDetail.ocrText")}
+        {/* Summary (Phase A enrichment) — AI-generated, purple family
+            AI yıldızı sağ üstte: Gemini/Claude/ChatGPT deseni. Metin sola
+            yaslı, sparkle text alignment'ını bozmuyor (paddingRight).
+            Özet AI tarafından üretildiği için mor aile — user note ile
+            aynı kutu rengi, yıldız "kim yazdı" ayrımını yapıyor. */}
+        {moment.summary && (
+          <View className="px-6 mb-6">
+            <Text style={sectionLabelStyle(colors.muted)}>
+              {t("momentDetail.summary")}
             </Text>
             <View
               style={{
-                backgroundColor: colors.surface,
-                borderRadius: 16,
-                padding: 16,
+                backgroundColor: V6.summaryBg,
+                borderRadius: 12,
+                padding: 14,
+                paddingRight: 40,
+                position: "relative",
               }}
             >
               <Text
                 style={{
-                  fontSize: 16,
-                  color: colors.foreground,
+                  fontSize: 15,
                   lineHeight: 24,
+                  color: V6.summaryText,
+                  fontStyle: "italic",
+                }}
+              >
+                {moment.summary}
+              </Text>
+              <Svg
+                width={24}
+                height={24}
+                viewBox="0 0 24 24"
+                style={{ position: "absolute", top: 12, right: 12 }}
+              >
+                <Path
+                  d="M12 2 L13.4 10.6 L22 12 L13.4 13.4 L12 22 L10.6 13.4 L2 12 L10.6 10.6 Z"
+                  fill={colors.primary}
+                />
+                <Path
+                  d="M19 4 L19.5 6.5 L22 7 L19.5 7.5 L19 10 L18.5 7.5 L16 7 L18.5 6.5 Z"
+                  fill={colors.accent}
+                  fillOpacity={0.7}
+                />
+              </Svg>
+            </View>
+          </View>
+        )}
+
+        {/* Highlights (Phase B markings) — vurguladıklarınız
+            Tek format: amber stripe + amber-cream bg. Kind ayrımı UI'da
+            yok (backend'de saklı, ileride lazım olursa).
+            null veya [] → section gizle (kullanıcı için gürültü). */}
+        {moment.highlights && moment.highlights.length > 0 && (
+          <View className="px-6 mb-6">
+            <Text style={sectionLabelStyle(colors.muted)}>
+              {t("momentDetail.highlights")}
+            </Text>
+            <View style={{ gap: 8 }}>
+              {moment.highlights.map((h, idx) => (
+                <View
+                  key={`hl-${idx}`}
+                  style={{
+                    flexDirection: "row",
+                    backgroundColor: V6.highlightsBg,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View style={{ width: 3, backgroundColor: colors.warning }} />
+                  <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 14 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        lineHeight: 21,
+                        color: colors.foreground,
+                      }}
+                    >
+                      {h.text}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* OCR Text — sayfa metni (amber family)
+            Hairline border "kağıt üstünde metin" hissi veriyor. */}
+        {moment.ocrText && (
+          <View className="px-6 mb-6">
+            <Text style={sectionLabelStyle(colors.muted)}>
+              {t("momentDetail.ocrText")}
+            </Text>
+            <View
+              style={{
+                backgroundColor: V6.ocrBg,
+                borderWidth: 0.5,
+                borderColor: V6.ocrBorder,
+                borderRadius: 10,
+                padding: 14,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 13,
+                  lineHeight: 22,
+                  color: V6.ocrText,
                 }}
               >
                 {moment.ocrText}
@@ -196,54 +309,105 @@ export default function MomentDetailScreen() {
           </View>
         )}
 
-        {/* User Note Section */}
-        {moment.userNote && (
+        {/* Notes — birleşik (marginalia + user note)
+            İşin özü aynı: kullanıcının fikri. Araç farkı formda:
+              marginalia → amber-soft + Georgia italic (kitaba kalemle)
+              userNote  → purple-soft + sans regular (dijital)
+            Sıra: önce marginalia (prompt reading order), sonra user note. */}
+        {((moment.marginalia && moment.marginalia.length > 0) || moment.userNote) && (
           <View className="px-6 mb-8">
-            <Text
-              style={{
-                fontSize: 12,
-                color: colors.muted,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-                marginBottom: 12,
-              }}
-            >
-              {t("momentDetail.yourNote")}
+            <Text style={sectionLabelStyle(colors.muted)}>
+              {t("momentDetail.notes")}
             </Text>
-            <View
-              style={{
-                borderLeftWidth: 3,
-                borderLeftColor: colors.primary + "4D",
-                paddingLeft: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: colors.primary,
-                  fontStyle: "italic",
-                  lineHeight: 24,
-                }}
-              >
-                {moment.userNote}
-              </Text>
+            <View style={{ gap: 8 }}>
+              {moment.marginalia?.map((m, idx) => (
+                <View
+                  key={`mg-${idx}`}
+                  style={{
+                    backgroundColor: V6.marginBg,
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+                      fontStyle: "italic",
+                      fontSize: 14,
+                      lineHeight: 22,
+                      color: V6.marginText,
+                    }}
+                  >
+                    {m.text}
+                  </Text>
+                </View>
+              ))}
+              {moment.userNote && (
+                <View
+                  style={{
+                    backgroundColor: V6.noteBg,
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 22,
+                      color: V6.noteText,
+                    }}
+                  >
+                    {moment.userNote}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
 
-        {/* Timestamp */}
-        <View className="px-6 mb-8">
-          <Text
-            style={{
-              fontSize: 13,
-              color: colors.muted,
-              textAlign: "center",
-            }}
+        {/* Tags (Phase A enrichment) — sayfanın sonunda hafif bir detay
+            Cross-book tema browser: chip'e basınca `/tag/[name]` → aynı
+            tema'ya sahip tüm an'lar. Pressable wrap, haptik + router.push.
+            AI kaynaklı olduğu için mor aile (accent + primary). >=2 tag
+            koşulu prompt çıktısı tekil/boş dönerse UI kirlenmesin diye. */}
+        {moment.tags && moment.tags.length >= 2 && (
+          <View
+            className="px-6 mb-8"
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}
           >
-            {formattedDate}
-          </Text>
-        </View>
+            {moment.tags.map((tag, idx) => (
+              <Pressable
+                key={`${tag}-${idx}`}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(`/tag/${encodeURIComponent(tag)}` as any);
+                }}
+                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                style={({ pressed }) => [
+                  {
+                    backgroundColor: colors.accent + "26",
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 999,
+                    opacity: pressed ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.primary,
+                    fontWeight: "500",
+                  }}
+                >
+                  {tag}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* Spacer for scroll */}
         <View style={{ height: 24 }} />

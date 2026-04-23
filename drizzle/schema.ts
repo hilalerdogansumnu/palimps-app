@@ -93,9 +93,52 @@ export const readingMoments = mysqlTable("reading_moments", {
    * "denedik ama çıkmadı" ile "boş sonuç" aynı şey değil.
    */
   tags: json("tags").$type<string[]>(),
+  /**
+   * Phase B markings — Gemini full flash (handwriting kalitesi gerektiriyor).
+   * highlights = sayfada altı çizili / fosforlu işaretlenmiş METİN parçaları.
+   * Her entry: { text, kind: "highlighter" | "underline" }.
+   * Maks 10 entry — uzun pasajlardan parmak/gölge sızıntısı yiyebileceğimiz
+   * için schema-level cap. JSON kolon: ilişkisel ayrı tablo overkill (ortalama
+   * ≤3 entry beklentisi, sorgu basit).
+   *
+   * null vs [] semantik AYRI: null = "henüz markings extraction çalıştırılmadı"
+   * (ENV.enableMarkingCapture=false veya retroactive backfill yok), [] = "
+   * çalıştırıldı, sayfada işaret bulunamadı". UI iki state'i farklı
+   * göstermeli — null'da "henüz inceleme yapılmadı", []'de hiç gösterme.
+   */
+  highlights: json("highlights").$type<HighlightEntry[]>(),
+  /**
+   * Phase B marginalia — el yazısı kenar notları.
+   * Her entry: { text }. Sıralama = okuma yönü (yukarıdan aşağıya).
+   * Anchor / position alanı YOK (Gate 3 kararı): el yazısı formu zaten
+   * hoş, konumu metinle ilişkilendirmek için coordinate-level data
+   * Gemini'den güvenilir gelmiyor. v1.x'te AN detay ekranında "kenar
+   * notları" başlığı altında liste olarak gösterilecek.
+   *
+   * null/[] ayrımı highlights ile aynı.
+   */
+  marginalia: json("marginalia").$type<MarginaliaEntry[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+/**
+ * Phase B markings shapes. JSON column type guards — Drizzle infer'lar
+ * otomatik kullanır, server tarafında parse sonrası bu tiplere narrow.
+ *
+ * kind alanı:
+ * - "highlighter": fosforlu kalem (sarı/turuncu/yeşil)
+ * - "underline":  altı çizili (kalem / tükenmez)
+ * Renk YOK (Gate 3 kararı — karmaşa, sonradan eklenebilir).
+ */
+export type HighlightEntry = {
+  text: string;
+  kind: "highlighter" | "underline";
+};
+
+export type MarginaliaEntry = {
+  text: string;
+};
 
 export type Book = typeof books.$inferSelect;
 export type InsertBook = typeof books.$inferInsert;

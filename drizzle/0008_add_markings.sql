@@ -1,0 +1,22 @@
+-- Phase B markings (Gemini full flash): Her okuma anına highlights
+-- (altı çizili + fosforlu metin parçaları) ve marginalia (el yazısı
+-- kenar notları) ekliyoruz.
+--
+-- highlights: JSON array of { text, kind: "highlighter" | "underline" }
+-- marginalia: JSON array of { text }
+--
+-- İkisi de nullable: OCR + enrichment başarılı ama markings extraction
+-- başarısızsa moment yine kaydolur (summary + tags ile, markings null).
+-- null vs [] semantik farkı korunur:
+--   null = "henüz denenmedi" (kill switch, geriye dönük backfill yok)
+--   []   = "denendi, sayfada işaret bulunamadı"
+-- UI iki state'i farklı render etmeli.
+--
+-- Backfill yok: mevcut moment'ler (Phase A öncesi + Phase A) NULL kalır.
+-- Geriye dönük markings extraction ayrı bir admin job olarak v1.x'te
+-- yazılabilir; Phase B'de sadece yeni moment'lerde işaretler görünür.
+--
+-- Railway Query panel notu: backtick-free identifier kullanıyoruz
+-- (0007'de backtick'ler shell substitution gibi yorumlanmıştı).
+ALTER TABLE reading_moments ADD COLUMN highlights JSON NULL;
+ALTER TABLE reading_moments ADD COLUMN marginalia JSON NULL;

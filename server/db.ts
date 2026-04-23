@@ -190,6 +190,42 @@ export async function getReadingMomentsByBook(bookId: number) {
 }
 
 /**
+ * Bir tema etiketine (tag) sahip TÜM an'lar — cross-book tema browser.
+ * AN detay'daki tag chip'ine basınca bu sorgu çalışır.
+ *
+ * MySQL JSON_CONTAINS + JSON_QUOTE: `tags` JSON array ("["aşk","ölüm"]"
+ * gibi). JSON_QUOTE ile parametre `"aşk"` formatına çevrilir — bu tam
+ * elemanla (exact match) eşleşir, substring değil. Büyük/küçük harf
+ * eşleşmesi için etiket DB'ye yazılırken normalizeTag() ile küçük harfe
+ * indiriliyor (prompts.ts); tRPC prosedürü de aynı normalize'dan geçirir.
+ *
+ * Book title join: tag detay ekranı cross-book olduğu için kullanıcının
+ * "hangi kitaptan" olduğunu bilmesi lazım. Tek sorguda left join yapıyoruz
+ * — N+1 almamak için.
+ */
+export async function getReadingMomentsByTag(userId: number, tag: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      moment: readingMoments,
+      bookTitle: books.title,
+    })
+    .from(readingMoments)
+    .leftJoin(books, eq(readingMoments.bookId, books.id))
+    .where(
+      and(
+        eq(readingMoments.userId, userId),
+        sql`JSON_CONTAINS(${readingMoments.tags}, JSON_QUOTE(${tag}))`,
+      ),
+    )
+    .orderBy(desc(readingMoments.createdAt));
+
+  return rows.map((r) => ({ ...r.moment, bookTitle: r.bookTitle }));
+}
+
+/**
  * Okuma anı ID'sine göre okuma anı getir
  */
 export async function getReadingMomentById(momentId: number) {

@@ -1,0 +1,75 @@
+{
+  "_meta": {
+    "purpose": "Phase B markings extraction — Hilal-approved golden set. Bu fixture eval test'leri için referans 'gerçek'tir; LLM çıktısı bu shape'e yaklaşmalı (literal eşitlik beklenmiyor — Gemini istek seviyesinde stabil değil, Phase B dogfood gate'inden sonra eval discipline'i sertleşecek).",
+    "approvedBy": "Hilal",
+    "approvedAt": "2026-04-22",
+    "notes": [
+      "IMG_7197: 'Gen AI' yazıyor, 'Genel AI' DEĞİL — handoff'taki transcription hatası düzeltildi.",
+      "IMG_7196: 'Yapay Zeka Yöneticiliği?' tek soru işareti ile yazıldı.",
+      "IMG_7197: '?' karakteri tek başına marginalia DEĞİL.",
+      "Sayfa numaraları, (1)(2)(3)(4) numaralandırmaları highlight'lar İÇİNDE kalır — ayrı entry değil.",
+      "italik metin highlight olarak SAYILMAZ (kitap tipografisi, kullanıcı işareti değil)."
+    ]
+  },
+  "fixtures": [
+    {
+      "image": "IMG_7191.heic",
+      "expected": {
+        "highlights": [
+          { "text": "<long passage from page>", "kind": "highlighter" },
+          { "text": "entelektüel el emeği", "kind": "highlighter" }
+        ],
+        "marginalia": []
+      }
+    },
+    {
+      "image": "IMG_7192.heic",
+      "expected": {
+        "highlights": [
+          { "text": "<blurry/partial sentence>", "kind": "highlighter" }
+        ],
+        "marginalia": []
+      }
+    },
+    {
+      "image": "IMG_7193.heic",
+      "expected": {
+        "highlights": [
+          { "text": "internetten sipariş edilebilecek bir kıyamet", "kind": "highlighter" }
+        ],
+        "marginalia": []
+      }
+    },
+    {
+      "image": "IMG_7195.heic",
+      "expected": {
+        "highlights": [
+          { "text": "<sentence containing (1)(2)(3)(4) inline numbering>", "kind": "underline" }
+        ],
+        "marginalia": []
+      }
+    },
+    {
+      "image": "IMG_7196.heic",
+      "expected": {
+        "highlights": [
+          { "text": "<underlined sentence on page>", "kind": "underline" }
+        ],
+        "marginalia": [
+          { "text": "Yapay Zeka Yöneticiliği?" }
+        ]
+      }
+    },
+    {
+      "image": "IMG_7197.heic",
+      "expected": {
+        "highlights": [
+          { "text": "<underlined sentence on page>", "kind": "underline" }
+        ],
+        "marginalia": [
+          { "text": "Gen AI" }
+        ]
+      }
+    }
+  ]
+}

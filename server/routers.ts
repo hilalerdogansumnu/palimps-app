@@ -33,7 +33,11 @@ import { invokeLLM } from "./_core/llm";
 import {
   MOMENT_ENRICH_PROMPT,
   MOMENT_ENRICH_SCHEMA,
+  MARKINGS_PROMPT,
+  MARKINGS_SCHEMA,
   normalizeTag,
+  type HighlightEntry,
+  type MarginaliaEntry,
 } from "./_core/prompts";
 import { isUserPremium } from "./_core/premium";
 
@@ -478,6 +482,38 @@ export const appRouter = router({
       }),
 
     /**
+     * Bir tema etiketine sahip tüm an'lar — cross-book tema browser.
+     * AN detay'daki tag chip'ine basınca bu procedure çalışır.
+     *
+     * Tag normalize: DB'deki etiketler prompts.ts'deki normalizeTag ile
+     * küçük harfe indirilmiş halde yazılıyor. Kullanıcı tıkladığında da
+     * aynı normalize'dan geçiriyoruz — gelecekte chip metnini formatlayıp
+     * göstersek de arkadan exact match yapılsın.
+     *
+     * Max 40 karakter: prompts.ts injection defense ile eşit. Chip UI'da
+     * bundan uzun bir tag zaten yok (schema.ts + prompt hard cap).
+     *
+     * User scope: `getReadingMomentsByTag` userId filtresi uyguluyor —
+     * başka kullanıcının an'ını çekme imkânı yok. Yine de chip tıklanınca
+     * verilen `tag` parametresi string, integer ID değil, DB üzerinde
+     * doğrudan bir lookup sızıntısı riski yok.
+     */
+    listByTag: protectedProcedure
+      .input(z.object({ tag: z.string().trim().min(1).max(40) }))
+      .query(async ({ ctx, input }) => {
+        const normalized = normalizeTag(input.tag);
+        if (!normalized) return [];
+        const moments = await db.getReadingMomentsByTag(ctx.user.id, normalized);
+        // Sayfa fotolarını signed URL'e çevir — listByBook ile aynı neden.
+        return Promise.all(
+          moments.map(async (m) => ({
+            ...m,
+            pageImageUrl: (await toDisplayUrl(m.pageImageUrl)) ?? m.pageImageUrl,
+          })),
+        );
+      }),
+
+    /**
      * Okuma anı ID'sine göre okuma anı getir
      */
     getById: protectedProcedure
@@ -696,6 +732,120 @@ export const appRouter = router({
           }
         }
 
+        // 2.6. Markings extraction (Gemini Phase B) — sayfa fotoğrafından
+        // altı çizili / fosforlu METİN parçaları (highlights) ve el yazısı
+        // kenar notları (marginalia) çıkarır. Ayrı LLM call:
+        //
+        // - Model: ENV.geminiModelChat (full flash) — flash-lite el
+        //   yazısında güvenilmiyor, OCR'dan farklı routing.
+        // - Strict JSON schema: tüm property'ler required, additionalProperties
+        //   false. Schema ihlali → parse fail → null kaydedilir, moment yine
+        //   kaydolur.
+        // - Resim aynı pageImageUrl'den geçer (R2 public URL); base64 değil
+        //   çünkü Gemini URL fetch ediyor, bandwidth duplikasyonu yok.
+        // - temperature: undefined → invokeLLM default'u (0.0). Markings
+        //   "yaratıcı" değil, deterministik OCR-benzeri görev.
+        //
+        // Kill switch: ENV.enableMarkingCapture=false → atla. Railway'de
+        // ENABLE_MARKING_CAPTURE=false flip edilebilir (redeploy gerekmez),
+        // cost spike / kalite regression durumunda moment akışını kırmadan
+        // kapatmak için. Default ON.
+        //
+        // null vs []: highlights/marginalia null kalırsa "henüz denenmedi"
+        // semantiği; LLM çalıştı ama hiçbir işaret bulamadıysa [] kaydedilir.
+        // UI iki state'i farklı render etmeli (null = hiç gösterme, [] da
+        // = hiç gösterme — ama analytics'te ayırt edilebilir).
+        let highlights: HighlightEntry[] | null = null;
+        let marginalia: MarginaliaEntry[] | null = null;
+        if (ENV.enableMarkingCapture) {
+          const markingsStart = Date.now();
+          try {
+            const markingsResponse = await invokeLLM({
+              model: ENV.geminiModelChat,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: MARKINGS_PROMPT },
+                    {
+                      type: "image_url",
+                      image_url: { url: ocrImageUrl, detail: "high" },
+                    },
+                  ],
+                },
+              ],
+              responseFormat: {
+                type: "json_schema",
+                json_schema: MARKINGS_SCHEMA,
+              },
+            });
+            const choice = markingsResponse.choices[0];
+            const raw = choice?.message?.content;
+            const jsonStr = typeof raw === "string" ? raw : JSON.stringify(raw);
+            const parsed = JSON.parse(jsonStr) as {
+              highlights?: unknown;
+              marginalia?: unknown;
+            };
+
+            // Defensive parse — schema strict olsa bile model bazen array
+            // yerine null döndürebiliyor. Her entry'yi tek tek validate et,
+            // bozuğu at, kalanı kaydet (kısmi başarı, sıfıra düşme).
+            if (Array.isArray(parsed.highlights)) {
+              const cleanedHighlights: HighlightEntry[] = [];
+              for (const item of parsed.highlights) {
+                if (
+                  item &&
+                  typeof item === "object" &&
+                  typeof (item as { text?: unknown }).text === "string" &&
+                  ((item as { kind?: unknown }).kind === "highlighter" ||
+                    (item as { kind?: unknown }).kind === "underline")
+                ) {
+                  const text = (item as { text: string }).text.trim().slice(0, 500);
+                  if (text.length > 0) {
+                    cleanedHighlights.push({
+                      text,
+                      kind: (item as { kind: "highlighter" | "underline" }).kind,
+                    });
+                  }
+                }
+              }
+              // Schema cap: 10. Defansif, modele güven yok.
+              highlights = cleanedHighlights.slice(0, 10);
+            }
+            if (Array.isArray(parsed.marginalia)) {
+              const cleanedMarginalia: MarginaliaEntry[] = [];
+              for (const item of parsed.marginalia) {
+                if (
+                  item &&
+                  typeof item === "object" &&
+                  typeof (item as { text?: unknown }).text === "string"
+                ) {
+                  const text = (item as { text: string }).text.trim().slice(0, 500);
+                  if (text.length > 0) {
+                    cleanedMarginalia.push({ text });
+                  }
+                }
+              }
+              marginalia = cleanedMarginalia.slice(0, 8);
+            }
+          } catch (markingsError) {
+            // Sessizce geç — moment kaydı kritik, markings opsiyonel.
+            // PII risk: parsed content (kullanıcının altını çizdiği metin)
+            // LOG'A YAZMA. Sadece meta — userId, model, promptName,
+            // durationMs, error.message (stack DEĞİL, SDK key sızdırabilir).
+            console.warn("[moments.create] markings extraction failed", {
+              userId: ctx.user.id,
+              model: ENV.geminiModelChat,
+              promptName: "MARKINGS_V1",
+              durationMs: Date.now() - markingsStart,
+              error:
+                markingsError instanceof Error
+                  ? markingsError.message
+                  : String(markingsError),
+            });
+          }
+        }
+
         // 3. Okuma anını veritabanına kaydet
         const momentId = await db.createReadingMoment({
           bookId: input.bookId,
@@ -705,6 +855,8 @@ export const appRouter = router({
           userNote: input.userNote,
           summary,
           tags,
+          highlights,
+          marginalia,
         });
 
         // 4. Kitabın kapak fotoğrafı yoksa, bu fotoğrafı kapak olarak ayarla
@@ -713,7 +865,15 @@ export const appRouter = router({
           await db.updateBook(input.bookId, { coverImageUrl: pageImageUrl });
         }
 
-        return { id: momentId, ocrText, pageImageUrl, summary, tags };
+        return {
+          id: momentId,
+          ocrText,
+          pageImageUrl,
+          summary,
+          tags,
+          highlights,
+          marginalia,
+        };
       }),
 
     /**

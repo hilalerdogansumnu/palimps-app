@@ -70,6 +70,127 @@ export const MOMENT_ENRICH_SCHEMA = {
 } as const;
 
 /**
+ * Phase B markings extraction — kitap sayfası fotoğrafından altı çizili /
+ * fosforlu METİN parçalarını (highlights) ve el yazısı kenar notlarını
+ * (marginalia) çıkarır. OCR'dan ayrı bir LLM call:
+ *
+ * - Model: ENV.geminiModelChat (full flash) — flash-lite el yazısında
+ *   güvenilmiyor; OCR'dan farklı routing.
+ * - Prompt language: Türkçe (model Türkçe içerikte daha tutarlı kalıyor;
+ *   OCR ham metni de zaten Türkçe).
+ * - Yargı / yorum / aksiyon önerisi YOK — voice contract: "sade kütüphaneci".
+ * - Hatalı tahminden kaçınmak için: emin değilse atla, "[okunaksız]" yazma,
+ *   parmak/gölge/italik metni işaret olarak SAYMA.
+ * - Sayfa numaraları + (1)(2)(3) gibi inline numaralandırmalar highlight
+ *   içine gömülü kalır — ayrı entry değil.
+ *
+ * Resim base64 / URL olarak invokeLLM message content'ine ayrı block olarak
+ * geçilir; bu prompt sadece "ne yap" tarifi.
+ */
+export const MARKINGS_PROMPT = `Bu kitap sayfası fotoğrafını analiz et. İki şey çıkar:
+
+1. highlights[]: Sayfada altı çizili veya fosforlu kalemle işaretlenmiş METİN parçaları.
+   Her entry: { text, kind }
+   - text: işaretlenen metnin tam dökümü (basılı metinden, yorum katma)
+   - kind: "highlighter" (fosforlu) veya "underline" (altı çizili). Emin değilsen "underline" yaz.
+   Kurallar:
+   - İtalik metni işaret SANMA — kitap tipografisi, kullanıcı işareti değil.
+   - (1)(2)(3) gibi inline numaralandırmaları highlight içinde BIRAK, ayrı entry açma.
+   - Sayfa numarasını highlight olarak SAYMA.
+
+2. marginalia[]: EL YAZISI kenar notları. Yukarıdan aşağıya (okuma yönünde) sırala.
+   Her entry: { text }
+   Kurallar:
+   - Bir kelimeyi net okuyamıyorsan ATLA. Tahmin etme. "[okunaksız]" YAZMA. Sadece atla.
+   - Basılı metni el yazısı SANMA.
+   - Parmağı / gölgeyi / kırışıklığı marginalia SANMA.
+
+Hiçbiri yoksa boş array döndür. JSON dışında HİÇBİR ŞEY yazma.`;
+
+/**
+ * Markings JSON schema — strict mode. Tüm property'ler required (Gemini
+ * structured output strict modunda optional alan tutarsızlık yaratıyor).
+ * additionalProperties: false her seviyede — model şema dışına çıkmasın.
+ *
+ * Caps:
+ * - highlights maxItems: 10 — uzun pasajlardan parmak/gölge sızıntısı veya
+ *   tekrar eden bölümler için defense in depth. Ortalama beklenen ≤3.
+ * - marginalia maxItems: 8 — kenar boşluğu fiziksel olarak sınırlı; 8'den
+ *   fazla not görüyorsa muhtemelen basılı metni karıştırıyor.
+ * - text maxLength: 500 — bir highlight makul üst sınır (paragraf seviyesi);
+ *   bu sınırı geçen entry kötü segmentation işareti, schema reddetsin.
+ */
+export const MARKINGS_SCHEMA = {
+  name: "markings_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      highlights: {
+        type: "array",
+        description: "Altı çizili / fosforlu metin parçaları. 0-10 arası.",
+        minItems: 0,
+        maxItems: 10,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: "string",
+              description: "İşaretlenen metnin tam dökümü.",
+              maxLength: 500,
+            },
+            kind: {
+              type: "string",
+              description:
+                "İşaret tipi. Emin değilsen 'underline' (defansif default).",
+              enum: ["highlighter", "underline"],
+            },
+          },
+          required: ["text", "kind"],
+        },
+      },
+      marginalia: {
+        type: "array",
+        description: "El yazısı kenar notları. Yukarıdan aşağıya sıralı. 0-8.",
+        minItems: 0,
+        maxItems: 8,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: "string",
+              description: "El yazısı not metni. Okunaksızsa entry açma.",
+              maxLength: 500,
+            },
+          },
+          required: ["text"],
+        },
+      },
+    },
+    required: ["highlights", "marginalia"],
+  },
+} as const;
+
+/**
+ * Phase B markings TypeScript shapes — schema.ts'teki JSON kolon
+ * tipleriyle birebir aynı. İki tarafta tutmak yerine schema.ts re-export
+ * etmek de çalışır ama döngüsel import oluşmaması için burada kopyalı
+ * tutuyoruz (prompts.ts hiçbir DB modülünü import etmemeli — test
+ * mock'lanabilirliği için).
+ */
+export type HighlightEntry = {
+  text: string;
+  kind: "highlighter" | "underline";
+};
+
+export type MarginaliaEntry = {
+  text: string;
+};
+
+/**
  * LLM tag çıktısını normalize eder — veritabanına kaydetmeden önce çağrılır.
  * Türkçe karakterleri (ç, ğ, ı, ö, ş, ü) korur; büyük harf, boşluk, hashtag,
  * noktalama temizler. Boş string dönerse çağıran taraf tag'i filtrelemelidir.
