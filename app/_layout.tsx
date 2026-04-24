@@ -5,6 +5,31 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@ta
 import * as Sentry from "@sentry/react-native";
 import * as Auth from "@/lib/_core/auth";
 import { isSessionExpireError } from "@/lib/_core/auth-error";
+import { Stack , router, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-reanimated";
+import { Platform , View, ActivityIndicator } from "react-native";
+import "@/lib/_core/nativewind-pressable";
+import { ThemeProvider } from "@/lib/theme-provider";
+import {
+  SafeAreaFrameContext,
+  SafeAreaInsetsContext,
+  SafeAreaProvider,
+  initialWindowMetrics,
+} from "react-native-safe-area-context";
+import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
+
+import { trpc, createTRPCClient } from "@/lib/trpc";
+import { initPurchases, identifyPurchasesUser } from "@/lib/_core/purchases";
+import { subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+import { initManusRuntime } from "@/lib/_core/manus-runtime"; // Keep for compatibility
+import { useAuth } from "@/hooks/use-auth";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import { OnboardingScreens } from "@/components/onboarding-screens";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { useColors } from "@/hooks/use-colors";
 
 // Initialize Sentry for crash reporting
 initSentry();
@@ -63,33 +88,6 @@ function handleAuthError(error: unknown) {
     }, 2000);
   });
 }
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import "react-native-reanimated";
-import { Platform } from "react-native";
-import "@/lib/_core/nativewind-pressable";
-import { ThemeProvider } from "@/lib/theme-provider";
-import {
-  SafeAreaFrameContext,
-  SafeAreaInsetsContext,
-  SafeAreaProvider,
-  initialWindowMetrics,
-} from "react-native-safe-area-context";
-import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
-
-import { trpc, createTRPCClient } from "@/lib/trpc";
-import { initPurchases, identifyPurchasesUser } from "@/lib/_core/purchases";
-import { subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
-import { initManusRuntime } from "@/lib/_core/manus-runtime"; // Keep for compatibility
-import { useAuth } from "@/hooks/use-auth";
-import { router, useSegments } from "expo-router";
-import { useOnboarding } from "@/hooks/use-onboarding";
-import { OnboardingScreens } from "@/components/onboarding-screens";
-import { ErrorBoundary } from "@/components/error-boundary";
-import { useColors } from "@/hooks/use-colors";
-import { View, ActivityIndicator } from "react-native";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };

@@ -399,7 +399,7 @@ export default function HomeScreen() {
                 <View>
                   <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 4 }}>{book?.title || t("home.unknownBook")}</Text>
                   {moment.ocrText && <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: 2 }} numberOfLines={2}>{moment.ocrText}</Text>}
-                  {moment.userNote && <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }} numberOfLines={1}>"{moment.userNote}"</Text>}
+                  {moment.userNote && <Text style={{ fontSize: 13, color: colors.muted, fontStyle: "italic" }} numberOfLines={1}>“{moment.userNote}”</Text>}
                   <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{formatDate(moment.createdAt)}</Text>
                 </View>
               </Pressable>
