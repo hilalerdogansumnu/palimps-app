@@ -358,8 +358,9 @@ export default function BookDetailScreen() {
                     açık davetle: "tekrar bak" → kullanıcı "app kırık" demez.
                     50331 dogfood: Hilal 06:29'da blank card gördü, 06:58'de
                     refetch sonrası dolmuştu; aradaki pencere için bu
-                    placeholder tasarlandı. */}
-                {!item.pageImageUrl && !item.ocrText && (
+                    placeholder tasarlandı. summary de fallback — enrichment
+                    başarıldıysa image/ocr olmasa bile kart dolu görünür. */}
+                {!item.pageImageUrl && !item.ocrText && !item.summary && (
                   <View style={{ paddingVertical: 16, alignItems: "center", marginBottom: 8 }}>
                     <MaterialIcons name="hourglass-empty" size={20} color={colors.muted} />
                     <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center" }}>
@@ -370,8 +371,26 @@ export default function BookDetailScreen() {
                     </Text>
                   </View>
                 )}
-                {/* OCR text preview */}
-                {item.ocrText && (
+                {/* AI summary-first — enrichment Phase A'nın ürettiği kısa
+                    özet (280 char cap), editoryal "sade kütüphaneci" voice.
+                    Italic → AI üretimi sinyali, kullanıcının kendi notuyla
+                    ayrışsın (userNote primary renkli, summary foreground).
+                    Fallback: enrichment fail/pending ise ham OCR metnini
+                    göster. `/tag/[name]` kartıyla aynı pattern — tutarlılık. */}
+                {item.summary ? (
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: colors.foreground,
+                      lineHeight: 20,
+                      marginBottom: 8,
+                      fontStyle: "italic",
+                    }}
+                    numberOfLines={2}
+                  >
+                    {item.summary}
+                  </Text>
+                ) : item.ocrText ? (
                   <Text
                     style={{
                       fontSize: 14,
@@ -383,7 +402,7 @@ export default function BookDetailScreen() {
                   >
                     {item.ocrText}
                   </Text>
-                )}
+                ) : null}
 
                 {/* User note if exists */}
                 {item.userNote && (
