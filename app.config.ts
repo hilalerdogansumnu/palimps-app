@@ -29,7 +29,12 @@ const schemeFromBundleId = `manus${timestamp}`;
 const env = {
   // App branding - update these values directly (do not use env vars)
   appName: "PALIMPS",
-  appSlug: "palimps",
+  // appSlug: EAS projectId (f64f8212-7a0a-47f9-bb64-b2d4d6870ccd) expo.dev
+  // dashboard'da "okuma-hafizasi-mvp" slug'ı ile bağlı. Local slug dashboard
+  // ile EŞLEŞMELİ yoksa eas build "slug mismatch" ile erken exit eder.
+  // v1.0.1 post-launch: önce expo.dev UI → Project Settings → Rename → palimps,
+  // SONRA bu satırı "palimps" yap. Şimdi ship blocker'ı değil.
+  appSlug: "okuma-hafizasi-mvp",
   // logoUrl: manus dönemi artifact. Code yolunda kullanılmıyor (asset
   // `./assets/images/icon.png` üzerinden geliyor). v1.0.1 cleanup'ta
   // env objesinden çıkarılabilir.
