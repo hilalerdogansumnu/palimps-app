@@ -137,7 +137,7 @@ export default function PremiumScreen() {
                   textAlign: "center",
                 }}
               >
-                Premium üyesiniz
+                {t("premium.alreadyPremium")}
               </Text>
             </View>
           )}

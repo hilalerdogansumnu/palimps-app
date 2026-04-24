@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, View, Pressable, ScrollView, Image, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, View, Pressable, ScrollView, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -214,7 +215,9 @@ export default function MomentDetailScreen() {
                 borderRadius: 16,
                 backgroundColor: colors.surface,
               }}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              accessibilityLabel={t("momentDetail.pageImageAlt")}
             />
           </View>
         )}
@@ -303,7 +306,11 @@ export default function MomentDetailScreen() {
                         style={{
                           fontSize: 14,
                           lineHeight: 21,
-                          color: colors.foreground,
+                          // V6.ocrText: V6.highlightsBg (sabit light amber) üstünde
+                          // kontrast garantili. colors.foreground dynamic olduğu için
+                          // dark mode'da light-on-light kontrast çöker. Diğer V6
+                          // section'larıyla tonal hizalı.
+                          color: V6.ocrText,
                         }}
                       >
                         {displayText}

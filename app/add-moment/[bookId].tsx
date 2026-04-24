@@ -5,11 +5,11 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
-  Image,
   Pressable,
   Alert,
   Platform,
 } from "react-native";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
@@ -441,7 +441,9 @@ export default function AddMomentScreen() {
                     <Image
                       source={{ uri: pageImageUri }}
                       style={{ width: "100%", height: "100%" }}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      accessibilityLabel={t("momentDetail.pageImageAlt")}
                     />
                     <Pressable
                       onPress={() => {

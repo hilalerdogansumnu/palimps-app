@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="PALIMPS Gizlilik Politikası / Privacy Policy" />
+<meta name="theme-color" content="#6E46C8" />
+<title>Privacy Policy · PALIMPS</title>
+<link rel="icon" type="image/png" href="/icon.png" />
+<style>
+  :root {
+    --bg: #F8F6FF;
+    --fg: #160E2C;
+    --muted: #5F5678;
+    --primary: #6E46C8;
+    --surface: #FDFBFF;
+    --border: #E4DCFA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #100C1E;
+      --fg: #EDE9FA;
+      --muted: #9B93B8;
+      --primary: #8B67E0;
+      --surface: #1C1630;
+      --border: #2E2550;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 0 24px 80px; }
+  header {
+    padding: 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brand { font-weight: 700; font-size: 18px; letter-spacing: 0.4px; color: var(--primary); text-decoration: none; }
+  .lang {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .lang:hover { border-color: var(--primary); color: var(--primary); }
+  h1 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    margin: 24px 0 8px;
+    color: var(--fg);
+  }
+  .updated {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 36px 0 12px;
+    color: var(--fg);
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 20px 0 6px;
+    color: var(--fg);
+  }
+  p, li {
+    font-size: 16px;
+    color: var(--fg);
+    margin-bottom: 12px;
+  }
+  ul { padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .card {
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin: 20px 0;
+  }
+  .card p:last-child { margin-bottom: 0; }
+  footer {
+    padding: 48px 0 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 48px;
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--primary); }
+  [data-lang="en"] .tr { display: none; }
+  [data-lang="tr"] .en { display: none; }
+</style>
+</head>
+<body data-lang="tr">
+<div class="container">
+  <header>
+    <a href="/" class="brand">PALIMPS</a>
+    <button class="lang" onclick="toggleLang()">
+      <span class="tr">EN</span>
+      <span class="en">TR</span>
+    </button>
+  </header>
+
+  <!-- TURKISH -->
+  <div class="tr">
+    <h1>Gizlilik Politikası</h1>
+    <p class="updated">Son güncelleme: 23 Nisan 2026</p>
+
+    <div class="card">
+      <p><strong>Kısa özet:</strong> PALIMPS okuma verilerini sen ve kitapların için tutar. Satmayız, reklam için kullanmayız, üçüncü taraflarla paylaşmayız. Verini istediğin zaman silebilirsin.</p>
+    </div>
+
+    <h2>1. Topladığımız veriler</h2>
+    <p>PALIMPS yalnızca uygulamayı çalıştırmak için gereken verileri toplar:</p>
+    <ul>
+      <li><strong>E-posta adresi:</strong> Apple Sign In ile giriş yaptığında Apple tarafından paylaşılır (özel e-posta adresi kullanmayı seçebilirsin).</li>
+      <li><strong>Ad:</strong> Apple Sign In sırasında paylaşmayı tercih edersen.</li>
+      <li><strong>Kullanıcı kimliği (User ID):</strong> Apple tarafından üretilen, hesabına bağlı anonim bir tanımlayıcı.</li>
+      <li><strong>Fotoğraflar:</strong> Kitap sayfası veya kapak fotoğrafı çektiğin ya da galerinden seçtiklerin. Şifrelenmiş olarak Cloudflare R2'de senin hesabınla bağlı tutulur ve hesabın silinene kadar saklanır.</li>
+      <li><strong>Kullanıcı içeriği:</strong> Not, alıntı, kitap başlığı, yazar adı gibi kendi girdiğin metinler; ayrıca fotoğrafladığın sayfalardan yapay zeka ile yazı tanıma (OCR) yoluyla çıkarılan basılı metin, altı çizili/fosforlu bölümler ve el yazısı kenar notlarının transkripsiyonu.</li>
+    </ul>
+
+    <h2>2. Nasıl kullanıyoruz</h2>
+    <p>Topladığımız verileri yalnızca:</p>
+    <ul>
+      <li>Hesabını açmak ve güvende tutmak için,</li>
+      <li>Kitaplarını ve notlarını senkronize etmek için,</li>
+      <li>Uygulamadaki temel özellikleri (sayfa fotoğrafı analizi: OCR, altı çizili tespiti, el yazısı kenar notlarının transkripsiyonu, arama, yedekleme) çalıştırmak için,</li>
+      <li>Teknik hataları ve çökmeleri anlamak için (anonimleştirilmiş kilitlenme raporları, opsiyonel)</li>
+    </ul>
+    <p>kullanıyoruz. Hiçbir veriyi reklam veya pazarlama için kullanmıyoruz.</p>
+    <p><strong>Hukuki sebep (KVKK Md. 5 / GDPR Md. 6):</strong> Hesap oluşturma ve temel özelliklerin çalıştırılması sözleşmenin ifası; güvenlik ve hata teşhisi meşru menfaat; yurt dışına veri aktarımı ve fotoğrafların AI analizi için açık rıza (Apple ile giriş yaptığında bu politikayı kabul etmiş olursun).</p>
+
+    <h2>3. Takip (Tracking)</h2>
+    <p>PALIMPS hiçbir reklam ağı, analitik servisi veya veri simsarı ile veri paylaşmaz. Uygulamada reklam yoktur. Apple'ın App Tracking Transparency çerçevesinde "tracking" tanımına giren hiçbir şey yapmıyoruz.</p>
+
+    <h2>4. Verilerin nerede saklanır</h2>
+    <ul>
+      <li><strong>Metin verileri</strong> (not, alıntı, kitap bilgisi, OCR çıktıları, altı çizili ve kenar notu transkripsiyonları) Avrupa'da konuşlu bir veritabanı sunucusunda şifrelenmiş olarak tutulur.</li>
+      <li><strong>Fotoğraflar</strong> Cloudflare R2 üzerinde şifrelenmiş olarak saklanır; yalnızca senin hesabın erişebilir.</li>
+      <li><strong>Yerel önbellek</strong> (telefonunda) hız için bir kopya tutabilir.</li>
+      <li><strong>İşleme için geçici yurt dışı transfer:</strong> Sayfa fotoğrafları ve içerdikleri metinler, fotoğraf analizi (OCR, altı çizili ve kenar notu tespiti) ve premium AI özellikleri için Google'ın Gemini API'sine (ABD) gönderilir. Google'ın operasyonel log retention'ı 48 saattir, ardından silinir.</li>
+    </ul>
+
+    <h2>5. Üçüncü taraf servisler</h2>
+    <p>PALIMPS'in çalışması için birkaç altyapı servisi kullanıyoruz:</p>
+    <ul>
+      <li><strong>Apple (Sign in with Apple):</strong> Kimlik doğrulama. Apple'ın <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">gizlilik politikası</a> geçerlidir.</li>
+      <li><strong>RevenueCat:</strong> Abonelik yönetimi. Premium özellikler için kullanılır. <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat gizlilik politikası</a>.</li>
+      <li><strong>Cloudflare R2:</strong> Fotoğraf depolama. <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare gizlilik politikası</a>.</li>
+      <li><strong>Sentry:</strong> Kilitlenme ve hata raporları (kişisel veri içermez).</li>
+      <li><strong>Google Gemini</strong> (Google LLC, ABD): Sayfa fotoğraflarının analizi (basılı metin OCR'ı, altı çizili metin ve el yazısı kenar notlarının tespiti), otomatik özet/etiket üretimi ve premium sohbet özelliği için kullanılır. Fotoğrafların ve notların içeriği işlenmek üzere Google'ın Gemini API'sine gönderilir; Google'ın operasyonel log retention'ı 48 saattir, ardından silinir. <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google gizlilik politikası</a>.</li>
+    </ul>
+
+    <h2>6. Çocukların gizliliği</h2>
+    <p>PALIMPS 13 yaş altındaki kullanıcılardan bilerek veri toplamaz. Çocuğunun veri paylaştığını düşünüyorsan bize ulaş, derhal sileriz.</p>
+
+    <h2>7. Haklarınız</h2>
+    <p>KVKK Md. 11 ve GDPR Md. 15-22 kapsamında her kullanıcı şu haklara sahiptir:</p>
+    <ul>
+      <li>Kişisel verilerinin işlenip işlenmediğini öğrenme,</li>
+      <li>Kişisel verileri işlenmişse buna ilişkin bilgi talep etme,</li>
+      <li>Verilerinin işlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
+      <li>Yurt içinde veya yurt dışında verilerinin aktarıldığı üçüncü kişileri bilme (bkz. §5),</li>
+      <li>Eksik veya yanlış işlenmişse verilerinin düzeltilmesini isteme,</li>
+      <li>Kişisel verilerinin silinmesini veya yok edilmesini talep etme: uygulama içinden doğrudan yapabilirsin (Ayarlar → Hesabı Sil),</li>
+      <li>Verilerinin bir kopyasını talep etme (<a href="mailto:hilalsumnu@gmail.com">e-posta ile</a>),</li>
+      <li>Otomatik sistemler aracılığıyla analiz edilmesi sonucu aleyhe bir sonuç ortaya çıkmasına itiraz etme,</li>
+      <li>Kanuna aykırı işleme nedeniyle zarara uğradıysa zararın giderilmesini talep etme.</li>
+    </ul>
+    <p>Silme talebinin yasal üst süresi 30 gündür; iç hedefimiz 7 gündür.</p>
+
+    <h2>8. Değişiklikler</h2>
+    <p>Bu politikayı güncellediğimizde buradaki "Son güncelleme" tarihi değişir. Önemli değişikliklerde uygulama içinden bilgi veririz.</p>
+
+    <h2>9. İletişim</h2>
+    <p>Sorunun varsa: <a href="mailto:hilalsumnu@gmail.com">hilalsumnu@gmail.com</a></p>
+  </div>
+
+  <!-- ENGLISH -->
+  <div class="en">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: April 23, 2026</p>
+
+    <div class="card">
+      <p><strong>In short:</strong> PALIMPS keeps your reading data for you and your books. We don't sell it, we don't use it for ads, we don't share it with third parties. You can delete your data at any time.</p>
+    </div>
+
+    <h2>1. Data we collect</h2>
+    <p>PALIMPS only collects data required to run the app:</p>
+    <ul>
+      <li><strong>Email address:</strong> shared by Apple when you sign in (you may choose a private relay email).</li>
+      <li><strong>Name:</strong> if you choose to share it during Apple Sign In.</li>
+      <li><strong>User ID:</strong> an anonymous identifier generated by Apple, tied to your account.</li>
+      <li><strong>Photos:</strong> book page or cover photos you take or pick from your library. Stored encrypted on Cloudflare R2, tied to your account, kept until you delete your account.</li>
+      <li><strong>User content:</strong> notes, quotes, book titles, author names and similar text you enter; plus printed text automatically extracted by AI text recognition (OCR), highlighted/underlined passages, and transcriptions of handwritten marginal notes from photos you capture.</li>
+    </ul>
+
+    <h2>2. How we use it</h2>
+    <p>We use the data only to:</p>
+    <ul>
+      <li>Open and secure your account,</li>
+      <li>Sync your books and notes across devices,</li>
+      <li>Power core features (page photo analysis: OCR, highlight detection, transcription of handwritten margin notes, search, backup),</li>
+      <li>Understand technical issues and crashes (anonymized crash reports, optional).</li>
+    </ul>
+    <p>We never use your data for advertising or marketing.</p>
+    <p><strong>Legal basis (GDPR Art. 6 / KVKK Art. 5):</strong> Account creation and core feature operation rely on contract performance; security and error diagnostics on legitimate interest; cross-border data transfer and AI-based photo analysis on your explicit consent (you accept this policy by signing in with Apple).</p>
+
+    <h2>3. Tracking</h2>
+    <p>PALIMPS does not share data with any ad network, analytics service or data broker. There are no ads in the app. We do nothing that falls under "tracking" in Apple's App Tracking Transparency framework.</p>
+
+    <h2>4. Where data is stored</h2>
+    <ul>
+      <li><strong>Text data</strong> (notes, quotes, book metadata, OCR outputs, highlight and margin-note transcriptions) is stored encrypted on a database server located in Europe.</li>
+      <li><strong>Photos</strong> are stored encrypted on Cloudflare R2; only your account can access them.</li>
+      <li><strong>Local cache</strong> on your device may keep a copy for speed.</li>
+      <li><strong>Temporary cross-border transfer for processing:</strong> Page photos and the text they contain are sent to Google's Gemini API (USA) for photo analysis (OCR, highlight and margin-note detection) and premium AI features. Google's operational log retention is 48 hours; data is purged afterwards.</li>
+    </ul>
+
+    <h2>5. Third-party services</h2>
+    <p>PALIMPS uses a small set of infrastructure services to function:</p>
+    <ul>
+      <li><strong>Apple (Sign in with Apple):</strong> authentication. See <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">Apple's privacy policy</a>.</li>
+      <li><strong>RevenueCat:</strong> subscription management for premium features. See <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat's privacy policy</a>.</li>
+      <li><strong>Cloudflare R2:</strong> photo storage. See <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare's privacy policy</a>.</li>
+      <li><strong>Sentry:</strong> crash and error reports (no personal data).</li>
+      <li><strong>Google Gemini</strong> (Google LLC, USA): used for page photo analysis (printed text OCR, highlight and handwritten margin-note detection), automatic summary/tag generation, and premium chat features. The content of your photos and notes is sent to Google's Gemini API for processing; Google's operational log retention is 48 hours, then purged. See <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's privacy policy</a>.</li>
+    </ul>
+
+    <h2>6. Children's privacy</h2>
+    <p>PALIMPS does not knowingly collect data from users under 13. If you believe your child has shared data with us, contact us and we will delete it promptly.</p>
+
+    <h2>7. Your rights</h2>
+    <p>Under KVKK Art. 11 and GDPR Art. 15-22, every user has the right to:</p>
+    <ul>
+      <li>Know whether their personal data is being processed,</li>
+      <li>Request information about that processing,</li>
+      <li>Learn the purpose of processing and whether data is used accordingly,</li>
+      <li>Know the third parties to which data is transferred domestically or internationally (see §5),</li>
+      <li>Request correction if data is incomplete or inaccurate,</li>
+      <li>Request deletion or destruction of personal data: available directly in the app (Settings → Delete Account),</li>
+      <li>Request a copy of their data via <a href="mailto:hilalsumnu@gmail.com">email</a>,</li>
+      <li>Object to decisions made solely by automated processing that affect them adversely,</li>
+      <li>Seek damages for losses arising from unlawful processing.</li>
+    </ul>
+    <p>Legal maximum for deletion is 30 days; our internal target is 7 days.</p>
+
+    <h2>8. Changes</h2>
+    <p>When we update this policy, the "Last updated" date above will change. For significant changes we'll notify you within the app.</p>
+
+    <h2>9. Contact</h2>
+    <p>Questions? <a href="mailto:hilalsumnu@gmail.com">hilalsumnu@gmail.com</a></p>
+  </div>
+
+  <footer>
+    <a href="/">← PALIMPS</a>
+    <br /><br />
+    <span>© 2026 PALIMPS</span>
+  </footer>
+</div>
+
+<script>
+  function toggleLang() {
+    const body = document.body;
+    const next = body.dataset.lang === "tr" ? "en" : "tr";
+    body.dataset.lang = next;
+    document.documentElement.lang = next;
+    try { localStorage.setItem("palimps_lang", next); } catch (e) {}
+  }
+  try {
+    const saved = localStorage.getItem("palimps_lang");
+    if (saved === "en" || saved === "tr") {
+      document.body.dataset.lang = saved;
+      document.documentElement.lang = saved;
+    }
+  } catch (e) {}
+</script>
+</body>
+</html>

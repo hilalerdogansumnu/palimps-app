@@ -2,6 +2,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, ScrollView, Pressable, View, 
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";

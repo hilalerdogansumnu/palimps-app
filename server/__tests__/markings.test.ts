@@ -1,4 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { MARKINGS_PROMPT, MARKINGS_SCHEMA } from "../_core/prompts";
 
 /**
@@ -176,5 +179,96 @@ describe("ENABLE_MARKING_CAPTURE kill switch", () => {
   it("'true' → ON (explicit true also passes)", () => {
     process.env.ENABLE_MARKING_CAPTURE = "true";
     expect(process.env.ENABLE_MARKING_CAPTURE !== "false").toBe(true);
+  });
+});
+
+describe("moments.create — markings wiring regression (source-scan)", () => {
+  // tRPC caller harness + invokeLLM mock + DB mock bu codebase'te yok.
+  // Full integration test yazmak büyük iş, launch penceresine sığmaz.
+  // Pragmatik alternatif: kritik kod kontratlarını routers.ts kaynak
+  // kodundan regex ile doğrula. Refactor sırasında bu hatlardan biri
+  // sessizce silinirse test düşer, PR merge'inden önce yakalanır.
+  //
+  // Neden source-scan: invokeLLM real bir çağrı, mock'suz integration
+  // test hem costly hem flaky. Kritik kontratlar (kill switch wrapper,
+  // model routing, try/catch) statik olarak da doğrulanabiliyor.
+  //
+  // Kill switch kill switch.
+
+  // ESM + RN tsconfig: lib.dom dahil olduğu için `new URL(...)` DOM URL
+  // tipinde kalır; Node'un fileURLToPath/readFileSync'i kendi url.URL
+  // tipini bekler → TS2769 / TS2345. Textbook ESM __dirname pattern'iyle
+  // string path'e geçiyoruz, URL objesi sahne dışı. Runtime davranışı
+  // aynı.
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const routersSource = readFileSync(
+    resolve(__dirname, "../routers.ts"),
+    "utf-8",
+  );
+
+  it("wraps markings extraction in ENV.enableMarkingCapture check", () => {
+    // Kill switch contract: Railway'de ENABLE_MARKING_CAPTURE=false flip
+    // edilince markings atlanmalı. if-wrapper silinirse feature her zaman
+    // çalışır, production'ı hotfix-siz kapatmak imkansız olur.
+    expect(routersSource).toMatch(/if\s*\(\s*ENV\.enableMarkingCapture\s*\)/);
+  });
+
+  it("uses MARKINGS_PROMPT and MARKINGS_SCHEMA identifiers", () => {
+    // Prompt/schema routing: başka bir LLM çağrısı (ör. enrichment)
+    // yanlışlıkla bu bloğa kopyalanırsa feature sessizce yanlış şey
+    // döndürür. İki identifier da routers.ts içinde geçmeli.
+    expect(routersSource).toMatch(/MARKINGS_PROMPT/);
+    expect(routersSource).toMatch(/MARKINGS_SCHEMA/);
+  });
+
+  it("routes markings through ENV.geminiModelChat (full flash, NOT flash-lite)", () => {
+    // Handoff §3.1 kararı: flash-lite el yazısı hallucinate ediyor
+    // ("Genel AI" → "Genel Al" vb. kullanıcı güvenini anında kırar).
+    // Model yanlışlıkla ENV.geminiModelOcr'a düşürülürse kalite çöker
+    // ama feature çalışmaya devam eder — sessiz regression.
+    //
+    // Markings bloğunun sınırlarını yakalayıp içinde doğru model var mı
+    // kontrol et. Block start = 'if (ENV.enableMarkingCapture)',
+    // block end = 'MARKINGS_SCHEMA' satırının sonundaki invokeLLM kapanışı.
+    const markingsBlock = routersSource.match(
+      /if\s*\(\s*ENV\.enableMarkingCapture\s*\)[\s\S]*?MARKINGS_PROMPT[\s\S]*?MARKINGS_SCHEMA/,
+    );
+    expect(markingsBlock).not.toBeNull();
+    expect(markingsBlock![0]).toMatch(/ENV\.geminiModelChat/);
+    // Negative: flash-lite (OCR modeli) kullanılmamalı.
+    expect(markingsBlock![0]).not.toMatch(/ENV\.geminiModelOcr/);
+  });
+
+  it("uses structured output (json_schema responseFormat) for markings", () => {
+    // Schema strict: true — structured output devrede olmalı, yoksa
+    // hallucinate riski çok yüksek. invokeLLM çağrısının responseFormat'ı
+    // yanlış tipe düşürülürse schema enforce edilmez.
+    const markingsBlock = routersSource.match(
+      /if\s*\(\s*ENV\.enableMarkingCapture\s*\)[\s\S]*?MARKINGS_SCHEMA[\s\S]*?\}\s*\)/,
+    );
+    expect(markingsBlock).not.toBeNull();
+    expect(markingsBlock![0]).toMatch(/type:\s*["']json_schema["']/);
+  });
+
+  it("catches markings failures with PII-safe warn log (moment kaydı kritik)", () => {
+    // Best-effort contract: markings extract başarısız olsa bile moment
+    // kaydedilmeli. try/catch silinirse moments.create komple kırılır —
+    // en kötü regression. Log mesajı da spesifik — observability-engineer
+    // alarm pattern'leri bu string'e bağlı olabilir, değişirse alert kaçar.
+    expect(routersSource).toMatch(
+      /console\.warn\(\s*"\[moments\.create\] markings extraction failed"/,
+    );
+    // PII guard: catch bloğunda markings content (highlights/marginalia text)
+    // log'a yazılmamalı. Sadece userId + model + promptName + durationMs +
+    // error.message beyaz listede. 'highlights:' veya 'marginalia:' anahtarı
+    // warn objesinde görünüyorsa PII leak.
+    const catchBlock = routersSource.match(
+      /console\.warn\(\s*"\[moments\.create\] markings extraction failed"[\s\S]*?\}\s*\)/,
+    );
+    expect(catchBlock).not.toBeNull();
+    expect(catchBlock![0]).not.toMatch(/\bhighlights:/);
+    expect(catchBlock![0]).not.toMatch(/\bmarginalia:/);
+    expect(catchBlock![0]).not.toMatch(/\bocrText:/);
   });
 });

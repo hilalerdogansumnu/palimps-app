@@ -63,3 +63,6 @@ Thumbs.db
 *.tgz
 *.tar.gz
 .cache/
+
+# Local Netlify folder
+.netlify

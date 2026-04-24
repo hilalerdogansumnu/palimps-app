@@ -1,5 +1,5 @@
 {
-  "app": { "name": "PALIMPS", "tagline": "Personal Reading Memory System" },
+  "app": { "name": "PALIMPS", "tagline": "Your reading memory" },
   "tabs": { "library": "My Books", "assistant": "Assistant", "profile": "Profile" },
   "auth": {
     "continueWithApple": "Continue with Apple",
@@ -43,6 +43,8 @@
     "title": "Book",
     "moments": "Moments",
     "noMomentsYet": "No moments yet",
+    "momentProcessing": "Moment processing…",
+    "momentProcessingHint": "Check back in a few seconds",
     "addFirstMoment": "Add your first moment",
     "addFirstMomentHint": "Photograph a page of this book to capture the first moment",
     "addMoment": "Add Moment",
@@ -140,6 +142,7 @@
   },
   "momentDetail": {
     "summary": "Summary",
+    "pageImageAlt": "Book page photo",
     "ocrText": "Page Text",
     "notes": "Your Notes",
     "highlights": "Highlights",
@@ -369,26 +372,12 @@
     "loadFailed": "Couldn't load the image. Please take the photo again.",
     "preparing": "Preparing..."
   },
-  "ocrEdit": {
-    "title": "Edit Text",
-    "sizeSmall": "Small",
-    "sizeNormal": "Normal",
-    "sizeLarge": "Large",
-    "alignLeft": "Left",
-    "alignCenter": "Center",
-    "alignRight": "Right",
-    "alignJustify": "Justify",
-    "styleNormal": "Normal",
-    "styleItalic": "Italic",
-    "styleSerif": "Serif",
-    "pageNumberLabel": "Page Number (Optional)",
-    "pageNumberPlaceholder": "e.g. 42",
-    "saveError": "Couldn't save your changes.",
-    "textEmpty": "Text can't be empty.",
-    "extractedTextPlaceholder": "Extracted text will appear here…",
-    "previewEmpty": "Text hasn't been extracted yet. Wait for the page to be read first."
-  },
   "errors": {
+    "unhandled": {
+      "title": "Something went wrong",
+      "subtitle": "The issue was reported automatically. Want to try again?",
+      "retry": "Try again"
+    },
     "generic": "Something went wrong. Want to try again?",
     "chatSendFailed": "Message couldn't be sent. Please try again.",
     "deleteAccountFailed": "Account couldn't be deleted.",

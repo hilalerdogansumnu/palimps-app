@@ -1,5 +1,5 @@
 {
-  "app": { "name": "PALIMPS", "tagline": "Kişisel Okuma Hafıza Sistemi" },
+  "app": { "name": "PALIMPS", "tagline": "Kitap okuma hafızan" },
   "tabs": { "library": "Kitaplarım", "assistant": "Asistan", "profile": "Profil" },
   "auth": {
     "continueWithApple": "Apple ile Devam Et",
@@ -43,6 +43,8 @@
     "title": "Kitap",
     "moments": "Anlar",
     "noMomentsYet": "Henüz an yok",
+    "momentProcessing": "An işleniyor…",
+    "momentProcessingHint": "Birkaç saniye sonra tekrar kontrol et",
     "addFirstMoment": "İlk anınızı ekleyin",
     "addFirstMomentHint": "Kitabın bir sayfasını fotoğraflayarak ilk anı oluştur",
     "addMoment": "An Ekle",
@@ -143,6 +145,7 @@
     "ocrText": "Sayfa Metni",
     "notes": "Notlarınız",
     "highlights": "Vurguladıklarınız",
+    "pageImageAlt": "Kitap sayfası fotoğrafı",
     "deleteMoment": "Anı Sil",
     "deleting": "Siliniyor...",
     "deleteTitle": "Anı Sil",
@@ -369,26 +372,12 @@
     "loadFailed": "Fotoğraf yüklenemedi. Lütfen tekrar çek.",
     "preparing": "Hazırlanıyor..."
   },
-  "ocrEdit": {
-    "title": "Metni Düzenle",
-    "sizeSmall": "Küçük",
-    "sizeNormal": "Normal",
-    "sizeLarge": "Büyük",
-    "alignLeft": "Sol",
-    "alignCenter": "Orta",
-    "alignRight": "Sağ",
-    "alignJustify": "Yaslı",
-    "styleNormal": "Normal",
-    "styleItalic": "İtalik",
-    "styleSerif": "Serif",
-    "pageNumberLabel": "Sayfa Numarası (Opsiyonel)",
-    "pageNumberPlaceholder": "Örn: 42",
-    "saveError": "Düzenlemeler kaydedilirken bir hata oluştu.",
-    "textEmpty": "Metin boş olamaz.",
-    "extractedTextPlaceholder": "Çıkarılan metin burada görünecek…",
-    "previewEmpty": "Metin henüz çıkarılmadı. Önce fotoğrafın okunmasını bekle."
-  },
   "errors": {
+    "unhandled": {
+      "title": "Bir şey ters gitti",
+      "subtitle": "Bu sorun otomatik olarak bildirildi. Tekrar dener misin?",
+      "retry": "Tekrar dene"
+    },
     "generic": "Bir şeyler ters gitti. Lütfen tekrar dener misin?",
     "chatSendFailed": "Mesaj gönderilemedi. Lütfen tekrar dene.",
     "deleteAccountFailed": "Hesap silinirken bir hata oluştu.",

@@ -24,8 +24,6 @@ type BookWithCount = {
   lastMomentDate: Date | null;
 };
 
-type SortOption = "relevance" | "date-newest" | "date-oldest" | "author";
-
 export default function HomeScreen() {
   const colors = useColors();
   const { t } = useTranslation();
@@ -35,7 +33,6 @@ export default function HomeScreen() {
   });
 
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [sortBy, setSortBy] = React.useState<SortOption>("date-newest");
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   /**
@@ -115,96 +112,54 @@ export default function HomeScreen() {
     router.push(`/moment/${momentId}` as any);
   };
 
-  const handleSortChange = (option: SortOption) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSortBy(option);
-  };
-
-  // Sort search results based on selected option
+  // Search sonuçları relevance-sort. Tam sort UI (date / author / relevance
+  // toggle) v1.0'dan çıkarıldı — kodda state + handler + 4-way switch vardı
+  // ama kullanıcının sortBy'ı değiştireceği UI hiç çizilmemişti (Apple 2.1
+  // App Completeness reject riski). Gerçek kullanım sinyali gelirse v1.1'de
+  // Segmented Control ile geri eklenebilir — o zaman toLowerCase yerine
+  // toLocaleLowerCase("tr-TR") da kullanılmalı (Turkish "İ" gotcha,
+  // CLAUDE.md uyarısı).
   const sortedSearchResults = React.useMemo(() => {
     if (!searchResults) return null;
 
-    const sortedBooks = [...searchResults.books];
-    const sortedMoments = [...searchResults.moments];
-
-    switch (sortBy) {
-      case "date-newest":
-        sortedBooks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        sortedMoments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case "date-oldest":
-        sortedBooks.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        sortedMoments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-        break;
-      case "author":
-        sortedBooks.sort((a, b) => {
-          const authorA = a.author?.toLowerCase() || "";
-          const authorB = b.author?.toLowerCase() || "";
-          return authorA.localeCompare(authorB);
-        });
-        // For moments, sort by book author
-        sortedMoments.sort((a, b) => {
-          const bookA = books?.find((book) => book.id === a.bookId);
-          const bookB = books?.find((book) => book.id === b.bookId);
-          const authorA = bookA?.author?.toLowerCase() || "";
-          const authorB = bookB?.author?.toLowerCase() || "";
-          return authorA.localeCompare(authorB);
-        });
-        break;
-      case "relevance":
-      default:
-        // Calculate relevance score based on query match
-        const calculateRelevance = (text: string | null | undefined, query: string): number => {
-          if (!text) return 0;
-          const lowerText = text.toLowerCase();
-          const lowerQuery = query.toLowerCase();
-          
-          // Exact match gets highest score
-          if (lowerText === lowerQuery) return 100;
-          
-          // Match at start of text
-          if (lowerText.startsWith(lowerQuery)) return 80;
-          
-          // Match as whole word
-          const wordMatch = new RegExp(`\\b${lowerQuery}\\b`, "i").test(text);
-          if (wordMatch) return 60;
-          
-          // Partial match - count occurrences
-          const occurrences = (lowerText.match(new RegExp(lowerQuery, "g")) || []).length;
-          return Math.min(40 + occurrences * 10, 50);
-        };
-
-        sortedBooks.sort((a, b) => {
-          const scoreA = Math.max(
-            calculateRelevance(a.title, searchQuery),
-            calculateRelevance(a.author, searchQuery)
-          );
-          const scoreB = Math.max(
-            calculateRelevance(b.title, searchQuery),
-            calculateRelevance(b.author, searchQuery)
-          );
-          return scoreB - scoreA;
-        });
-
-        sortedMoments.sort((a, b) => {
-          const scoreA = Math.max(
-            calculateRelevance(a.ocrText, searchQuery),
-            calculateRelevance(a.userNote, searchQuery)
-          );
-          const scoreB = Math.max(
-            calculateRelevance(b.ocrText, searchQuery),
-            calculateRelevance(b.userNote, searchQuery)
-          );
-          return scoreB - scoreA;
-        });
-        break;
-    }
-
-    return {
-      books: sortedBooks,
-      moments: sortedMoments,
+    const calculateRelevance = (text: string | null | undefined, query: string): number => {
+      if (!text) return 0;
+      const lowerText = text.toLowerCase();
+      const lowerQuery = query.toLowerCase();
+      if (lowerText === lowerQuery) return 100;
+      if (lowerText.startsWith(lowerQuery)) return 80;
+      const wordMatch = new RegExp(`\\b${lowerQuery}\\b`, "i").test(text);
+      if (wordMatch) return 60;
+      const occurrences = (lowerText.match(new RegExp(lowerQuery, "g")) || []).length;
+      return Math.min(40 + occurrences * 10, 50);
     };
-  }, [searchResults, sortBy, searchQuery, books]);
+
+    const sortedBooks = [...searchResults.books].sort((a, b) => {
+      const scoreA = Math.max(
+        calculateRelevance(a.title, searchQuery),
+        calculateRelevance(a.author, searchQuery),
+      );
+      const scoreB = Math.max(
+        calculateRelevance(b.title, searchQuery),
+        calculateRelevance(b.author, searchQuery),
+      );
+      return scoreB - scoreA;
+    });
+
+    const sortedMoments = [...searchResults.moments].sort((a, b) => {
+      const scoreA = Math.max(
+        calculateRelevance(a.ocrText, searchQuery),
+        calculateRelevance(a.userNote, searchQuery),
+      );
+      const scoreB = Math.max(
+        calculateRelevance(b.ocrText, searchQuery),
+        calculateRelevance(b.userNote, searchQuery),
+      );
+      return scoreB - scoreA;
+    });
+
+    return { books: sortedBooks, moments: sortedMoments };
+  }, [searchResults, searchQuery]);
 
   if (authLoading || isLoading) {
     return (
@@ -555,7 +510,7 @@ export default function HomeScreen() {
                         </Text>
                       )}
                       <Text style={{ fontSize: 13, color: colors.muted }}>
-                        {item.momentCount} an
+                        {t("home.momentCount", { count: item.momentCount })}
                       </Text>
                     </View>
                     {/* Chevron */}

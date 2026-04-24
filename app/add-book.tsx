@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { View, Text, TextInput, ActivityIndicator, ScrollView, Image, Pressable, Alert } from "react-native";
+import { View, Text, TextInput, ActivityIndicator, ScrollView, Pressable, Alert } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -296,7 +297,9 @@ export default function AddBookScreen() {
                     <Image
                       source={{ uri: coverImageUri }}
                       style={{ width: "100%", height: "100%" }}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      transition={200}
+                      accessibilityLabel={t("addBook.coverPhoto")}
                     />
                     <Pressable
                       onPress={() => {

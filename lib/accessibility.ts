@@ -60,24 +60,6 @@ export const a11y = {
     hint: "Adjust the crop area for this photo",
   },
 
-  // OCR
-  ocrEdit: {
-    label: "Edit OCR text",
-    hint: "Modify the extracted text from the photo",
-  },
-  fontSize: {
-    label: "Font size",
-    hint: "Choose small, normal, or large text size",
-  },
-  alignment: {
-    label: "Text alignment",
-    hint: "Choose left, center, right, or justified alignment",
-  },
-  style: {
-    label: "Text style",
-    hint: "Choose normal, italic, or serif style",
-  },
-
   // Search
   searchBar: {
     label: "Search",

@@ -29,10 +29,10 @@ const schemeFromBundleId = `manus${timestamp}`;
 const env = {
   // App branding - update these values directly (do not use env vars)
   appName: "PALIMPS",
-  appSlug: "okuma-hafizasi-mvp",
-  // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
-  // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://s3.us-west-2.amazonaws.com/manus-prod-user-files/okuma-hafizasi-mvp/assets/images/icon.png",
+  appSlug: "palimps",
+  // logoUrl: manus dönemi artifact. Code yolunda kullanılmıyor (asset
+  // `./assets/images/icon.png` üzerinden geliyor). v1.0.1 cleanup'ta
+  // env objesinden çıkarılabilir.
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,

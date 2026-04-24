@@ -1,4 +1,6 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, Image, RefreshControl } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, RefreshControl } from "react-native";
+import { Image } from "expo-image";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -330,20 +332,44 @@ export default function BookDetailScreen() {
                 borderColor: colors.border,
               }}
             >
-              {/* Page photo */}
+              {/* Page photo — expo-image: blurhash/transition ile loading
+                  state, network fail sessiz blank yerine surface-rengi
+                  fallback'i gösterir. rn Image silent-fail (50331 dogfood
+                  bug) buradan kaynaklanıyordu. */}
               {item.pageImageUrl && (
                 <Image
                   source={{ uri: item.pageImageUrl }}
                   style={{
                     width: "100%",
                     aspectRatio: 3 / 2,
+                    backgroundColor: colors.surface,
                   }}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  accessibilityLabel={t("momentDetail.pageImageAlt")}
                 />
               )}
 
               {/* Text content */}
               <View style={{ padding: 12 }}>
+                {/* "İşleniyor" placeholder — moment server-side kaydedildi
+                    ama OCR ve/veya image henüz hazır değil (OCR transient
+                    fail, R2 propagation, Gemini 5xx). Silent blank yerine
+                    açık davetle: "tekrar bak" → kullanıcı "app kırık" demez.
+                    50331 dogfood: Hilal 06:29'da blank card gördü, 06:58'de
+                    refetch sonrası dolmuştu; aradaki pencere için bu
+                    placeholder tasarlandı. */}
+                {!item.pageImageUrl && !item.ocrText && (
+                  <View style={{ paddingVertical: 16, alignItems: "center", marginBottom: 8 }}>
+                    <MaterialIcons name="hourglass-empty" size={20} color={colors.muted} />
+                    <Text style={{ fontSize: 13, color: colors.muted, marginTop: 6, textAlign: "center" }}>
+                      {t("bookDetail.momentProcessing")}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2, textAlign: "center" }}>
+                      {t("bookDetail.momentProcessingHint")}
+                    </Text>
+                  </View>
+                )}
                 {/* OCR text preview */}
                 {item.ocrText && (
                   <Text

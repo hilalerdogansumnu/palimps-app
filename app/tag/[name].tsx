@@ -1,5 +1,6 @@
 import React from "react";
-import { Text, View, Pressable, FlatList, ActivityIndicator, Image, RefreshControl } from "react-native";
+import { Text, View, Pressable, FlatList, ActivityIndicator, RefreshControl } from "react-native";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -111,8 +112,14 @@ export default function TagDetailScreen() {
                 {item.pageImageUrl && (
                   <Image
                     source={{ uri: item.pageImageUrl }}
-                    style={{ width: "100%", aspectRatio: 3 / 2 }}
-                    resizeMode="cover"
+                    style={{
+                      width: "100%",
+                      aspectRatio: 3 / 2,
+                      backgroundColor: colors.surface,
+                    }}
+                    contentFit="cover"
+                    transition={200}
+                    accessibilityLabel={t("momentDetail.pageImageAlt")}
                   />
                 )}
                 <View style={{ padding: 12 }}>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#6B4CDB" />
+<title>404 · PALIMPS</title>
+<link rel="icon" type="image/png" href="/icon.png" />
+<style>
+  :root {
+    --bg: #F8F6FF; --fg: #160E2C; --muted: #5F5678; --primary: #6B4CDB; --border: #E4DCFA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #100C1E; --fg: #EDE9FA; --muted: #9B93B8; --primary: #8B67E0; --border: #2E2550; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    background: var(--bg); color: var(--fg);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    text-align: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card { max-width: 440px; }
+  .mark {
+    width: 72px; height: 72px;
+    border-radius: 18px;
+    background-image: url('/icon.png');
+    background-size: cover;
+    margin: 0 auto 28px;
+    box-shadow: 0 10px 30px rgba(74, 44, 158, 0.2);
+  }
+  h1 {
+    font-family: "New York", "Times New Roman", serif;
+    font-size: 80px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.3px; }
+  p { color: var(--muted); font-size: 15px; line-height: 1.55; margin-bottom: 28px; }
+  a {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 14px rgba(107, 76, 219, 0.3);
+  }
+  a:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(107, 76, 219, 0.4); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark" aria-hidden="true"></div>
+    <h1>404</h1>
+    <h2>Bu sayfa kütüphanede yok</h2>
+    <p>Aradığın sayfa taşınmış ya da hiç var olmamış olabilir. Ana sayfaya dönüp baştan başlayalım.</p>
+    <a href="/">← PALIMPS</a>
+  </div>
+</body>
+</html>

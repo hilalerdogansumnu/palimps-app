@@ -1,10 +1,68 @@
 import "@/global.css";
 import "@/lib/i18n";
 import { initSentry, setUserContext } from "@/lib/_core/sentry";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react-native";
+import * as Auth from "@/lib/_core/auth";
+import { isSessionExpireError } from "@/lib/_core/auth-error";
 
 // Initialize Sentry for crash reporting
 initSentry();
+
+/**
+ * Global tRPC/React Query error interceptor — session expire handling.
+ *
+ * Backend returns 401 when the session cookie/token is invalid/expired.
+ * tRPC wraps this as a TRPCClientError with `data.httpStatus === 401` or
+ * message "Please login (10001)". Previously this error bubbled up as an
+ * uncaught exception → Sentry captureException (see IOS-4 issue, 7 events
+ * across 5 days), and the user stayed on the failing screen with no
+ * recovery path.
+ *
+ * Fix: any query/mutation error → check auth-shape via isSessionExpireError
+ * → if so, clear local session + notify useAuth. AuthGuard useEffect reacts
+ * (isAuthenticated becomes false), redirects to /login. User sees login
+ * screen within one frame of the 401 instead of a dead error alert.
+ *
+ * Detection helper: @/lib/_core/auth-error → pure function, unit tested
+ * with positive/negative/boundary cases. Protects against regression in the
+ * session expire signal (e.g. someone loosening the match to `/login/i`
+ * and catching "last login was..." strings).
+ *
+ * Sentry: captureException DEĞİL, addBreadcrumb kullanıyoruz — session
+ * expire **beklenen** bir akış (TTL, revocation), unhandled exception
+ * değil. Crash noise'unu azaltır, yine de forensic için breadcrumb kalır.
+ */
+
+let sessionExpireInProgress = false;
+function handleAuthError(error: unknown) {
+  if (!isSessionExpireError(error)) return;
+  // Birden fazla in-flight tRPC call'u aynı anda 401 yerse handler N kez
+  // ateşlenir; session clear idempotent ama breadcrumb spam'i + navigation
+  // race'i önlemek için guard. notifyAuthChange sonrası useAuth yeniden
+  // fetch eder + AuthGuard redirect eder — o pencerede flag set kalır.
+  if (sessionExpireInProgress) return;
+  sessionExpireInProgress = true;
+  Sentry.addBreadcrumb({
+    category: "auth.session.expired",
+    level: "warning",
+    message: "tRPC returned 401, auto-logout flow triggered",
+  });
+  // Fire-and-forget — queryCache onError sync callback, async clear'ler
+  // arka planda tamamlansın. useAuth re-fetch ve AuthGuard redirect için
+  // notifyAuthChange yeterli.
+  Promise.all([
+    Auth.removeSessionToken().catch(() => {}),
+    Auth.clearUserInfo().catch(() => {}),
+  ]).finally(() => {
+    Auth.notifyAuthChange();
+    // Bir sonraki session döngüsünde (kullanıcı yeniden login olunca)
+    // flag reset olsun.
+    setTimeout(() => {
+      sessionExpireInProgress = false;
+    }, 2000);
+  });
+}
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -116,6 +174,8 @@ export default function RootLayout() {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({ onError: handleAuthError }),
+        mutationCache: new MutationCache({ onError: handleAuthError }),
         defaultOptions: {
           queries: {
             // Disable automatic refetching on window focus for mobile
