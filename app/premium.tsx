@@ -12,7 +12,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 const ENTITLEMENT_ID = "premium";
 
 export default function PremiumScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const colors = useColors();
   const { isPremium, refetch } = useSubscription();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
@@ -82,16 +82,47 @@ export default function PremiumScreen() {
     }
   };
 
+  // Features — 6 kalem, hepsi v1.0'da çalışan ve teslim edilen özellikler.
+  // "Gelişmiş Arama" + "Okuma İstatistikleri" v1.0'da yok → listeden çıkarıldı
+  // (App Store misleading content riski). "Sınırsız Depolama" → "Geniş Kapasite"
+  // olarak dürüstleştirildi (server sanity cap zaten 500/kitap; kullanıcıya 100
+  // söylüyoruz, headroom kalıyor + free=10 karşılaştırması paketi gerekçelendiriyor).
   const features: { icon: React.ComponentProps<typeof MaterialIcons>["name"]; title: string; description: string }[] = [
     { icon: "auto-awesome", title: t("premium.feature1.title"), description: t("premium.feature1.desc") },
     { icon: "psychology", title: t("premium.feature2.title"), description: t("premium.feature2.desc") },
     { icon: "palette", title: t("premium.feature3.title"), description: t("premium.feature3.desc") },
-    { icon: "search", title: t("premium.feature4.title"), description: t("premium.feature4.desc") },
-    { icon: "bar-chart", title: t("premium.feature5.title"), description: t("premium.feature5.desc") },
-    { icon: "upload", title: t("premium.feature6.title"), description: t("premium.feature6.desc") },
-    { icon: "language", title: t("premium.feature7.title"), description: t("premium.feature7.desc") },
-    { icon: "cloud", title: t("premium.feature8.title"), description: t("premium.feature8.desc") },
+    { icon: "upload", title: t("premium.feature4.title"), description: t("premium.feature4.desc") },
+    { icon: "language", title: t("premium.feature5.title"), description: t("premium.feature5.desc") },
+    { icon: "library-books", title: t("premium.feature6.title"), description: t("premium.feature6.desc") },
   ];
+
+  // Fiyat özeti — App Store Review 3.1.2 auto-renewable subscription için
+  // price + duration açık gösterilmeli. RevenueCat `packageType` ile monthly/
+  // annual'ı ayır, yıllık'ın ayda karşılığını Intl.NumberFormat ile formatla
+  // (Hermes SDK 54 Intl desteği var). Eğer iki paket de yoksa null döner →
+  // kullanıcı altta paket butonlarında zaten fiyatı görür, crash yok.
+  const monthlyPkg = packages.find((p) => p.packageType === "MONTHLY");
+  const annualPkg = packages.find((p) => p.packageType === "ANNUAL");
+  let priceSummary: string | null = null;
+  if (monthlyPkg && annualPkg) {
+    const perMonth = annualPkg.product.price / 12;
+    try {
+      const perMonthFmt = new Intl.NumberFormat(i18n.language || "tr", {
+        style: "currency",
+        currency: annualPkg.product.currencyCode,
+        maximumFractionDigits: 0,
+      }).format(perMonth);
+      priceSummary = t("premium.priceSummary", {
+        monthly: monthlyPkg.product.priceString,
+        yearly: annualPkg.product.priceString,
+        perMonth: perMonthFmt,
+      });
+    } catch {
+      // Intl fallback: yıllık/ay karşılığı gösteremezsek özet satırı atlansın.
+      // Paket butonları yine priceString ile fiyat gösteriyor, compliance bozulmaz.
+      priceSummary = null;
+    }
+  }
 
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
@@ -200,54 +231,95 @@ export default function PremiumScreen() {
                   </Text>
                 </View>
               ) : (
-                packages.map((pkg) => (
-                  <TouchableOpacity
-                    key={pkg.identifier}
-                    disabled={purchasing}
-                    onPress={() => handlePurchase(pkg)}
-                    style={{
-                      backgroundColor: colors.primary,
-                      borderRadius: 12,
-                      paddingVertical: 16,
-                      paddingHorizontal: 16,
-                      marginBottom: 16,
-                      opacity: purchasing ? 0.7 : 1,
-                    }}
-                  >
-                    {purchasing ? (
-                      <ActivityIndicator color="white" />
-                    ) : (
-                      <View>
-                        <Text
-                          style={{
-                            color: "white",
-                            fontWeight: "600",
-                            textAlign: "center",
-                            fontSize: 16,
-                            marginBottom: 4,
-                          }}
-                        >
-                          {pkg.product.title}
-                        </Text>
-                        <Text
-                          style={{
-                            color: "white",
-                            textAlign: "center",
-                            fontSize: 14,
-                          }}
-                        >
-                          {pkg.product.priceString}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))
+                <>
+                  {/* Fiyat özet satırı — App Store 3.1.2 için price+duration
+                      paket butonlarının üstünde tek satırda açık. "ayda X"
+                      yıllık paketi gerekçelendirir, "save Y%" hype'ından uzak,
+                      sade kütüphaneci tonu. */}
+                  {priceSummary && (
+                    <View
+                      style={{
+                        backgroundColor: colors.surface,
+                        borderRadius: 12,
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        marginBottom: 16,
+                        borderWidth: 0.5,
+                        borderColor: colors.border,
+                      }}
+                      accessible
+                      accessibilityRole="text"
+                      accessibilityLabel={priceSummary}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: "600",
+                          color: colors.foreground,
+                          textAlign: "center",
+                        }}
+                      >
+                        {priceSummary}
+                      </Text>
+                    </View>
+                  )}
+                  {packages.map((pkg) => (
+                    <TouchableOpacity
+                      key={pkg.identifier}
+                      disabled={purchasing}
+                      onPress={() => handlePurchase(pkg)}
+                      accessible
+                      accessibilityRole="button"
+                      accessibilityLabel={`${pkg.product.title} — ${pkg.product.priceString}`}
+                      accessibilityState={{ disabled: purchasing }}
+                      style={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 12,
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+                        marginBottom: 16,
+                        opacity: purchasing ? 0.7 : 1,
+                      }}
+                    >
+                      {purchasing ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <View>
+                          <Text
+                            style={{
+                              color: "white",
+                              fontWeight: "600",
+                              textAlign: "center",
+                              fontSize: 16,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {pkg.product.title}
+                          </Text>
+                          <Text
+                            style={{
+                              color: "white",
+                              textAlign: "center",
+                              fontSize: 14,
+                            }}
+                          >
+                            {pkg.product.priceString}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </>
               )}
 
               {packages.length > 0 && (
                 <TouchableOpacity
                   disabled={purchasing}
                   onPress={handleRestore}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={t("premium.restorePurchase")}
+                  accessibilityState={{ disabled: purchasing }}
                   style={{ paddingVertical: 12 }}
                 >
                   <Text style={{ fontSize: 13, color: colors.primary, textAlign: "center" }}>

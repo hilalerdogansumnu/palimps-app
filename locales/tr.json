@@ -227,10 +227,10 @@
   "premium": {
     "title": "PALIMPS Premium",
     "subtitle": "Okuma hafızanızın tüm gücünü açığa çıkarın",
-    "noCreditSystem": "Kredi sistemi yok – tüm özellikler sınırsız",
     "alreadyPremium": "Premium üyesiniz",
     "noPackages": "Şu an satın alınabilir bir paket yok. Lütfen daha sonra tekrar deneyin.",
     "restorePurchase": "Önceki satın almayı geri yükle",
+    "priceSummary": "Aylık {{monthly}} · Yıllık {{yearly}} (ayda {{perMonth}})",
     "terms": "Abonelik istediğiniz zaman App Store ayarlarından iptal edilebilir. Otomatik yenilenir.",
     "cancellationTitle": "Aboneliği İptal Etme",
     "cancellationInfo": "Aboneliğinizi iPhone Ayarları > Apple ID > Abonelikler bölümünden istediğiniz zaman iptal edebilirsiniz. İptal işlemi mevcut dönem sonunda geçerli olur. Abonelik, dönem bitiminden en az 24 saat önce iptal edilmezse otomatik olarak yenilenir.",
@@ -243,15 +243,12 @@
     "notFound": "Bulunamadı",
     "notFoundMessage": "Aktif bir Premium aboneliği bulunamadı.",
     "back": "Geri",
-    "unlimited": "Sınırsız",
     "feature1": { "title": "AI Not Oluşturma", "desc": "Okuma anlarınızdan otomatik olarak akıllı notlar oluşturun" },
     "feature2": { "title": "AI Özet Çıkarma", "desc": "Kitaplarınızın kapsamlı özetlerini AI ile oluşturun" },
     "feature3": { "title": "AI Tematik Analiz", "desc": "Okuma anlarınızı tematik olarak gruplandırın" },
-    "feature4": { "title": "Gelişmiş Arama", "desc": "Tüm kitaplarınızda ve notlarınızda güçlü filtrelerle arama yapın" },
-    "feature5": { "title": "Okuma İstatistikleri", "desc": "Detaylı grafikler ve analizlerle okuma ilerlemenizi takip edin" },
-    "feature6": { "title": "Export Seçenekleri", "desc": "Notlarınızı PDF veya Markdown olarak dışa aktarın" },
-    "feature7": { "title": "Çoklu Dil Desteği", "desc": "Türkçe ve İngilizce destekli" },
-    "feature8": { "title": "Sınırsız Depolama", "desc": "Tüm okuma anlarınızı ve fotoğraflarınızı sınırsız saklayın" }
+    "feature4": { "title": "Export Seçenekleri", "desc": "Notlarınızı PDF veya Markdown olarak dışa aktarın" },
+    "feature5": { "title": "Çoklu Dil Desteği", "desc": "Türkçe ve İngilizce destekli" },
+    "feature6": { "title": "Geniş Kapasite", "desc": "Kitap başına 100 AN'a kadar kaydet (ücretsizde 10)" }
   },
   "premiumGate": {
     "title": "Premium Özellik",
