@@ -305,10 +305,10 @@
     "premiumRequiredBody": "The assistant is a premium feature. Upgrade to analyze your reading data and chat without limits.",
     "premiumCta": "Upgrade to Premium",
     "exampleIntro": "You can ask questions about your reading data.",
-    "example1": "What books have I read?",
-    "example2": "What topics did I take the most notes on?",
-    "example3": "Give me a summary",
-    "example4": "How are my reading habits?"
+    "example1": "Recommend a new book based on my reading habits",
+    "example2": "Summarize my notes from the last book I added",
+    "example3": "List the books I've read",
+    "example4": "List the moments I've saved"
   },
   "languages": { "en": "English", "tr": "Türkçe" },
   "notifications": {

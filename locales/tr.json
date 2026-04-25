@@ -305,10 +305,10 @@
     "premiumRequiredBody": "Asistan premium bir özellik. Okuma verilerini analiz etmek ve sınırsız sohbet etmek için premium'a geç.",
     "premiumCta": "Premium'a Geç",
     "exampleIntro": "Okuma verileriniz hakkında sorular sorabilirsiniz.",
-    "example1": "Hangi kitapları okudum?",
-    "example2": "En çok hangi konulardan not aldım?",
-    "example3": "Bana bir özet çıkar",
-    "example4": "Okuma alışkanlıklarım nasıl?"
+    "example1": "Okuma alışkanlıklarıma göre yeni kitap öner",
+    "example2": "Son eklediğim kitabın notlarımdan kısa özetini çıkar",
+    "example3": "Okuduğum kitapları listele",
+    "example4": "Kaydettiğim AN'ları listele"
   },
   "languages": { "en": "English", "tr": "Türkçe" },
   "notifications": {
