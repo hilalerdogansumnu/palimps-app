@@ -37,6 +37,9 @@ import {
   MARKINGS_SCHEMA,
   CHAT_SYSTEM_PROMPT_TR,
   CHAT_SYSTEM_PROMPT_EN,
+  getChatSystemPrompt,
+  violatesEcoVoice,
+  ECO_FALLBACK_MESSAGES,
   normalizeTag,
   type HighlightEntry,
   type MarginaliaEntry,
@@ -1222,8 +1225,12 @@ ${dateLabel}: ${m.createdAt}
         // {USER_CONTEXT} placeholder'ı ile veri prompt'a sondan gömülür —
         // kuralların user-content'ten önce, en üstte olması prompt-injection
         // defense için kritik.
-        const systemPromptTemplate =
-          locale === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_TR;
+        // Eco voice (brand karakter) — ENV.enableEcoVoice ile seçim yapılır.
+        // Default ON: Eco augmented prompt aktif. ENABLE_ECO_VOICE=false ise
+        // legacy CHAT_SYSTEM_PROMPT_TR/EN'e düşer (voice contract aynı, sadece
+        // Eco kimlik metni ve karakter-spesifik kurallar kapanır).
+        // Doc: outputs/eco-brand-character.md
+        const systemPromptTemplate = getChatSystemPrompt(locale, ENV.enableEcoVoice);
         const systemPrompt = systemPromptTemplate.replace("{USER_CONTEXT}", userContext);
 
         // Basit router: kısa + tek cümlelik soru → flash-lite (ucuz), uzun /
@@ -1240,53 +1247,104 @@ ${dateLabel}: ${m.createdAt}
         const chatModel = isSimple ? ENV.geminiModelOcr : ENV.geminiModelChat;
 
         // LLM'e gönder — wrap to surface actionable error codes instead of
-        // leaking stack traces to the client.
-        let response;
-        try {
-          response = await invokeLLM({
-            model: chatModel,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: input.message },
-            ],
-          });
-        } catch (err) {
-          console.error("[chat.send] invokeLLM failed", {
+        // leaking stack traces to the client. Eco aktifse output post-process
+        // ile voice violation tespit edilir; ihlal varsa aynı messages ile
+        // rejenerasyon tetikler (max 2 retry). Tükenince ECO_FALLBACK_MESSAGES.
+        //
+        // Quota: SADECE non-fallback voice-clean response'ta artırılır. Voice
+        // violation retry'ları veya fallback ile sonlanan akış kullanıcının
+        // quota'sına dokunmaz — chat.send genel "increment after success"
+        // trust-building pattern'i ile uyumlu.
+        const MAX_VOICE_RETRIES = ENV.enableEcoVoice ? 2 : 0;
+        let reply: string | null = null;
+        let usedFallback = false;
+        let lastViolationReason: string | undefined;
+
+        for (let attempt = 0; attempt <= MAX_VOICE_RETRIES; attempt++) {
+          let response;
+          try {
+            response = await invokeLLM({
+              model: chatModel,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: input.message },
+              ],
+            });
+          } catch (err) {
+            console.error("[chat.send] invokeLLM failed", {
+              userId: ctx.user.id,
+              model: chatModel,
+              attempt,
+              error: err instanceof Error ? err.message : String(err),
+            });
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "LLM_UNAVAILABLE",
+              cause: err,
+            });
+          }
+
+          const firstChoice = response.choices[0];
+          if (!firstChoice || !firstChoice.message) {
+            console.error("[chat.send] LLM returned empty choices", {
+              userId: ctx.user.id,
+              attempt,
+              finishReason: firstChoice?.finish_reason,
+            });
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "LLM_EMPTY_RESPONSE",
+            });
+          }
+
+          const candidate =
+            typeof firstChoice.message.content === "string"
+              ? firstChoice.message.content
+              : JSON.stringify(firstChoice.message.content);
+
+          // Voice violation check — Eco aktifse zorunlu, değilse atla.
+          if (!ENV.enableEcoVoice) {
+            reply = candidate;
+            break;
+          }
+
+          const check = violatesEcoVoice(candidate);
+          if (!check.violates) {
+            reply = candidate;
+            break;
+          }
+
+          lastViolationReason = check.reason;
+          console.warn("[chat.send] Eco voice violation, retrying", {
             userId: ctx.user.id,
             model: chatModel,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "LLM_UNAVAILABLE",
-            cause: err,
+            attempt,
+            reason: check.reason,
+            // Sample first 80 chars only — PII risk if logged in full.
+            sample: candidate.slice(0, 80),
           });
         }
 
-        const firstChoice = response.choices[0];
-        if (!firstChoice || !firstChoice.message) {
-          console.error("[chat.send] LLM returned empty choices", {
+        // Retry tükendi, hala ihlal var → fallback (Eco karakter dışına
+        // çıkmadan generic mesaj). Fallback'le sonlanan akış quota harcamaz.
+        if (reply === null) {
+          console.error("[chat.send] Eco voice violations exhausted retries", {
             userId: ctx.user.id,
-            finishReason: firstChoice?.finish_reason,
+            lastReason: lastViolationReason,
           });
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "LLM_EMPTY_RESPONSE",
-          });
+          reply = ECO_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer;
+          usedFallback = true;
         }
-
-        const reply =
-          typeof firstChoice.message.content === "string"
-            ? firstChoice.message.content
-            : JSON.stringify(firstChoice.message.content);
 
         // Successful LLM response — SADECE bu noktada lifetime sayacı
         // artırılır. Infra hatası (timeout/empty choices/quota) user'ın
-        // hakkından düşmez; trust-building move. Increment başarısız olursa
-        // response'u bozma — worst case: user bir free soru fazla kullanır,
-        // bu bir Apple-quality trade-off.
+        // hakkından düşmez; trust-building move. Voice fallback de quota
+        // harcamaz (kullanıcı için cevap "Bu konuda doğru cevap veremiyorum"
+        // — soru hâlâ gerçek anlamda cevaplanmadı). Increment başarısız
+        // olursa response'u bozma — worst case: user bir free soru fazla
+        // kullanır, bu bir Apple-quality trade-off.
         let quotaRemaining: number | null = null;
-        if (!premium) {
+        if (!premium && !usedFallback) {
           try {
             await db.incrementFreeAssistantQuestions(ctx.user.id);
           } catch (incErr) {
