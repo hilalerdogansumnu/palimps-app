@@ -1,6 +1,6 @@
 {
   "app": { "name": "PALIMPS", "tagline": "Your reading memory" },
-  "tabs": { "library": "My Books", "assistant": "Assistant", "profile": "Profile" },
+  "tabs": { "library": "My Books", "assistant": "Eco", "profile": "Profile" },
   "auth": {
     "continueWithApple": "Continue with Apple",
     "privacyNote": "Your reading data stays private",
@@ -297,17 +297,18 @@
     }
   },
   "chat": {
-    "title": "Assistant",
-    "subtitle": "Ask questions about your reading data",
+    "title": "Eco",
+    "tagline": "Your librarian",
+    "subtitle": "What brings you here?",
     "hello": "Hello!",
     "placeholder": "Type your message...",
     "thinking": "Thinking...",
     "errorMessage": "Couldn't reach the assistant. Please try again.",
-    "errorUnavailable": "The assistant is temporarily unavailable. Please try again shortly.",
+    "errorUnavailable": "Eco is temporarily unavailable. Please try again shortly.",
     "errorRateLimit": "You've hit the hourly chat limit. Try again in an hour.",
     "retry": "Try Again",
     "premiumRequiredTitle": "Premium required",
-    "premiumRequiredBody": "The assistant is a premium feature. Upgrade to analyze your reading data and chat without limits.",
+    "premiumRequiredBody": "Eco is a premium feature. Upgrade to analyze your reading data and chat without limits.",
     "premiumCta": "Upgrade to Premium",
     "exampleIntro": "You can ask questions about your reading data.",
     "example1": "Recommend a new book based on my reading habits",

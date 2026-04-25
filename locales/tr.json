@@ -1,6 +1,6 @@
 {
   "app": { "name": "PALIMPS", "tagline": "Kitap okuma hafızan" },
-  "tabs": { "library": "Kitaplarım", "assistant": "Asistan", "profile": "Profil" },
+  "tabs": { "library": "Kitaplarım", "assistant": "Eco", "profile": "Profil" },
   "auth": {
     "continueWithApple": "Apple ile Devam Et",
     "privacyNote": "Okuma verileriniz gizli kalır",
@@ -297,17 +297,18 @@
     }
   },
   "chat": {
-    "title": "Asistan",
-    "subtitle": "Okuma verileriniz hakkında sorular sorun",
+    "title": "Eco",
+    "tagline": "Kütüphanecin",
+    "subtitle": "Ne aramaya geldin?",
     "hello": "Merhaba!",
     "placeholder": "Mesajınızı yazın...",
     "thinking": "Düşünüyor...",
     "errorMessage": "Bağlantı kurulamadı. Lütfen tekrar dene.",
-    "errorUnavailable": "Asistan şu an yanıt veremiyor. Birazdan tekrar dene.",
+    "errorUnavailable": "Eco şu an yanıt veremiyor. Birazdan tekrar dene.",
     "errorRateLimit": "Saatlik sohbet limitine ulaştın. Bir saat sonra tekrar dene.",
     "retry": "Tekrar Dene",
     "premiumRequiredTitle": "Premium gerekiyor",
-    "premiumRequiredBody": "Asistan premium bir özellik. Okuma verilerini analiz etmek ve sınırsız sohbet etmek için premium'a geç.",
+    "premiumRequiredBody": "Eco premium bir özellik. Okuma verilerini analiz etmek ve sınırsız sohbet etmek için premium'a geç.",
     "premiumCta": "Premium'a Geç",
     "exampleIntro": "Okuma verileriniz hakkında sorular sorabilirsiniz.",
     "example1": "Okuma alışkanlıklarıma göre yeni kitap öner",
