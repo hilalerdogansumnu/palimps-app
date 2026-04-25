@@ -68,6 +68,11 @@
     "export": "Dışa Aktar",
     "exportSuccess": "Başarıyla dışa aktarıldı",
     "exportError": "Dışa aktarma başarısız",
+    "exporting": "Dışa aktarılıyor…",
+    "editTitle": "Kitap Adını Düzenle",
+    "editTitlePrompt": "Yeni başlığı yazın",
+    "editTitleSuccess": "Kitap adı güncellendi",
+    "editTitleError": "Güncelleme başarısız",
     "notFound": "Kitap bulunamadı",
     "goBack": "Geri dön",
     "changeCover": "Kapak Değiştir"

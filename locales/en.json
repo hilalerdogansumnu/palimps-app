@@ -68,6 +68,11 @@
     "export": "Export",
     "exportSuccess": "Exported successfully",
     "exportError": "Export failed",
+    "exporting": "Exporting…",
+    "editTitle": "Edit Book Title",
+    "editTitlePrompt": "Enter the new title",
+    "editTitleSuccess": "Book title updated",
+    "editTitleError": "Update failed",
     "notFound": "Book not found",
     "goBack": "Go back",
     "changeCover": "Change Cover"

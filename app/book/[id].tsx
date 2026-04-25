@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, RefreshControl } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, FlatList, ScrollView, Alert, Platform, RefreshControl, Modal } from "react-native";
 import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -56,6 +56,53 @@ export default function BookDetailScreen() {
   };
 
   const exportMutation = trpc.export.book.useMutation();
+  const updateBookMutation = trpc.books.update.useMutation();
+  const utils = trpc.useUtils();
+
+  // Kitap adı düzenleme — iOS Alert.prompt (native, App Store onaylı pattern,
+  // tasarım minimal). 50333 dogfood: kullanıcı yanlış başlıkla kitap eklerse
+  // "şimdi düzeltebilirim" deneyimi olmuyordu. Backend `books.update` zaten
+  // partial update destekliyor (title opsiyonel), sadece UI eksikti.
+  // Android'de Alert.prompt yok; bu route iOS-first uygulamada kabul. v1.1
+  // Android için custom Modal sheet açılabilir.
+  const handleEditTitle = () => {
+    if (!book) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "ios") {
+      // Android fallback — Alert.prompt mevcut değil, şimdilik basit Alert.
+      Alert.alert(t("bookDetail.editTitle"), t("bookDetail.editTitlePrompt"));
+      return;
+    }
+    Alert.prompt(
+      t("bookDetail.editTitle"),
+      t("bookDetail.editTitlePrompt"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("common.save"),
+          onPress: async (newTitle) => {
+            const trimmed = (newTitle ?? "").trim();
+            if (!trimmed || trimmed === book.title) return;
+            try {
+              await updateBookMutation.mutateAsync({ id: book.id, title: trimmed });
+              // Cache invalidate — kitap detay + kitaplar listesi yenilensin.
+              await Promise.all([
+                utils.books.getById.invalidate({ id: book.id }),
+                utils.books.list.invalidate(),
+              ]);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(t("common.success"), t("bookDetail.editTitleSuccess"));
+            } catch {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert(t("common.error"), t("bookDetail.editTitleError"));
+            }
+          },
+        },
+      ],
+      "plain-text",
+      book.title, // Mevcut başlık prefilled — kullanıcı küçük edit'leri kolayca yapsın.
+    );
+  };
 
   const handleMenu = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -63,6 +110,10 @@ export default function BookDetailScreen() {
       t("common.options"),
       "",
       [
+        {
+          text: t("bookDetail.editTitle"),
+          onPress: handleEditTitle,
+        },
         {
           text: t("bookDetail.exportPDF"),
           onPress: () => performExport("pdf"),
@@ -181,6 +232,64 @@ export default function BookDetailScreen() {
     return `${t("bookDetail.momentsCount", { count: momentsLen })} · ${addedAgo}`;
   };
 
+  // Export overlay — Modal-based loading indicator. PDF/Markdown export'u
+  // 2-3 saniye sürebiliyor (server-side moment fetch + content render +
+  // file write + iOS share sheet açılışı). Aksi takdirde menüye basıldıktan
+  // sonra ekranda hiçbir görsel feedback olmuyor → kullanıcı "app dondu"
+  // sanıp aynı butona tekrar basıyor (50332 dogfood: blank-screen frame'leri).
+  // Modal RN portal'ı ile tüm ekranın üstünde gösteriyor; transparent + dim
+  // backdrop kullanıcının başka bir şeye dokunamamasını sağlıyor (statusBar
+  // dahil — statusBarTranslucent). Görsel: ortada mini card + spinner + label.
+  const exportOverlay = (
+    <Modal
+      visible={isExporting}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={() => {
+        // No-op: export iptal edilemez (server mutation in-flight). Android
+        // back tuşuna basılınca modal kapanmaya çalışır → engelliyoruz.
+      }}
+    >
+      <View
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={t("bookDetail.exporting")}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.45)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            paddingHorizontal: 28,
+            paddingVertical: 24,
+            borderRadius: 14,
+            alignItems: "center",
+            minWidth: 180,
+            borderWidth: 0.5,
+            borderColor: colors.border,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text
+            style={{
+              marginTop: 12,
+              color: colors.foreground,
+              fontSize: 14,
+              fontWeight: "500",
+            }}
+          >
+            {t("bookDetail.exporting")}
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // Empty state
   if (!moments || moments.length === 0) {
     return (
@@ -249,6 +358,7 @@ export default function BookDetailScreen() {
           </Pressable>
         </View>
         </View>
+        {exportOverlay}
       </ScreenContainer>
     );
   }
@@ -460,6 +570,7 @@ export default function BookDetailScreen() {
         <Text className="text-2xl text-background">+</Text>
       </Pressable>
       </View>
+      {exportOverlay}
     </ScreenContainer>
   );
 }
