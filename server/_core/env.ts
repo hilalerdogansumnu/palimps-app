@@ -73,6 +73,20 @@ export const ENV = {
   // kapatmaz.
   enableMarkingCapture: process.env.ENABLE_MARKING_CAPTURE !== "false",
 
+  // Eco voice kill switch (asistan brand karakteri).
+  //
+  // Default ON. Railway'de ENABLE_ECO_VOICE=false flip edilirse chat.send
+  // system prompt'u legacy CHAT_SYSTEM_PROMPT_TR/EN'e düşer; Eco karakteri
+  // pasif olur. Voice contract her iki prompt'ta da aynı (sade kütüphaneci);
+  // sadece Eco kimlik metni ve karakter-spesifik kurallar kapanır.
+  // Kullanım: voice violation oranı yüksek seyrederse, kullanıcı feedback'i
+  // olumsuzsa, ya da Eco copy'sinde yapısal sorun bulunursa → redeploy
+  // beklemeden kapat.
+  //
+  // Phase A enrichment + Phase B markings ile aynı semantik: sadece explicit
+  // "false" stringi kapatır. "False", "0", boş string, undefined → ON.
+  enableEcoVoice: process.env.ENABLE_ECO_VOICE !== "false",
+
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)
   // ─────────────────────────────────────────────────────────────────────────
