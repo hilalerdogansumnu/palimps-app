@@ -130,6 +130,35 @@ describe("MARKINGS_PROMPT — safety clauses regression", () => {
     // ile karşılaştırıyoruz — line 120'deki pattern ile tutarlı.
     expect(MARKINGS_PROMPT.toLocaleLowerCase("tr-TR")).toMatch(/json dışında.*hiçbir şey/);
   });
+
+  // 50333 prompt iterate (Task #13): phantom highlight defense — model'in
+  // gerçekte var olmayan işaretler uydurmasını / parmak-gölgesini highlight
+  // sanmasını / aynı metni iki kez göstermesini engelleyen üç kloz prompt'a
+  // eklendi. Bu test'ler kazara siliniş regresyonunu yakalar.
+
+  it("forbids parmak/gölge/leke false positives in highlights (phantom defense)", () => {
+    // En az bu 3 token açıkça yazılmalı: "parmak", "gölge", "leke" (veya
+    // mürekkep yayılması). "DEĞİL" enforcement ifadesi de var olmalı.
+    const lower = MARKINGS_PROMPT.toLocaleLowerCase("tr-TR");
+    expect(lower).toMatch(/parmak/);
+    expect(lower).toMatch(/gölge/);
+    expect(lower).toMatch(/(leke|mürekkep|kırışıklık)/);
+    expect(MARKINGS_PROMPT).toMatch(/highlight DEĞİL/);
+  });
+
+  it("instructs low-confidence skip (precision over recall)", () => {
+    // "düşük güven" / "şüphe" / "atla" semantiği. Soft prompt, sıkı match yok
+    // ama "şüphe" + "yoksay/atla" yakın olmalı.
+    const lower = MARKINGS_PROMPT.toLocaleLowerCase("tr-TR");
+    expect(lower).toMatch(/(düşük güven|şüphe).*?(atla|yoksay)/s);
+  });
+
+  it("forbids duplicate highlight entries for the same passage", () => {
+    // "aynı metni iki kez" + "duplicate" enforcement.
+    const lower = MARKINGS_PROMPT.toLocaleLowerCase("tr-TR");
+    expect(lower).toMatch(/aynı metni.*iki kez/);
+    expect(lower).toMatch(/duplicate/);
+  });
 });
 
 describe("ENABLE_MARKING_CAPTURE kill switch", () => {

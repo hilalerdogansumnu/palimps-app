@@ -147,6 +147,9 @@ export const MARKINGS_PROMPT = `Bu kitap sayfası fotoğrafını analiz et. İki
    - kind: "highlighter" (fosforlu) veya "underline" (altı çizili). Emin değilsen "underline" yaz.
    Kurallar:
    - İtalik metni işaret SANMA — kitap tipografisi, kullanıcı işareti değil.
+   - PARMAK / GÖLGE / SAYFA KIRIŞIKLIĞI / MÜREKKEP YAYILMASI / KAĞIT LEKESİ highlight DEĞİL — atla.
+   - DÜŞÜK GÜVEN durumunda ATLA. Bir highlight entry'si açmadan önce işareti net görüyor olmalısın; şüphede ise yoksay.
+   - AYNI METNİ iki kez işaretlemiş olarak gösterme — duplicate entry açma.
    - (1)(2)(3) gibi inline numaralandırmaları highlight içinde BIRAK, ayrı entry açma.
    - Sayfa numarasını highlight olarak SAYMA.
 
