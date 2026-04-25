@@ -58,9 +58,16 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   ios: {
-    supportsTablet: true,
+    // iPad desteği kapatıldı — 50333 öncesi 1.0 submission Apple tarafında
+    // Guideline 2.1 ile reject yedi: "we are unable to sign in using Sign in
+    // with Apple" review device "iPad Air (5th gen) / iPadOS 26.2". iPad'de
+    // Apple Sign In düzgün render olmuyor (provisioning profile veya layout
+    // bug, iPhone'da çalışıyor). v1.0 için iPad-only listing kapatıldı —
+    // kullanıcılar iPad'e iPhone modunda yine yükleyebilir, zoom edilir.
+    // v1.1+'da proper iPad layout + Apple Sign In iPad fix ile açılacak.
+    supportsTablet: false,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50333",
+    buildNumber: "50334",
     usesAppleSignIn: true,
     privacyManifests: {
       NSPrivacyTracking: false,
