@@ -2,7 +2,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, ScrollView, Pressable, View, 
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n, { saveLanguage } from "@/lib/i18n";
@@ -414,11 +414,25 @@ export default function ProfileScreen() {
                 yok. Eski "Hesap" row'u kaldırıldı — üstteki identity card artık
                 hesap hub'ına gidiyor (Apple Settings banner deseni). */}
             <Pressable
-              onPress={() => {
+              onPress={async () => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                import("expo-linking").then(({ default: Linking }) => {
-                  Linking.openURL("https://palimps.app/privacy");
-                });
+                // In-app SFSafariViewController — app'ten çıkmadan gizlilik
+                // politikasını gösterir. Eskiden Linking.openURL ile external
+                // Safari'ye atıyorduk; kullanıcı bağlamı kaybediyor + tekrar
+                // app'e dönmek için switcher gerekiyordu. WebBrowser native
+                // iOS modal stiliyle açıyor, "Done" ile kapanır, ana ekran
+                // duruyor. Renk token'ları primary/background ile uyumlu —
+                // navigation bar ve link rengi app teması ile aynı görünür.
+                try {
+                  await WebBrowser.openBrowserAsync("https://palimps.app/privacy/", {
+                    presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                    controlsColor: colors.primary,
+                    toolbarColor: colors.background,
+                  });
+                } catch {
+                  // SFSafariViewController nadiren init fail eder (corrupt
+                  // simulator state vb.); silent — kullanıcı tekrar deneyebilir.
+                }
               }}
               style={({ pressed }) => [
                 {
