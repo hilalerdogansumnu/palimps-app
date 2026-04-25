@@ -73,19 +73,22 @@ export const ENV = {
   // kapatmaz.
   enableMarkingCapture: process.env.ENABLE_MARKING_CAPTURE !== "false",
 
-  // Eco voice kill switch (asistan brand karakteri).
+  // Eco voice kill switch — DEFAULT OFF (25 Nisan 2026 dogfood feedback).
   //
-  // Default ON. Railway'de ENABLE_ECO_VOICE=false flip edilirse chat.send
-  // system prompt'u legacy CHAT_SYSTEM_PROMPT_TR/EN'e düşer; Eco karakteri
-  // pasif olur. Voice contract her iki prompt'ta da aynı (sade kütüphaneci);
-  // sadece Eco kimlik metni ve karakter-spesifik kurallar kapanır.
-  // Kullanım: voice violation oranı yüksek seyrederse, kullanıcı feedback'i
-  // olumsuzsa, ya da Eco copy'sinde yapısal sorun bulunursa → redeploy
-  // beklemeden kapat.
+  // Eco v1 ve v2 prompt iteration'ları cevap kalitesinde regresyon yarattı:
+  // 50332'deki legacy CHAT_SYSTEM_PROMPT_TR/EN ("Asistan" versiyonu)
+  // kullanıcı için daha iyi sonuç veriyordu. "Sis Mustafa Kutlu" senaryosu
+  // gaslighting + kütüphane-dışı öneri sızıntısı + sade-kütüphaneci voice
+  // taşırken bilgililik kaybı dogfood'da net görüldü. Eco kodu silinmedi
+  // (prompts.ts'te ECO_CHAT_SYSTEM_PROMPT_TR/EN duruyor) — gelecekte v3
+  // iterate açılabilir.
   //
-  // Phase A enrichment + Phase B markings ile aynı semantik: sadece explicit
-  // "false" stringi kapatır. "False", "0", boş string, undefined → ON.
-  enableEcoVoice: process.env.ENABLE_ECO_VOICE !== "false",
+  // Default'u OPT-IN'e (=== "true") çevirdik: Railway'de açıkça
+  // ENABLE_ECO_VOICE=true set edilmedikçe legacy "Asistan" prompt aktif.
+  // Diğer kill switch'lerden (markingCapture, momentEnrichment) farkı:
+  // onlar default-on çünkü tek prompt yolu var; Eco alternatif voice ve
+  // dogfood'da legacy daha iyi performansla çıktı.
+  enableEcoVoice: process.env.ENABLE_ECO_VOICE === "true",
 
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)

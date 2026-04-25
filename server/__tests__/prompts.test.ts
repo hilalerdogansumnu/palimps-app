@@ -284,44 +284,95 @@ describe("violatesEcoVoice", () => {
 });
 
 describe("getChatSystemPrompt", () => {
+  // v2 prompt iterate (25 Nisan 2026 dogfood feedback'i sonrası):
+  // sade kütüphaneci kimliği, Umberto Eco / Echo / Roma manastırı betimi
+  // çıkarıldı. "Eco'sun" ismi de kaldırıldı — kimlik artık "PALIMPS'in
+  // kütüphanecisin. Sade, mütevazi, bilgili." Test pattern'leri yeni
+  // semantiğe uyarlandı.
+
   it("returns Eco TR prompt when enabled, locale=tr", () => {
     const prompt = getChatSystemPrompt("tr", true);
-    expect(prompt).toContain("Eco'sun");
-    expect(prompt).toContain("Umberto Eco");
+    expect(prompt).toContain("PALIMPS'in kütüphanecisin");
+    expect(prompt).toContain("Sade, mütevazi, bilgili");
     expect(prompt).toContain("{USER_CONTEXT}");
   });
 
   it("returns Eco EN prompt when enabled, locale=en", () => {
     const prompt = getChatSystemPrompt("en", true);
-    expect(prompt).toContain("You are Eco");
-    expect(prompt).toContain("Umberto Eco");
+    expect(prompt).toContain("PALIMPS's librarian");
+    expect(prompt).toContain("Plain, modest, knowledgeable");
     expect(prompt).toContain("{USER_CONTEXT}");
   });
 
   it("returns legacy CHAT_SYSTEM_PROMPT_TR when disabled, locale=tr", () => {
     const prompt = getChatSystemPrompt("tr", false);
     expect(prompt).toContain("PALIMPS'in okuma asistanısın");
-    expect(prompt).not.toContain("Eco'sun");
+    expect(prompt).not.toContain("kütüphanecisin");
     expect(prompt).toContain("{USER_CONTEXT}");
   });
 
   it("returns legacy CHAT_SYSTEM_PROMPT_EN when disabled, locale=en", () => {
     const prompt = getChatSystemPrompt("en", false);
     expect(prompt).toContain("PALIMPS's reading assistant");
-    expect(prompt).not.toContain("You are Eco");
+    expect(prompt).not.toContain("librarian");
   });
 
   it("preserves voice contract in BOTH Eco and legacy prompts", () => {
-    // Voice contract her iki prompt'ta da aynı (yorum yok / aksiyon yok).
-    // Eco augmentation üstüne kimlik ekledi, kuralları kaldırmadı.
-    // toLocaleLowerCase("tr-TR") — prompt'lar capital "Y" ile başlıyor
-    // ("Yorum yok"), normalize ederek case-insensitive eşleştir.
+    // Voice contract her iki prompt'ta da aynı (yorum yok / aksiyon önerisi
+    // yok). v2 Eco prompt "Yorum / yargı / aksiyon önerisi yok" diye tek
+    // satırda birleştirdi; legacy "Yorum yok, yargı yok, aksiyon önerisi yok"
+    // diye virgüllü ayrı tutar. Ortak semantic: "aksiyon önerisi yok" hard
+    // string match + "yorum" ile "yok" arasında bir bağ regex'i.
     const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
     const legacyTr = getChatSystemPrompt("tr", false).toLocaleLowerCase("tr-TR");
-    expect(ecoTr).toContain("yorum yok");
+    expect(ecoTr).toMatch(/yorum.*yok/);
     expect(ecoTr).toContain("aksiyon önerisi yok");
-    expect(legacyTr).toContain("yorum yok");
+    expect(legacyTr).toMatch(/yorum.*yok/);
     expect(legacyTr).toContain("aksiyon önerisi yok");
+  });
+
+  // v2 iterate — 4 yeni regression test (sade kütüphaneci + library priority +
+  // anti-hallucination + anti-gaslighting + profesyonel format). Bu kuralların
+  // kazara silinmesini yakalar; "Sis Mustafa Kutlu" senaryosu bu kuralların
+  // eksikliğinden çıktı.
+
+  it("v2: enforces library-priority pattern (kütüphane öncelik vurgusu)", () => {
+    // Eco prompt'ta "ÖNCE kullanıcının verisinde ara" pattern'i bulunmalı —
+    // model kütüphane-öncelik mantığını uygulamalı.
+    const ecoTr = getChatSystemPrompt("tr", true);
+    expect(ecoTr).toMatch(/ÖNCE kullanıcının verisinde/);
+    // Kütüphane dışı bilgi açıkça etiketli — gaslighting / sessiz öneri yasak.
+    expect(ecoTr.toLocaleLowerCase("tr-TR")).toMatch(/kütüphanende yok/);
+  });
+
+  it("v2: 3-layer anti-hallucination defense in Eco prompt", () => {
+    // Hilal "asla uydurmamalı" zero-tolerance kuralı — 3 katman:
+    //   1. Hayali kitap/alıntı/an üretme
+    //   2. Bilmediğini söyle ("kesin bilgim yok")
+    //   3. Tahmin etme (yanlış olabilecek tarih/yazar/alıntı)
+    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
+    expect(ecoTr).toMatch(/hayali.*üretme/s);
+    expect(ecoTr).toMatch(/kesin bilgim yok/);
+    expect(ecoTr).toMatch(/tahmin etme/);
+  });
+
+  it("v2: anti-gaslighting clause when previous context unclear", () => {
+    // 25 Nisan dogfood: Eco "Sis önerdim" iddiasına "kayıtsızım" inkârıyla
+    // gaslighting yaptı (chat history yok, model önceki cevabını görmüyor).
+    // Prompt-level workaround: "öncesini göremiyorum, tekrar sor" cümlesini
+    // teşvik et. Kalıcı fix Task #35 (chat history persistence).
+    const ecoTr = getChatSystemPrompt("tr", true);
+    expect(ecoTr).toMatch(/öncesini göremiyorum/);
+    expect(ecoTr.toLocaleLowerCase("tr-TR")).toMatch(/gaslighting yapma|inkâr etme/);
+  });
+
+  it("v2: Eco prompt teşvik eder profesyonel format (bold + liste)", () => {
+    // 25 Nisan Hilal feedback'i: "listeleme ve bold yapınca çok profesyoneldi".
+    // Markdown render zaten chat.tsx'te aktif (react-native-markdown-display);
+    // prompt artık modeli aktif olarak bold/liste kullanmaya yönlendiriyor.
+    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
+    expect(ecoTr).toMatch(/bold.*vurgu|bold.*kitap/);
+    expect(ecoTr).toMatch(/liste|madde işaretli/);
   });
 });
 

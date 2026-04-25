@@ -341,26 +341,12 @@ export default function ChatScreen() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={100}
       >
-        {/* Header — Eco brand: ana başlık + alt tagline ("Kütüphanecin").
-            Tagline yumuşak (muted color, küçük font) — "asistan / tool /
-            chatbot" alanından uzak duran, kütüphaneci kimliğini iletiyor.
-            Eco karakteri backend'de full devrede (system prompt + voice
-            filter); UI burası onun yansıması. */}
+        {/* Header — "Asistan" başlık (50332 versiyonuna geri dönüş, 25 Nis
+            2026 dogfood: Eco voice cevap kalitesinde regresyon yarattı,
+            legacy CHAT_SYSTEM_PROMPT'a dönüldü, UI eşlendi). Tagline kaldırıldı. */}
         <View style={{ paddingVertical: 16, alignItems: "center" }}>
           <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
             {t("chat.title")}
-          </Text>
-          <Text
-            accessible
-            accessibilityRole="text"
-            style={{
-              fontSize: 12,
-              color: colors.muted,
-              marginTop: 2,
-              fontStyle: "italic",
-            }}
-          >
-            {t("chat.tagline")}
           </Text>
           {/* Free user sayacı — Linear tarzı: sessiz, fonksiyonel, kaygı yaratmayan.
               Sayı bittiğinde (0) da göster çünkü kullanıcı neden gönderemediğini anlasın. */}
