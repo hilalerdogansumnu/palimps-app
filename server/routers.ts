@@ -35,6 +35,8 @@ import {
   MOMENT_ENRICH_SCHEMA,
   MARKINGS_PROMPT,
   MARKINGS_SCHEMA,
+  CHAT_SYSTEM_PROMPT_TR,
+  CHAT_SYSTEM_PROMPT_EN,
   normalizeTag,
   type HighlightEntry,
   type MarginaliaEntry,
@@ -994,6 +996,12 @@ export const appRouter = router({
         z.object({
           bookId: z.number(),
           format: z.enum(["pdf", "markdown"]),
+          // Client'in aktif UI dili — labellar buna göre üretilir. Default
+          // "tr" çünkü primary market Türkiye. 50332 dogfood'da Hilal "PDF
+          // Türkçe karakterler bozuk + tüm başlıklar İngilizce" buldu;
+          // root cause buradaki hard-coded İngilizce label + HTML wrapping'de
+          // <meta charset> eksikliğiydi.
+          locale: z.enum(["tr", "en"]).optional().default("tr"),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -1006,51 +1014,121 @@ export const appRouter = router({
         // Okuma anlarını al
         const moments = await db.getReadingMomentsByBook(input.bookId);
 
+        // Locale-aware label tablosu — i18n key hâlâ server'da yok, mutation
+        // self-contained kalmalı. Yine de tek değişken setine indirip prose
+        // okunaklı tutuyoruz; eklenecek bir label varsa burada genişler.
+        const labels = input.locale === "en"
+          ? {
+              author: "Author",
+              totalMoments: "Total Moments",
+              moment: "Moment",
+              date: "Date",
+              ocrText: "Extracted Text",
+              summary: "Summary",
+              userNote: "My Note",
+              dateLocale: "en-US" as const,
+            }
+          : {
+              author: "Yazar",
+              totalMoments: "Toplam An",
+              moment: "An",
+              date: "Tarih",
+              ocrText: "Sayfa Metni",
+              summary: "Özet",
+              userNote: "Notum",
+              dateLocale: "tr-TR" as const,
+            };
+
         // Markdown formatında içerik oluştur
         let content = `# ${book.title}\n\n`;
         if (book.author) {
-          content += `**Author:** ${book.author}\n\n`;
+          content += `**${labels.author}:** ${book.author}\n\n`;
         }
-        content += `**Total Moments:** ${moments.length}\n\n`;
+        content += `**${labels.totalMoments}:** ${moments.length}\n\n`;
         content += `---\n\n`;
 
         moments.forEach((moment, index) => {
-          content += `## Moment ${index + 1}\n\n`;
-          content += `**Date:** ${new Date(moment.createdAt).toLocaleDateString()}\n\n`;
-          
+          content += `## ${labels.moment} ${index + 1}\n\n`;
+          content += `**${labels.date}:** ${new Date(moment.createdAt).toLocaleDateString(labels.dateLocale)}\n\n`;
+
+          // AI-üretilmiş özet — Phase A enrichment varsa export'ta da yer alsın.
+          // OCR'dan önce göstermek pedagojik: kullanıcı uzun OCR bloğundan önce
+          // "ne demek istemiştim" özetini görür.
+          if (moment.summary) {
+            content += `### ${labels.summary}\n\n`;
+            content += `${moment.summary}\n\n`;
+          }
+
           if (moment.ocrText) {
-            content += `### Extracted Text\n\n`;
+            content += `### ${labels.ocrText}\n\n`;
             content += `${moment.ocrText}\n\n`;
           }
-          
+
           if (moment.userNote) {
-            content += `### Your Note\n\n`;
+            content += `### ${labels.userNote}\n\n`;
             content += `${moment.userNote}\n\n`;
           }
-          
+
           content += `---\n\n`;
         });
+
+        // Filename: Türkçe karakterler dosya isminde safe değil (iOS bazı
+        // sharing target'larda kabul etmiyor), bu yüzden non-alphanumeric'i
+        // underscore'a çeviriyoruz. Dosya İÇERİĞİNDE Türkçe sağlam.
+        const safeFilename = book.title.replace(/[^a-z0-9]/gi, "_");
 
         if (input.format === "markdown") {
           return {
             content,
-            filename: `${book.title.replace(/[^a-z0-9]/gi, "_")}.md`,
-            mimeType: "text/markdown",
+            filename: `${safeFilename}.md`,
+            // charset=utf-8 explicit — bazı download target'ları charset
+            // verilmezse Latin-1 default'unu varsayıyor → mojibake.
+            mimeType: "text/markdown; charset=utf-8",
           };
         } else {
-          // PDF format için basit bir HTML'e çevir (tarayıcıda PDF'e dönüştürülecek)
-          const htmlContent = content
+          // PDF için HTML üret — WKWebView/expo-print bunu PDF'e dönüştürecek.
+          // KRİTİK: <!DOCTYPE html> + <meta charset="UTF-8"> olmadan render
+          // engine UTF-8 byte'larını Latin-1 yorumlar → "ş" → "ÅŸ" mojibake.
+          // 50332 export bug'ının asıl kökeni buydu.
+          const bodyHtml = content
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
             .replace(/^# (.+)$/gm, "<h1>$1</h1>")
             .replace(/^## (.+)$/gm, "<h2>$1</h2>")
             .replace(/^### (.+)$/gm, "<h3>$1</h3>")
             .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
             .replace(/\n\n/g, "<br><br>")
             .replace(/---/g, "<hr>");
-          
+
+          // Inline CSS — system-font + serif-friendly type scale, A4 margin
+          // hissi. Ayrı stylesheet yok çünkü single self-contained HTML
+          // dosyası iOS share target'larında daha güvenilir açılıyor.
+          const htmlDocument = `<!DOCTYPE html>
+<html lang="${input.locale}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${book.title}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 720px; margin: 32px auto; padding: 0 24px; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0 0 16px; color: #111; }
+  h2 { font-size: 20px; font-weight: 600; margin: 32px 0 8px; color: #222; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 20px 0 6px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; }
+  strong { font-weight: 600; color: #333; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 24px 0; }
+  br + br { display: block; content: ""; margin-top: 8px; }
+</style>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+
           return {
-            content: htmlContent,
-            filename: `${book.title.replace(/[^a-z0-9]/gi, "_")}.html`,
-            mimeType: "text/html",
+            content: htmlDocument,
+            filename: `${safeFilename}.html`,
+            mimeType: "text/html; charset=utf-8",
           };
         }
       }),
@@ -1134,12 +1212,19 @@ ${dateLabel}: ${m.createdAt}
   .join("\n---\n")}
 `;
 
-        // System prompt switches on the user's UI locale so the model's
-        // reply language matches what the user reads in the app.
-        const systemPrompt =
-          locale === "en"
-            ? `You are a reading assistant. You answer the user's questions about the books they read and the reading moments they capture. You can analyze their data, produce summaries, and make recommendations. Reply in English.${userContext}`
-            : `Sen bir okuma asistanısın. Kullanıcının okuduğu kitaplar ve okuma anları hakkında sorularına cevap veriyorsun. Kullanıcının verilerini analiz edip, özetler çıkarıp, öneriler sunabilirsin. Türkçe konuş.${userContext}`;
+        // System prompt — voice contract gömülü, prompts.ts'te merkezi.
+        // Eski inline prompt 50332 dogfood'da uzun-cevap bug'ı çıkardı:
+        // (a) "kısa ol" disiplini yoktu, Gemini full-flash 8-10 maddelik
+        // kapsamlı listeler döndürüyordu; (b) "yorum/öneri yok" voice
+        // contract'ı yoktu, "İlham verici" / "Bu fikri hayata uygula" tarzı
+        // LinkedIn-guru tonu sızıyordu; (c) "verinde olmayanı uydurma"
+        // anti-hallucination guard'ı yoktu, AppStore review riski.
+        // {USER_CONTEXT} placeholder'ı ile veri prompt'a sondan gömülür —
+        // kuralların user-content'ten önce, en üstte olması prompt-injection
+        // defense için kritik.
+        const systemPromptTemplate =
+          locale === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_TR;
+        const systemPrompt = systemPromptTemplate.replace("{USER_CONTEXT}", userContext);
 
         // Basit router: kısa + tek cümlelik soru → flash-lite (ucuz), uzun /
         // analitik sorular → full flash (kalite). Heuristic her iki dil için

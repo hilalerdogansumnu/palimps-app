@@ -82,7 +82,11 @@ export default function BookDetailScreen() {
   const performExport = async (format: "pdf" | "markdown") => {
     setIsExporting(true);
     try {
-      const result = await exportMutation.mutateAsync({ bookId, format });
+      // Locale'i mutation'a geçir — server bu bilgiyle başlık + meta etiketleri
+      // doğru dilde üretiyor. 50332 dogfood'da bu parametre yoktu, server
+      // hard-coded "Author/Total Moments/Date/Extracted Text" yazıyordu.
+      const exportLocale = i18n.language?.startsWith("en") ? "en" : "tr";
+      const result = await exportMutation.mutateAsync({ bookId, format, locale: exportLocale });
       
       // Web platformunda direkt download
       if (Platform.OS === "web") {
