@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTag, MOMENT_ENRICH_SCHEMA } from "../_core/prompts";
+import {
+  normalizeTag,
+  MOMENT_ENRICH_SCHEMA,
+  violatesEcoVoice,
+  getChatSystemPrompt,
+  ECO_FALLBACK_MESSAGES,
+} from "../_core/prompts";
 
 describe("normalizeTag", () => {
   it("strips hashtags and lowercases", () => {
@@ -116,5 +122,233 @@ describe("prompt injection defense", () => {
     expect(normalizeTag("aşk").length).toBeLessThanOrEqual(40);
     expect(normalizeTag("varoluşçuluk").length).toBeLessThanOrEqual(40);
     expect(normalizeTag("zaman").length).toBeLessThanOrEqual(40);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ECO voice contract — output post-process violation detection
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// chat.send'de Eco system prompt'una rağmen LLM bazen yasaklı ifadeleri
+// sızdırır. violatesEcoVoice() bu sızıntıyı yakalar; eşleşme varsa
+// rejenerasyon tetiklenir (max 2 retry, sonra ECO_FALLBACK_MESSAGES).
+//
+// False-positive yapmaması kritik: meşru bir cevap "süpersin" demez.
+// False-negative kabul edilebilir kıyıda — yeni ihlal pattern'i tespit
+// edilirse buraya ek test + prompts.ts forbidden listesi güncelleme.
+describe("violatesEcoVoice", () => {
+  describe("forbidden Turkish phrases", () => {
+    it("flags 'harika seçim'", () => {
+      const r = violatesEcoVoice("Harika seçim, bu kitap muhteşem!");
+      expect(r.violates).toBe(true);
+      expect(r.reason).toContain("forbidden_phrase_tr");
+    });
+
+    it("flags 'bayıldım' (model yargı sıfatı)", () => {
+      expect(violatesEcoVoice("Bu pasaja bayıldım.").violates).toBe(true);
+    });
+
+    it("flags 'ben de okumuştum' (insan rolü)", () => {
+      expect(
+        violatesEcoVoice("Ben de okumuştum bu kitabı, çok severim.").violates,
+      ).toBe(true);
+    });
+
+    it("flags 'şüphesiz ki' (giriş cümlesi)", () => {
+      expect(
+        violatesEcoVoice("Şüphesiz ki bu yazarın en iyi eseri.").violates,
+      ).toBe(true);
+    });
+
+    it("flags Turkish casing variants — 'HARIKA SEÇİM' (uppercase)", () => {
+      // tr-TR locale lowercase: "I" → "ı" (dotless), "İ" → "i" (dotted).
+      // "HARIKA" → "harıka" değil, "harika" çıkar — forbidden phrase eşleşir.
+      const r = violatesEcoVoice("HARIKA SEÇİM, BAYILDIM!");
+      expect(r.violates).toBe(true);
+    });
+  });
+
+  describe("forbidden English phrases", () => {
+    it("flags 'great choice'", () => {
+      const r = violatesEcoVoice("Great choice! I love it.");
+      expect(r.violates).toBe(true);
+      expect(r.reason).toContain("forbidden_phrase_en");
+    });
+
+    it("flags 'i read it too' (human roleplay)", () => {
+      expect(
+        violatesEcoVoice("I read it too, my favorite passage was on page 47.")
+          .violates,
+      ).toBe(true);
+    });
+
+    it("flags case-insensitively — 'AWESOME!'", () => {
+      expect(violatesEcoVoice("AWESOME!").violates).toBe(true);
+    });
+  });
+
+  describe("emoji storm", () => {
+    it("flags 3+ consecutive sparkles", () => {
+      // NOT: Test input'unda forbidden phrase OLMAMALI ("mükemmel" forbidden,
+      // ondan önce çekilirdi). Saf emoji storm test'i için yansız metin.
+      const r = violatesEcoVoice("Bu pasajı tutmuşsun ✨✨✨");
+      expect(r.violates).toBe(true);
+      expect(r.reason).toBe("emoji_storm");
+    });
+
+    it("flags fire emoji storm", () => {
+      expect(violatesEcoVoice("Bu fikir 🔥🔥🔥").violates).toBe(true);
+    });
+
+    it("does NOT flag single emoji (📖 acceptable)", () => {
+      // Eco brand voice doc: nadiren tek 📖 OK, ✨🔥 yasak.
+      // Forbidden phrase yoksa tek emoji passes.
+      expect(violatesEcoVoice("Bu kitabını ekledim. 📖").violates).toBe(false);
+    });
+  });
+
+  describe("sales language", () => {
+    it("flags 'premium ile daha'", () => {
+      const r = violatesEcoVoice(
+        "Premium ile daha fazla feature alabilirsin.",
+      );
+      expect(r.violates).toBe(true);
+      expect(r.reason).toBe("sales_language");
+    });
+
+    it("flags 'subscribe to'", () => {
+      expect(
+        violatesEcoVoice("Subscribe to our premium tier for unlimited.")
+          .violates,
+      ).toBe(true);
+    });
+
+    it("flags 'abone ol' (verb form)", () => {
+      expect(violatesEcoVoice("Abone ol, sınırsız erişim al.").violates).toBe(
+        true,
+      );
+    });
+
+    it("does NOT flag mention of 'PALIMPS Premium' as plan name", () => {
+      // Eco "Bu özellik PALIMPS Premium ile gelir" diyebilir (Settings'e
+      // yönlendirme); "Premium ile daha fazla" yasak. İnce ayrım.
+      const r = violatesEcoVoice(
+        "Bu özellik PALIMPS Premium aboneliğine dahil. Ayarlar bölümü daha doğru cevap verir.",
+      );
+      // "abone" + boundary kontrol — "aboneliğ" (subjunctive form) yakalamamalı
+      // (sadece "abone ol" verb form yasak)
+      expect(r.violates).toBe(false);
+    });
+  });
+
+  describe("clean responses pass through", () => {
+    it("PASSES Eco-style description", () => {
+      const eco =
+        "Bu pasajı tutmuşsun. Yazarın aynı temaya 47. sayfada da dönüyor — istersen göstereyim.";
+      expect(violatesEcoVoice(eco).violates).toBe(false);
+    });
+
+    it("PASSES book lookup answer", () => {
+      expect(
+        violatesEcoVoice(
+          "Bu kavramı Saatleri Ayarlama Enstitüsü'nde almıştın. Üç farklı yerde.",
+        ).violates,
+      ).toBe(false);
+    });
+
+    it("PASSES 'unknown' graceful response", () => {
+      expect(
+        violatesEcoVoice("Bu kitabı senin notlarından tanımıyorum.").violates,
+      ).toBe(false);
+    });
+
+    it("PASSES short greeting (TR)", () => {
+      expect(violatesEcoVoice("Selam. Bugün hangi kitapla?").violates).toBe(
+        false,
+      );
+    });
+
+    it("PASSES book recommendation framed dialogically", () => {
+      // Pull-based recommendation, kullanıcı kendi geçmişinden öneri istedi.
+      const reply =
+        "Son üç kitabın yalnızlık üstüne. Devam istersen Mai ve Siyah; mola istersen Calvino'nun kısa kitapları.";
+      expect(violatesEcoVoice(reply).violates).toBe(false);
+    });
+
+    it("PASSES empty string", () => {
+      // Edge case: empty output is not a "violation"; chat.send'de empty
+      // choices ayrı olarak yakalanır (LLM_EMPTY_RESPONSE).
+      expect(violatesEcoVoice("").violates).toBe(false);
+    });
+  });
+});
+
+describe("getChatSystemPrompt", () => {
+  it("returns Eco TR prompt when enabled, locale=tr", () => {
+    const prompt = getChatSystemPrompt("tr", true);
+    expect(prompt).toContain("Eco'sun");
+    expect(prompt).toContain("Umberto Eco");
+    expect(prompt).toContain("{USER_CONTEXT}");
+  });
+
+  it("returns Eco EN prompt when enabled, locale=en", () => {
+    const prompt = getChatSystemPrompt("en", true);
+    expect(prompt).toContain("You are Eco");
+    expect(prompt).toContain("Umberto Eco");
+    expect(prompt).toContain("{USER_CONTEXT}");
+  });
+
+  it("returns legacy CHAT_SYSTEM_PROMPT_TR when disabled, locale=tr", () => {
+    const prompt = getChatSystemPrompt("tr", false);
+    expect(prompt).toContain("PALIMPS'in okuma asistanısın");
+    expect(prompt).not.toContain("Eco'sun");
+    expect(prompt).toContain("{USER_CONTEXT}");
+  });
+
+  it("returns legacy CHAT_SYSTEM_PROMPT_EN when disabled, locale=en", () => {
+    const prompt = getChatSystemPrompt("en", false);
+    expect(prompt).toContain("PALIMPS's reading assistant");
+    expect(prompt).not.toContain("You are Eco");
+  });
+
+  it("preserves voice contract in BOTH Eco and legacy prompts", () => {
+    // Voice contract her iki prompt'ta da aynı (yorum yok / aksiyon yok).
+    // Eco augmentation üstüne kimlik ekledi, kuralları kaldırmadı.
+    // toLocaleLowerCase("tr-TR") — prompt'lar capital "Y" ile başlıyor
+    // ("Yorum yok"), normalize ederek case-insensitive eşleştir.
+    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
+    const legacyTr = getChatSystemPrompt("tr", false).toLocaleLowerCase("tr-TR");
+    expect(ecoTr).toContain("yorum yok");
+    expect(ecoTr).toContain("aksiyon önerisi yok");
+    expect(legacyTr).toContain("yorum yok");
+    expect(legacyTr).toContain("aksiyon önerisi yok");
+  });
+});
+
+describe("ECO_FALLBACK_MESSAGES", () => {
+  it("has cantAnswer and error messages for both locales", () => {
+    expect(ECO_FALLBACK_MESSAGES.tr.cantAnswer).toBeTruthy();
+    expect(ECO_FALLBACK_MESSAGES.tr.error).toBeTruthy();
+    expect(ECO_FALLBACK_MESSAGES.en.cantAnswer).toBeTruthy();
+    expect(ECO_FALLBACK_MESSAGES.en.error).toBeTruthy();
+  });
+
+  it("fallback messages do NOT violate Eco voice (no recursion)", () => {
+    // Critical: fallback Eco karakter dışına çıkmamalı. Kullanıcı voice
+    // violation retry tükendiğinde gördüğü mesaj da Eco-uyumlu olmalı —
+    // yoksa filter sonsuz döngüye girer (gerçi chat.send retry sayacı
+    // bunu engeller, ama fallback semantic olarak doğru kalmalı).
+    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.tr.cantAnswer).violates).toBe(
+      false,
+    );
+    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.tr.error).violates).toBe(
+      false,
+    );
+    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.en.cantAnswer).violates).toBe(
+      false,
+    );
+    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.en.error).violates).toBe(
+      false,
+    );
   });
 });
