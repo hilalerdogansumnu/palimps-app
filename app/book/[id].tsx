@@ -80,7 +80,7 @@ export default function BookDetailScreen() {
         { text: t("common.cancel"), style: "cancel" },
         {
           text: t("common.save"),
-          onPress: async (newTitle) => {
+          onPress: async (newTitle?: string) => {
             const trimmed = (newTitle ?? "").trim();
             if (!trimmed || trimmed === book.title) return;
             try {
