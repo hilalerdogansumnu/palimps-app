@@ -91,6 +91,7 @@ export default function LoginScreen() {
         identityToken: credential.identityToken,
         fullName: credential.fullName ?? null,
         email: credential.email ?? null,
+        authorizationCode: credential.authorizationCode ?? null,
       });
 
       await persistSession(result);

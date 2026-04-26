@@ -24,6 +24,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     freeAssistantQuestionsUsed: 0,
     revenuecatProductId: null,
     revenuecatExpiresAt: null,
+    appleRefreshToken: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),

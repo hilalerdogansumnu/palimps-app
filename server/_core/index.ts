@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerRevenueCatRoutes } from "./revenuecat";
+import { logAppleRevocationStatus } from "./apple-auth-revoke";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -101,6 +102,10 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+    // Status of Apple Sign In revocation infra (env vars loaded?). One line
+    // so a `railway logs` tail tells you immediately whether revoke flow is
+    // wired without round-tripping through a delete-account smoke test.
+    logAppleRevocationStatus();
   });
 }
 

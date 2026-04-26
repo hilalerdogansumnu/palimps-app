@@ -30,6 +30,20 @@ export const ENV = {
     process.env.APPLE_BUNDLE_ID ?? "space.manus.okuma.hafizasi.mvp.t20260130232125",
   appleTeamId: process.env.APPLE_TEAM_ID ?? "S456GRHXU8",
 
+  // Apple Sign In server-to-server auth key (for /auth/token exchange and
+  // /auth/revoke). Created in Apple Developer Portal → Keys → "Sign in with
+  // Apple" enabled key. Both vars MUST be set together — if either is missing,
+  // revocation flow disables itself (sign-in still works because identityToken
+  // verification doesn't need this key, only revoke does).
+  //
+  // APPLE_SIGN_IN_KEY_ID: 10-char Key ID (e.g. "ABCD123456")
+  // APPLE_SIGN_IN_PRIVATE_KEY: full .p8 file contents, including
+  //   "-----BEGIN PRIVATE KEY-----" / "-----END PRIVATE KEY-----" lines.
+  //   Railway accepts multi-line values; if pasted as escaped \n string the
+  //   helper normalizes at load time.
+  appleSignInKeyId: process.env.APPLE_SIGN_IN_KEY_ID ?? "",
+  appleSignInPrivateKey: process.env.APPLE_SIGN_IN_PRIVATE_KEY ?? "",
+
   // ─────────────────────────────────────────────────────────────────────────
   // AI — Google Gemini (direct)
   //

@@ -6,8 +6,17 @@
  * /api/auth/apple. The server verifies the token against Apple's JWKS,
  * upserts the user, and mints a session JWT (cookie + bearer).
  *
+ * If the client also includes `authorizationCode` (one-shot, Apple-issued
+ * on every sign-in), the server fires off a background exchange against
+ * Apple's /auth/token endpoint and persists the resulting refresh_token
+ * on `users.appleRefreshToken`. The token is later used at delete-account
+ * time to call /auth/revoke (App Store 5.1.1(v) since iOS 16). The
+ * exchange is fire-and-forget so it does NOT delay sign-in response —
+ * if it fails, the user falls back to legacy-skip path at delete time
+ * (acceptable per palimps-guardrails ruling).
+ *
  * Endpoints:
- *   POST /api/auth/apple   { identityToken, fullName?, email?, nonce? }
+ *   POST /api/auth/apple   { identityToken, fullName?, email?, nonce?, authorizationCode? }
  *   POST /api/auth/logout
  *   GET  /api/auth/me
  *   POST /api/auth/session         (Bearer → cookie bridge for web preview)
@@ -15,8 +24,12 @@
 
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId, upsertUser } from "../db";
+import { getUserByOpenId, updateUser, upsertUser } from "../db";
 import { verifyAppleIdentityToken } from "./appleAuth";
+import {
+  exchangeAppleAuthorizationCode,
+  isAppleRevocationConfigured,
+} from "./apple-auth-revoke";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -130,6 +143,38 @@ export function registerOAuthRoutes(app: Express) {
         email: finalEmail,
         loginMethod: "apple",
       });
+
+      // Apple revocation infra: if the client included an authorizationCode
+      // and the server has the Sign In with Apple key configured, exchange
+      // it for a refresh_token in the background and persist it on the user
+      // row. Used later at delete-account time for /auth/revoke (App Store
+      // 5.1.1(v)). Fire-and-forget so sign-in response stays under the p95
+      // budget (Apple /auth/token round-trip is ~300-800ms). On failure we
+      // log a warning — user falls back to legacy-skip path at delete-time
+      // (palimps-guardrails ruling: acceptable, KVKK Md. 7 is satisfied
+      // by DB+R2 deletion regardless of Apple OAuth linkage).
+      //
+      // Logging discipline: never log authorizationCode, refresh token, or
+      // openId/email. Internal userId (autoincrement int) is safe.
+      const authorizationCode = readString(body.authorizationCode);
+      if (authorizationCode && user?.id && isAppleRevocationConfigured()) {
+        const userId = user.id;
+        setImmediate(async () => {
+          try {
+            const { refreshToken } =
+              await exchangeAppleAuthorizationCode(authorizationCode);
+            await updateUser(userId, { appleRefreshToken: refreshToken });
+            console.log("[apple-auth] refresh token persisted", { userId });
+          } catch (err) {
+            // TODO(observability): swap for Sentry.captureMessage("warning")
+            // once palimps-observability-engineer wires server-side Sentry.
+            console.warn("[apple-auth] authorizationCode exchange failed", {
+              userId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        });
+      }
 
       const result = await issueSession(res, req, user, openId, finalName ?? "");
       res.json(result);

@@ -19,6 +19,23 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
+  /**
+   * Apple Sign In refresh token. Capture: `/api/auth/apple` endpoint exchanges
+   * `authorizationCode` (gelmesi opsiyonel) at Apple's `/auth/token` endpoint
+   * and persists the resulting refresh_token here. Used at delete-account time
+   * to call Apple's `/auth/revoke` (App Store 5.1.1(v) since iOS 16).
+   *
+   * NULLABLE — and stays NULL for "legacy" users (signed in before this column
+   * was added, or before client started sending authorizationCode). On delete
+   * for those users, revoke step is skipped with a warning log + Sentry
+   * breadcrumb; DB + R2 cleanup still proceeds (KVKK Md. 7 yine yerine
+   * geliyor, sadece Apple OAuth linkage iOS Settings'te user'a kalıyor).
+   *
+   * Length 512: Apple refresh tokens are typically ~150-200 chars but the spec
+   * doesn't pin a max — generous margin. Not indexed (read once per
+   * delete-account, not a hot path).
+   */
+  appleRefreshToken: varchar("appleRefreshToken", { length: 512 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   isPremium: int("isPremium").default(0).notNull(), // 0 = free, 1 = premium
   /**

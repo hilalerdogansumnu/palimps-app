@@ -2,6 +2,8 @@ import { and, eq, desc, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, books, readingMoments, InsertBook, InsertReadingMoment } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { extractStorageKey, storageDeleteMany } from "./storage";
+import { isAppleRevocationConfigured, revokeAppleRefreshToken } from "./_core/apple-auth-revoke";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -362,25 +364,95 @@ export async function updateUser(userId: number, data: Partial<InsertUser>) {
 }
 
 /**
- * Kullanıcıyı ve tüm verilerini sil (App Store Guideline 5.1.1.v)
- * Sıra önemli: önce bağlı veriler, sonra kullanıcı silinir.
+ * Kullanıcıyı ve tüm verilerini sil (App Store Guideline 5.1.1.v + KVKK Md. 7).
+ *
+ * Sıra:
+ *  0. Apple Sign In refresh token'ı revoke et (best-effort) — App Store
+ *     5.1.1(v): iOS 16+ delete-account akışı Apple OAuth linkage'ı koparmak
+ *     zorunda. User row'u henüz duruyor, token oradan okunabilir.
+ *  1. Photo URL'leri topla (silmeden önce, satırlar gittikten sonra erişim yok)
+ *  2. R2'den fotoğrafları toplu sil — best-effort, KVKK "teknik retention
+ *     kabul edilmez" gereği ve privacy policy'deki açık taahhüt:
+ *       "Fotoğraflar (R2): Hesap silindiği anda kalıcı olarak silinir"
+ *  3. DB cascade — moments → books → user
+ *
+ * Apple revoke hatası DB+R2 silmeyi BLOKLAMAZ — KVKK Md. 7 yine yerine
+ * getirilir, sadece Apple OAuth linkage iOS Settings'te kullanıcıya kalır
+ * (manuel "Stop Using Apple ID" gerekebilir). R2 silme hatası da DB silmeyi
+ * bloklamaz; orphan R2 objeleri sweeper job (TODO) tarafından sonradan
+ * toplanır.
+ *
+ * Legacy user kısıtı: refresh token sadece bu fix DEPLOY edildikten sonraki
+ * ilk sign-in'de yakalanır. Önceden sign in olmuş kullanıcılarda token
+ * yoktur → revoke skip + warning log; KVKK silme yine tam çalışır.
  */
 export async function deleteUserAndAllData(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // 1. Kullanıcının tüm kitaplarını bul
-  const userBooks = await db.select().from(books).where(eq(books.userId, userId));
-
-  // 2. Her kitabın okuma anlarını sil
-  for (const book of userBooks) {
-    await db.delete(readingMoments).where(eq(readingMoments.bookId, book.id));
+  // 0. Apple Sign In revocation (best-effort) — App Store 5.1.1(v).
+  //    User row'u henüz duruyor, token oradan okunabilir. Hata DB+R2
+  //    silmeyi BLOKLAMAZ — KVKK Md. 7 yine yerine getirilir, sadece
+  //    Apple OAuth linkage iOS Settings'te kullanıcıya kalır.
+  if (isAppleRevocationConfigured()) {
+    const [row] = await db
+      .select({ token: users.appleRefreshToken })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (row?.token) {
+      try {
+        await revokeAppleRefreshToken(row.token);
+        console.log("[deleteAccount] Apple token revoked", { userId });
+      } catch (err) {
+        // TODO(observability): Sentry.captureMessage("apple_revoke_failed", "warning")
+        console.warn("[deleteAccount] Apple revoke failed (non-blocking)", {
+          userId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    } else {
+      console.warn("[deleteAccount] Apple revoke skipped — no refresh token (legacy user)", { userId });
+    }
   }
 
-  // 3. Kitapları sil
-  await db.delete(books).where(eq(books.userId, userId));
+  // 1. Photo URL'leri topla — book covers + reading_moments page images.
+  //    DB silindikten sonra erişim yok, bu yüzden ÖNCE topluyoruz.
+  const userBooks = await db
+    .select({ id: books.id, coverImageUrl: books.coverImageUrl })
+    .from(books)
+    .where(eq(books.userId, userId));
 
-  // 4. Kullanıcıyı sil
+  const userMoments = await db
+    .select({ pageImageUrl: readingMoments.pageImageUrl })
+    .from(readingMoments)
+    .where(eq(readingMoments.userId, userId));
+
+  const photoKeys: string[] = [];
+  for (const book of userBooks) {
+    const k = extractStorageKey(book.coverImageUrl);
+    if (k) photoKeys.push(k);
+  }
+  for (const m of userMoments) {
+    const k = extractStorageKey(m.pageImageUrl);
+    if (k) photoKeys.push(k);
+  }
+
+  // 2. R2 cleanup — best-effort, KVKK Md. 7 hard-delete + privacy policy
+  //    promise. Hata olsa bile DB silmeye devam ediyoruz.
+  const r2Result = await storageDeleteMany(photoKeys);
+  console.log("[deleteAccount] R2 photo cleanup", {
+    userId,
+    requested: photoKeys.length,
+    deleted: r2Result.deleted,
+    failed: r2Result.failed,
+  });
+
+  // 3. DB cascade. Moments'i userId üstünden topluca siliyoruz —
+  //    book.id loop'u yerine — orphan moment'lere karşı (book silinip
+  //    moment kalmış pre-existing edge case) defansif.
+  await db.delete(readingMoments).where(eq(readingMoments.userId, userId));
+  await db.delete(books).where(eq(books.userId, userId));
   await db.delete(users).where(eq(users.id, userId));
 }
 

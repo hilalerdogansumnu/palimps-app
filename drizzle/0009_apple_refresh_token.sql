@@ -1,0 +1,31 @@
+-- Apple Sign In refresh token storage. App Store Review Guideline 5.1.1(v)
+-- (iOS 16+) hesap silme sırasında Apple Sign In token revocation talep
+-- ediyor. Revocation Apple'ın /auth/revoke endpoint'ini çağırmayı, o da
+-- refresh_token'ı header parametresi olarak vermeyi gerektiriyor.
+--
+-- Refresh token nasıl elde ediliyor:
+--   1. Client (`app/login.tsx`) Apple Sign In sheet'inden dönen
+--      `credential.authorizationCode`'u sunucuya POST eder.
+--   2. Server (`/api/auth/apple`) bu code'u Apple `/auth/token` endpoint'ine
+--      ES256-signed client_secret JWT ile exchange eder, dönen refresh_token'ı
+--      bu kolona yazar.
+--
+-- Nullable, default yok:
+--   - Mevcut user'lar (Hilal dahil tüm pre-0009 user'lar) bu kolonda NULL.
+--     Onlar için backfill mümkün değil — Apple authorizationCode sadece
+--     sign-in anında üretilir, geriye dönük çekilemez. Bu user'lar tekrar
+--     sign-in yapana kadar NULL kalır.
+--   - Delete account akışında NULL ise revoke step skip edilir
+--     ([apple-auth] revoke skipped — no refresh token), DB + R2 cleanup
+--     normal çalışır. KVKK Md. 7 hard-delete yine sağlanır; sadece Apple
+--     iOS Settings → "Apple Kimliğini Kullanan Uygulamalar" listesinde
+--     PALIMPS user'ın manuel kaldırması gereken kayıt olarak kalır.
+--   - App Store reviewer yeni hesap açıp test edeceği için onun akışında
+--     refresh token capture olur, revoke 200 döner, gate yeşil.
+--
+-- Length 512: Apple refresh token spec'i max length pin etmiyor. Tipik ~150
+-- char, ama generous margin. Index yok — sadece delete-account'ta okunuyor,
+-- hot path değil.
+--
+-- Backtick-free identifier (Railway Query panel quirk, 0007/0008 notu).
+ALTER TABLE users ADD COLUMN appleRefreshToken VARCHAR(512) NULL;
