@@ -15,9 +15,19 @@
  *                           (e.g. https://files.palimps.app  or  https://pub-xxx.r2.dev)
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { ENV } from "./_core/env";
+
+// R2 (S3 spec'i) tek DeleteObjects çağrısında en fazla 1000 anahtar alır.
+// Tek bir kullanıcının fotoğraf sayısı pratikte bunu nadir geçer ama yine de
+// chunk'lıyoruz — power user'ı sessizce kaybetmektense biraz fazla iş.
+const DELETE_BATCH_SIZE = 1000;
 
 let cachedClient: S3Client | null = null;
 
@@ -162,4 +172,87 @@ export async function toDisplayUrl(
     console.error("[storage] toDisplayUrl failed for", stored, err);
     return stored;
   }
+}
+
+/**
+ * `toDisplayUrl`'ün dönüşüm kısmının saf hali — bir DB'den gelen "stored"
+ * değeri (tam public URL veya çıplak key) alır, R2 storage key'i döner.
+ * Bizim olmayan bir external URL veya boş değer için `null` döner — silme
+ * akışı bu durumda hiçbir şeye dokunmaz (asla başka bir bucket'a delete
+ * göndermeyiz).
+ *
+ * Account-deletion akışı için ayrı bir helper çıkardık çünkü `toDisplayUrl`
+ * I/O yapıyor (signed URL üretmek için S3 imzası); bu sadece string parsing.
+ */
+export function extractStorageKey(stored: string | null | undefined): string | null {
+  if (!stored) return null;
+  if (!/^https?:\/\//i.test(stored)) {
+    // Zaten çıplak key (örn "uploads/3/...jpg")
+    return normalizeKey(stored);
+  }
+  const base = (ENV.r2PublicBaseUrl ?? "").replace(/\/+$/, "");
+  if (!base) return null;
+  if (!stored.startsWith(base + "/")) return null;
+  return normalizeKey(stored.slice(base.length + 1));
+}
+
+/**
+ * Bir kullanıcının tüm fotoğraflarını R2'den toplu siler. Account-deletion
+ * akışında çağrılır.
+ *
+ * **Best-effort, atılmaz.** Privacy policy ve KVKK Md. 7 birincil
+ * yükümlülük olarak DB-level silmeyi şart koşuyor; R2 tarafındaki bir
+ * geçici hata (ağ, throttle, 5xx) hesap silme akışını bloklamamalı.
+ * Başarısız anahtarlar log'a düşer; orphan reconcile job'u (TODO) onları
+ * sonradan toplar.
+ *
+ * @returns silinen ve başarısız olan anahtar sayıları
+ */
+export async function storageDeleteMany(
+  keys: string[],
+): Promise<{ deleted: number; failed: number }> {
+  if (keys.length === 0) return { deleted: 0, failed: 0 };
+
+  if (!ENV.r2AccountId || !ENV.r2AccessKeyId || !ENV.r2SecretAccessKey) {
+    console.warn("[storage] R2 not configured — deleteMany atlandı", {
+      keyCount: keys.length,
+    });
+    return { deleted: 0, failed: keys.length };
+  }
+
+  const client = getClient();
+  let deleted = 0;
+  let failed = 0;
+
+  for (let i = 0; i < keys.length; i += DELETE_BATCH_SIZE) {
+    const batch = keys
+      .slice(i, i + DELETE_BATCH_SIZE)
+      .map((k) => ({ Key: normalizeKey(k) }));
+    try {
+      const result = await client.send(
+        new DeleteObjectsCommand({
+          Bucket: ENV.r2BucketName,
+          Delete: { Objects: batch, Quiet: true },
+        }),
+      );
+      const errors = result.Errors ?? [];
+      deleted += batch.length - errors.length;
+      failed += errors.length;
+      if (errors.length > 0) {
+        console.warn("[storage] deleteMany kısmi başarısızlık", {
+          batchSize: batch.length,
+          errorCount: errors.length,
+          firstErrorCode: errors[0]?.Code,
+        });
+      }
+    } catch (err) {
+      failed += batch.length;
+      console.error("[storage] deleteMany batch fırlattı", {
+        batchSize: batch.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return { deleted, failed };
 }
