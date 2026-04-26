@@ -476,31 +476,36 @@ export function violatesEcoVoice(output: string): {
 }
 
 /**
- * Defansif min-content kontrolü: model bazen markdown bullet/asterisk/dot
+ * Defansif min-content kontrolü: model bazen markdown bullet/numbered list
  * başlatıp anlamlı içerik üretmeden generation'ı bitiriyor (token cutoff,
- * safety stop, ya da generation drift). Markdown noise karakterlerini
- * (boşluk, liste işareti, vurgu, başlık, blockquote) çıkardıktan sonra
- * geriye 5 karakterden az anlamlı içerik kalıyorsa response degenerate'tir.
+ * safety stop, ya da generation drift). Sadece harf karakterlerini sayar;
+ * geriye 5 harften az kalıyorsa response degenerate'tir.
  *
  * Kullanım: chat.send candidate alındıktan sonra çağrılır; degenerate ise
  * voice violation gibi retry tetiklenir, retry tükenince Eco fallback.
  *
  * Bu kontrol Eco aktif olsun olmasın çalışır — "boş bullet" bug'ı 50334
  * production'da Eco kapalıyken görüldü (Hilal dogfood, 26 Nis akşam):
- * model "Kitaplarımı listele" / "Etiketleri ver bana" sorularına `- `
- * veya `\n• \n` gibi degenerate çıktı dönüyor, kullanıcı ekranda boş
- * madde işareti görüyor.
+ * model "Kitaplarımı listele" / "Liste olarak isimlerini ver" sorularına
+ * `- `, `\n• \n`, ya da `1. \n2. \n3.` gibi degenerate çıktı dönüyor,
+ * kullanıcı ekranda boş madde işareti / numbered list görüyor.
+ *
+ * Whitelist yaklaşımı (önceki blacklist yerine): markdown noise pattern
+ * çeşitleri (numbered list `1.\n2.\n3.`, parantezli `(1)(2)(3)`, sadece
+ * sayı dizisi `12345`, vs.) blacklist'le yakalanması zor — her vakaya yeni
+ * regex eklemek yerine "anlamlı içerik = harf" ilkesi sıkı ve sürdürülebilir.
  *
  * Threshold (5): "evet" / "hayır" / "yok" gibi gerçek kısa cevapları kabul
- * etmek için bilinçli düşük tutuldu. Boş bullet vakalarında stripped
- * length 0-1 char; false-positive riski minimum.
+ * etmek için bilinçli düşük tutuldu. Boş bullet/numbered list vakalarında
+ * harf sayısı 0; false-positive riski minimum (sayı-ağırlıklı meşru cevap
+ * "2024 yılında" gibi olur, harf yine 5+ kalır).
  */
 export function isDegenerateResponse(output: string): boolean {
-  // Türkçe karakterler ve harfler bozulmaz; sadece markdown format
-  // gürültüsü (whitespace, list markers, emphasis, heading, blockquote)
-  // temizlenir.
-  const stripped = output.replace(/[\s\-*•·.>_~`#]+/g, "").trim();
-  return stripped.length < 5;
+  // Whitelist: sadece Unicode harfleri tut. Türkçe karakterler (ı, ş, ğ,
+  // ü, ç, ö) \p{L}'ye dahil. Rakam, noktalama, whitespace, markdown
+  // sembolleri (-, *, •, #, >, vb.), parantez, emoji — hepsi silinir.
+  const letters = output.replace(/[^\p{L}]/gu, "");
+  return letters.length < 5;
 }
 
 /**

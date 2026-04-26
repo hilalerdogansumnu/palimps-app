@@ -451,6 +451,27 @@ describe("isDegenerateResponse", () => {
     it("flags whitespace only", () => {
       expect(isDegenerateResponse("   \n\t  ")).toBe(true);
     });
+
+    // Frame 38 regression — "Liste olarak isimlerini ver sadece" sorusunda
+    // model numbered list başlatıp içerik üretmedi. v1 regex (blacklist)
+    // sayıları korumuştu → bypass olmuştu. Whitelist yaklaşımı yakalar.
+    it("flags numbered list with no content ('1. \\n2. \\n3.')", () => {
+      expect(isDegenerateResponse("1. \n2. \n3.")).toBe(true);
+    });
+
+    it("flags long numbered list with no content (10 items)", () => {
+      expect(
+        isDegenerateResponse("1.\n2.\n3.\n4.\n5.\n6.\n7.\n8.\n9.\n10."),
+      ).toBe(true);
+    });
+
+    it("flags parenthesized number list ('(1)\\n(2)\\n(3)')", () => {
+      expect(isDegenerateResponse("(1)\n(2)\n(3)")).toBe(true);
+    });
+
+    it("flags pure number sequence ('1234567890')", () => {
+      expect(isDegenerateResponse("1234567890")).toBe(true);
+    });
   });
 
   describe("legitimate short answers (must NOT flag)", () => {
