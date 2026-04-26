@@ -65,9 +65,10 @@ the www→apex redirect block in `netlify.toml`.
 - **Copy edits (TR + EN):** both language versions live side-by-side inside
   `.tr` and `.en` span/div pairs. Keep them in sync — the toggle relies on
   pairs being present.
-- **Email (temporary):** all `mailto:` links currently go to
-  `hilalsumnu@gmail.com`. Search + replace when the permanent support address
-  is ready.
+- **Email:** Turkish UI uses `iletisim@palimps.app`, English UI uses
+  `hello@palimps.app`. Both forward to the personal Gmail inbox via ImprovMX.
+  To change destination, update the alias in the ImprovMX dashboard — no
+  code change needed. Privacy / KVKK pages also follow this TR/EN split.
 - **Screenshots:** when fresh screenshots are ready, replace files under
   `assets/screenshot-0N.png` (1290×2796 PNG). The hero is currently minimal
   (icon + wordmark); to re-enable the screenshot gallery, swap the

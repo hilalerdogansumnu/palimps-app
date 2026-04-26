@@ -51,3 +51,8 @@
   for = "/privacy/*"
   [headers.values]
     Cache-Control = "public, max-age=300, must-revalidate"
+
+[[headers]]
+  for = "/kvkk-aydinlatma/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"

@@ -94,6 +94,27 @@
     margin: 20px 0;
   }
   .card p:last-child { margin-bottom: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--surface); font-weight: 600; }
+  .related {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+  }
   footer {
     padding: 48px 0 0;
     text-align: center;
@@ -121,58 +142,102 @@
   <!-- TURKISH -->
   <div class="tr">
     <h1>Gizlilik Politikası</h1>
-    <p class="updated">Son güncelleme: 23 Nisan 2026</p>
+    <p class="updated">Son güncelleme: 24 Nisan 2026 · Sürüm 2.0</p>
 
     <div class="card">
       <p><strong>Kısa özet:</strong> PALIMPS okuma verilerini sen ve kitapların için tutar. Satmayız, reklam için kullanmayız, üçüncü taraflarla paylaşmayız. Verini istediğin zaman silebilirsin.</p>
     </div>
 
+    <div class="related">
+      <strong>İlgili:</strong> Türkiye kullanıcıları için KVKK kapsamındaki <a href="/kvkk-aydinlatma/">Aydınlatma Metni</a>'ne de göz atabilirsin.
+    </div>
+
+    <h2>0. Veri Sorumlusu</h2>
+    <p>Bu politika kapsamında kişisel verilerinizin işlenmesinden sorumlu olan veri sorumlusu:</p>
+    <ul>
+      <li><strong>Veri Sorumlusu:</strong> PALIMPS (iOS uygulaması)</li>
+      <li><strong>Sıfat:</strong> Bağımsız bir gerçek kişi geliştirici tarafından işletilen mobil uygulama</li>
+      <li><strong>Konum:</strong> İstanbul, Türkiye</li>
+      <li><strong>İletişim:</strong> <a href="mailto:iletisim@palimps.app">iletisim@palimps.app</a></li>
+      <li><strong>VERBİS kayıt durumu:</strong> Kayıt yükümlülüğü eşiği altında faaliyet göstermektedir; yükümlülük doğduğunda kayıt yapılacak ve bu sayfada sicil numarası yayımlanacaktır.</li>
+      <li><strong>Tam kimlik ve tebligat adresi:</strong> KVKK Md. 13 ve GDPR Md. 15 kapsamındaki yazılı başvurular için, veri sorumlusunun tam ad ve posta adresi bilgileri yukarıdaki e-posta üzerinden iletilir.</li>
+    </ul>
+
     <h2>1. Topladığımız veriler</h2>
     <p>PALIMPS yalnızca uygulamayı çalıştırmak için gereken verileri toplar:</p>
     <ul>
-      <li><strong>E-posta adresi:</strong> Apple Sign In ile giriş yaptığında Apple tarafından paylaşılır (özel e-posta adresi kullanmayı seçebilirsin).</li>
+      <li><strong>E-posta adresi:</strong> Apple Sign In ile giriş yaptığında Apple tarafından paylaşılır. Özel bir e-posta adresi ("E-postamı Gizle") kullanmayı da seçebilirsin.</li>
       <li><strong>Ad:</strong> Apple Sign In sırasında paylaşmayı tercih edersen.</li>
       <li><strong>Kullanıcı kimliği (User ID):</strong> Apple tarafından üretilen, hesabına bağlı anonim bir tanımlayıcı.</li>
       <li><strong>Fotoğraflar:</strong> Kitap sayfası veya kapak fotoğrafı çektiğin ya da galerinden seçtiklerin. Şifrelenmiş olarak Cloudflare R2'de senin hesabınla bağlı tutulur ve hesabın silinene kadar saklanır.</li>
       <li><strong>Kullanıcı içeriği:</strong> Not, alıntı, kitap başlığı, yazar adı gibi kendi girdiğin metinler; ayrıca fotoğrafladığın sayfalardan yapay zeka ile yazı tanıma (OCR) yoluyla çıkarılan basılı metin, altı çizili/fosforlu bölümler ve el yazısı kenar notlarının transkripsiyonu.</li>
+      <li><strong>Abonelik durumu:</strong> PALIMPS Pro abonen olursan; Apple tarafından üretilen anonimleştirilmiş kullanıcı kimliği, abonelik durumu (aktif/pasif), plan türü, yenileme tarihi ve platform bilgisi (iOS). Kart numarası, faturalama adresi bize gelmez, Apple tarafında kalır.</li>
+      <li><strong>Teknik veriler:</strong> Kilitlenme ve hata raporları için cihaz modeli, işletim sistemi sürümü, uygulama sürümü, IP adresi, anonimleştirilmiş kullanıcı kimliği ve stack trace. Reklam takibi yapılmaz.</li>
+      <li><strong>Çerezler ve yerel depolama:</strong> Oturum çerezi (giriş için), iOS Keychain (token + kullanıcı profili özeti) ve uygulama içi AsyncStorage (dil tercihi, onboarding durumu, bildirim ayarları).</li>
     </ul>
 
     <h2>2. Nasıl kullanıyoruz</h2>
     <p>Topladığımız verileri yalnızca:</p>
     <ul>
       <li>Hesabını açmak ve güvende tutmak için,</li>
-      <li>Kitaplarını ve notlarını senkronize etmek için,</li>
-      <li>Uygulamadaki temel özellikleri (sayfa fotoğrafı analizi: OCR, altı çizili tespiti, el yazısı kenar notlarının transkripsiyonu, arama, yedekleme) çalıştırmak için,</li>
-      <li>Teknik hataları ve çökmeleri anlamak için (anonimleştirilmiş kilitlenme raporları, opsiyonel)</li>
+      <li>Kitaplarını ve notlarını cihazlar arasında senkronize etmek için,</li>
+      <li>Uygulamadaki temel özellikleri çalıştırmak için (sayfa fotoğrafı analizi: OCR, altı çizili tespiti, el yazısı kenar notlarının transkripsiyonu, arama, yedekleme),</li>
+      <li>Teknik hataları ve çökmeleri anlamak için (anonimleştirilmiş kilitlenme raporları),</li>
+      <li>PALIMPS Pro aboneliğini yönetmek ve Pro özelliklerine erişim sağlamak için</li>
     </ul>
-    <p>kullanıyoruz. Hiçbir veriyi reklam veya pazarlama için kullanmıyoruz.</p>
-    <p><strong>Hukuki sebep (KVKK Md. 5 / GDPR Md. 6):</strong> Hesap oluşturma ve temel özelliklerin çalıştırılması sözleşmenin ifası; güvenlik ve hata teşhisi meşru menfaat; yurt dışına veri aktarımı ve fotoğrafların AI analizi için açık rıza (Apple ile giriş yaptığında bu politikayı kabul etmiş olursun).</p>
+    <p>kullanıyoruz. Hiçbir veriyi reklam veya pazarlama için kullanmıyoruz; veri satmıyoruz.</p>
+    <p><strong>Hukuki sebep (KVKK Md. 5 / GDPR Md. 6):</strong> Hesap oluşturma, abonelik yönetimi ve temel özelliklerin çalıştırılması <em>sözleşmenin ifası</em>; güvenlik ve hata teşhisi <em>meşru menfaat</em>; yurt dışına veri aktarımı ve fotoğrafların AI analizi <em>açık rıza</em> (Apple ile giriş yaptığında bu politikayı kabul etmiş olursun).</p>
 
     <h2>3. Takip (Tracking)</h2>
     <p>PALIMPS hiçbir reklam ağı, analitik servisi veya veri simsarı ile veri paylaşmaz. Uygulamada reklam yoktur. Apple'ın App Tracking Transparency çerçevesinde "tracking" tanımına giren hiçbir şey yapmıyoruz.</p>
 
     <h2>4. Verilerin nerede saklanır</h2>
     <ul>
-      <li><strong>Metin verileri</strong> (not, alıntı, kitap bilgisi, OCR çıktıları, altı çizili ve kenar notu transkripsiyonları) Avrupa'da konuşlu bir veritabanı sunucusunda şifrelenmiş olarak tutulur.</li>
-      <li><strong>Fotoğraflar</strong> Cloudflare R2 üzerinde şifrelenmiş olarak saklanır; yalnızca senin hesabın erişebilir.</li>
-      <li><strong>Yerel önbellek</strong> (telefonunda) hız için bir kopya tutabilir.</li>
-      <li><strong>İşleme için geçici yurt dışı transfer:</strong> Sayfa fotoğrafları ve içerdikleri metinler, fotoğraf analizi (OCR, altı çizili ve kenar notu tespiti) ve premium AI özellikleri için Google'ın Gemini API'sine (ABD) gönderilir. Google'ın operasyonel log retention'ı 48 saattir, ardından silinir.</li>
+      <li><strong>Metin verileri</strong> (notlar, alıntılar, kitap bilgileri, OCR çıktıları, altı çizili ve kenar notu transkripsiyonları): Railway altyapısı üzerinde Avrupa Birliği sınırları içinde (Amsterdam) konuşlu bir MySQL veritabanında, "at rest" şifrelenmiş olarak tutulur. Taşıma TLS 1.2+ ile yapılır.</li>
+      <li><strong>Fotoğraflar:</strong> Cloudflare R2 üzerinde şifrelenmiş olarak saklanır; yalnızca senin hesabın erişebilir.</li>
+      <li><strong>Yerel önbellek:</strong> Telefonundaki iOS Keychain (oturum token'ı) ve AsyncStorage (tercihler) hız için yerel bir kopya tutabilir.</li>
+      <li><strong>Kilitlenme ve hata verisi:</strong> Sentry üzerinde Avrupa Birliği sunucularında tutulur. Saklama süresi 90 gündür.</li>
+      <li><strong>İşleme için geçici yurt dışı transfer:</strong> Sayfa fotoğrafları ve içerdikleri metinler, fotoğraf analizi (OCR, altı çizili ve kenar notu tespiti) ve Pro AI özellikleri için Google'ın Gemini API'sine (ABD) gönderilir. Google'ın operasyonel log retention süresi 48 saattir, ardından silinir. <strong>Verileriniz Google tarafından model eğitimi için kullanılmaz</strong> (ücretli tier garantisi).</li>
+      <li><strong>Abonelik metadata'sı:</strong> RevenueCat (ABD) üzerinden abonelik durumunuz yönetilir; Apple kullanıcı kimliğiniz ve abonelik olayları aktarılır.</li>
     </ul>
 
-    <h2>5. Üçüncü taraf servisler</h2>
-    <p>PALIMPS'in çalışması için birkaç altyapı servisi kullanıyoruz:</p>
+    <h2>5. Üçüncü taraf servisler (Veri İşleyenler)</h2>
+    <p>PALIMPS'in çalışması için aşağıdaki altyapı servislerini kullanıyoruz. Her biri ile KVKK Md. 9 ve GDPR Md. 28 kapsamında veri işleme sözleşmesi (DPA) imzalanmıştır.</p>
     <ul>
-      <li><strong>Apple (Sign in with Apple):</strong> Kimlik doğrulama. Apple'ın <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">gizlilik politikası</a> geçerlidir.</li>
-      <li><strong>RevenueCat:</strong> Abonelik yönetimi. Premium özellikler için kullanılır. <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat gizlilik politikası</a>.</li>
-      <li><strong>Cloudflare R2:</strong> Fotoğraf depolama. <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare gizlilik politikası</a>.</li>
-      <li><strong>Sentry:</strong> Kilitlenme ve hata raporları (kişisel veri içermez).</li>
-      <li><strong>Google Gemini</strong> (Google LLC, ABD): Sayfa fotoğraflarının analizi (basılı metin OCR'ı, altı çizili metin ve el yazısı kenar notlarının tespiti), otomatik özet/etiket üretimi ve premium sohbet özelliği için kullanılır. Fotoğrafların ve notların içeriği işlenmek üzere Google'ın Gemini API'sine gönderilir; Google'ın operasyonel log retention'ı 48 saattir, ardından silinir. <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google gizlilik politikası</a>.</li>
+      <li><strong>Apple (Apple Inc., ABD):</strong>
+        <ul>
+          <li><em>Sign in with Apple:</em> Kimlik doğrulama.</li>
+          <li><em>App Store In-App Purchase:</em> PALIMPS Pro aboneliğinin ödemesini işler. Kart numaranız, faturalama adresiniz Apple'da kalır.</li>
+        </ul>
+        <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">Apple gizlilik politikası</a>.
+      </li>
+      <li><strong>Railway (Railway Corp., ABD; sunucu bölgesi AB-Amsterdam):</strong> Uygulama sunucusu ve MySQL veritabanı altyapısı. Kullanıcı metin verileriniz burada şifrelenmiş olarak saklanır. <a href="https://railway.com/legal/privacy" target="_blank" rel="noreferrer">Railway gizlilik politikası</a>.</li>
+      <li><strong>Cloudflare R2 (Cloudflare, Inc., ABD):</strong> Fotoğraf depolama. <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare gizlilik politikası</a>.</li>
+      <li><strong>Sentry (Functional Software, Inc.; veri AB sunucularında):</strong> Kilitlenme ve hata raporları. Cihaz modeli, OS sürümü, anonimleştirilmiş kullanıcı kimliği ve stack trace'ler işlenir. Saklama 90 gün. Ürün iyileştirme amacıyla veri paylaşımı açıkça <strong>kapalıdır</strong>. <a href="https://sentry.io/privacy/" target="_blank" rel="noreferrer">Sentry gizlilik politikası</a>.</li>
+      <li><strong>RevenueCat (RevenueCat, Inc., ABD):</strong> Abonelik yönetimi ve doğrulama. Apple kullanıcı kimliği, abonelik durumu ve plan bilgisi işlenir. Finansal veriler aktarılmaz. <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat gizlilik politikası</a>.</li>
+      <li><strong>Google Gemini (Google LLC, ABD):</strong> Sayfa fotoğraflarının analizi (OCR, altı çizili ve el yazısı kenar notu tespiti), otomatik özet/etiket üretimi ve Pro sohbet özelliği. Fotoğrafların ve notların içeriği işlenmek üzere Gemini API'sine gönderilir. Google operasyonel log retention: 48 saat. Verileriniz model eğitimi için kullanılmaz (ücretli tier garantisi). <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google gizlilik politikası</a>.</li>
     </ul>
 
-    <h2>6. Çocukların gizliliği</h2>
-    <p>PALIMPS 13 yaş altındaki kullanıcılardan bilerek veri toplamaz. Çocuğunun veri paylaştığını düşünüyorsan bize ulaş, derhal sileriz.</p>
+    <h2>6. Saklama süreleri</h2>
+    <table>
+      <thead>
+        <tr><th>Veri</th><th>Süre</th><th>Hukuki sebep</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Hesap (kullanıcı satırı)</td><td>Hesap silinene kadar</td><td>Sözleşmenin ifası</td></tr>
+        <tr><td>Kitaplar, anlar, metin içerikleri</td><td>Hesap silinene kadar; tekil silme mümkün</td><td>Açık rıza + sözleşme</td></tr>
+        <tr><td>Fotoğraflar (R2)</td><td>Hesap silindiğinde anında silinir</td><td>Sözleşmenin ifası</td></tr>
+        <tr><td>Abonelik geçmişi</td><td>Hesap silindikten sonra 12 ay pseudonymized</td><td>Hukuki yükümlülük (muhasebe/fatura)</td></tr>
+        <tr><td>Sentry hata logları</td><td>90 gün</td><td>Meşru menfaat (hata tespiti)</td></tr>
+        <tr><td>Gemini API istekleri</td><td>48 saat (Google operasyonel log)</td><td>Meşru menfaat</td></tr>
+        <tr><td>Oturum token (Keychain)</td><td>Çıkışa kadar</td><td>Sözleşmenin ifası</td></tr>
+      </tbody>
+    </table>
 
-    <h2>7. Haklarınız</h2>
+    <h2>7. Çocukların gizliliği</h2>
+    <p>PALIMPS 13 yaş altındaki kullanıcılara yönelik değildir ve bu yaş grubundan bilerek veri toplamaz. Çocuğunun veri paylaştığını düşünüyorsan bize ulaş, derhal sileriz.</p>
+
+    <h2>8. Haklarınız</h2>
     <p>KVKK Md. 11 ve GDPR Md. 15-22 kapsamında her kullanıcı şu haklara sahiptir:</p>
     <ul>
       <li>Kişisel verilerinin işlenip işlenmediğini öğrenme,</li>
@@ -180,37 +245,53 @@
       <li>Verilerinin işlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
       <li>Yurt içinde veya yurt dışında verilerinin aktarıldığı üçüncü kişileri bilme (bkz. §5),</li>
       <li>Eksik veya yanlış işlenmişse verilerinin düzeltilmesini isteme,</li>
-      <li>Kişisel verilerinin silinmesini veya yok edilmesini talep etme: uygulama içinden doğrudan yapabilirsin (Ayarlar → Hesabı Sil),</li>
-      <li>Verilerinin bir kopyasını talep etme (<a href="mailto:hilalsumnu@gmail.com">e-posta ile</a>),</li>
+      <li>Kişisel verilerinin silinmesini veya yok edilmesini talep etme: uygulama içinden doğrudan yapabilirsin (<em>Ayarlar → Hesabı Sil</em>),</li>
+      <li>Verilerinin bir kopyasını talep etme (<a href="mailto:iletisim@palimps.app">e-posta ile</a>),</li>
       <li>Otomatik sistemler aracılığıyla analiz edilmesi sonucu aleyhe bir sonuç ortaya çıkmasına itiraz etme,</li>
       <li>Kanuna aykırı işleme nedeniyle zarara uğradıysa zararın giderilmesini talep etme.</li>
     </ul>
-    <p>Silme talebinin yasal üst süresi 30 gündür; iç hedefimiz 7 gündür.</p>
+    <p>Silme talebinin yasal üst süresi 30 gündür; iç hedefimiz 7 gündür. Başvuru için: <a href="mailto:iletisim@palimps.app">iletisim@palimps.app</a>. KVKK Md. 13 kapsamında yazılı başvuru için <a href="/kvkk-aydinlatma/">Aydınlatma Metni</a> içindeki "Başvuru Usulü" bölümüne bakınız.</p>
 
-    <h2>8. Değişiklikler</h2>
+    <h2>9. Veri İhlali Bildirimi</h2>
+    <p>KVKK Md. 12 ve GDPR Md. 33 kapsamında bir kişisel veri ihlali durumunda, en geç 72 saat içinde ilgili yetkili kurumlara ve ciddi risk halinde etkilenen kullanıcılara bildirim yapmayı taahhüt ediyoruz.</p>
+
+    <h2>10. Değişiklikler</h2>
     <p>Bu politikayı güncellediğimizde buradaki "Son güncelleme" tarihi değişir. Önemli değişikliklerde uygulama içinden bilgi veririz.</p>
 
-    <h2>9. İletişim</h2>
-    <p>Sorunun varsa: <a href="mailto:hilalsumnu@gmail.com">hilalsumnu@gmail.com</a></p>
+    <h2>11. İletişim</h2>
+    <p>Sorunun varsa: <a href="mailto:iletisim@palimps.app">iletisim@palimps.app</a></p>
   </div>
 
   <!-- ENGLISH -->
   <div class="en">
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: April 23, 2026</p>
+    <p class="updated">Last updated: April 24, 2026 · Version 2.0</p>
 
     <div class="card">
       <p><strong>In short:</strong> PALIMPS keeps your reading data for you and your books. We don't sell it, we don't use it for ads, we don't share it with third parties. You can delete your data at any time.</p>
     </div>
 
+    <h2>0. Data Controller</h2>
+    <p>The data controller responsible for the processing of your personal data under this policy is:</p>
+    <ul>
+      <li><strong>Controller:</strong> PALIMPS (iOS application)</li>
+      <li><strong>Capacity:</strong> A mobile app operated by an independent individual developer</li>
+      <li><strong>Location:</strong> Istanbul, Türkiye</li>
+      <li><strong>Contact:</strong> <a href="mailto:hello@palimps.app">hello@palimps.app</a></li>
+      <li><strong>Full identity and postal address:</strong> provided via email upon formal written request under KVKK Art. 13 / GDPR Art. 15.</li>
+    </ul>
+
     <h2>1. Data we collect</h2>
     <p>PALIMPS only collects data required to run the app:</p>
     <ul>
-      <li><strong>Email address:</strong> shared by Apple when you sign in (you may choose a private relay email).</li>
+      <li><strong>Email address:</strong> shared by Apple when you sign in (you may choose a Hide My Email private relay address).</li>
       <li><strong>Name:</strong> if you choose to share it during Apple Sign In.</li>
       <li><strong>User ID:</strong> an anonymous identifier generated by Apple, tied to your account.</li>
       <li><strong>Photos:</strong> book page or cover photos you take or pick from your library. Stored encrypted on Cloudflare R2, tied to your account, kept until you delete your account.</li>
       <li><strong>User content:</strong> notes, quotes, book titles, author names and similar text you enter; plus printed text automatically extracted by AI text recognition (OCR), highlighted/underlined passages, and transcriptions of handwritten marginal notes from photos you capture.</li>
+      <li><strong>Subscription status:</strong> if you become a PALIMPS Pro subscriber; the anonymized user identifier generated by Apple, subscription status (active/inactive), plan type, renewal date and platform (iOS). Card numbers and billing addresses remain with Apple.</li>
+      <li><strong>Technical data:</strong> for crash and error reports: device model, OS version, app version, IP address, anonymized user identifier, and stack traces. No ad tracking.</li>
+      <li><strong>Cookies and local storage:</strong> a session cookie (for auth), iOS Keychain (token + user profile summary), and in-app AsyncStorage (language preference, onboarding state, notification settings).</li>
     </ul>
 
     <h2>2. How we use it</h2>
@@ -219,36 +300,62 @@
       <li>Open and secure your account,</li>
       <li>Sync your books and notes across devices,</li>
       <li>Power core features (page photo analysis: OCR, highlight detection, transcription of handwritten margin notes, search, backup),</li>
-      <li>Understand technical issues and crashes (anonymized crash reports, optional).</li>
+      <li>Understand technical issues and crashes (anonymized crash reports),</li>
+      <li>Manage your PALIMPS Pro subscription and grant access to Pro features.</li>
     </ul>
-    <p>We never use your data for advertising or marketing.</p>
-    <p><strong>Legal basis (GDPR Art. 6 / KVKK Art. 5):</strong> Account creation and core feature operation rely on contract performance; security and error diagnostics on legitimate interest; cross-border data transfer and AI-based photo analysis on your explicit consent (you accept this policy by signing in with Apple).</p>
+    <p>We never use your data for advertising or marketing; we do not sell data.</p>
+    <p><strong>Legal basis (GDPR Art. 6 / KVKK Art. 5):</strong> Account creation, subscription management, and core feature operation rely on <em>contract performance</em>; security and error diagnostics on <em>legitimate interest</em>; cross-border data transfer and AI-based photo analysis on your <em>explicit consent</em> (you accept this policy by signing in with Apple).</p>
 
     <h2>3. Tracking</h2>
     <p>PALIMPS does not share data with any ad network, analytics service or data broker. There are no ads in the app. We do nothing that falls under "tracking" in Apple's App Tracking Transparency framework.</p>
 
     <h2>4. Where data is stored</h2>
     <ul>
-      <li><strong>Text data</strong> (notes, quotes, book metadata, OCR outputs, highlight and margin-note transcriptions) is stored encrypted on a database server located in Europe.</li>
-      <li><strong>Photos</strong> are stored encrypted on Cloudflare R2; only your account can access them.</li>
-      <li><strong>Local cache</strong> on your device may keep a copy for speed.</li>
-      <li><strong>Temporary cross-border transfer for processing:</strong> Page photos and the text they contain are sent to Google's Gemini API (USA) for photo analysis (OCR, highlight and margin-note detection) and premium AI features. Google's operational log retention is 48 hours; data is purged afterwards.</li>
+      <li><strong>Text data</strong> (notes, quotes, book metadata, OCR outputs, highlight and margin-note transcriptions): stored encrypted at rest on a MySQL database hosted on Railway infrastructure within the European Union (Amsterdam). In transit via TLS 1.2+.</li>
+      <li><strong>Photos:</strong> stored encrypted on Cloudflare R2; only your account can access them.</li>
+      <li><strong>Local cache:</strong> your device's iOS Keychain (session token) and AsyncStorage (preferences) may keep a local copy for speed.</li>
+      <li><strong>Crash &amp; error data:</strong> stored on Sentry on European Union servers. Retention: 90 days.</li>
+      <li><strong>Temporary cross-border transfer for processing:</strong> Page photos and the text they contain are sent to Google's Gemini API (USA) for photo analysis (OCR, highlight and margin-note detection) and Pro AI features. Google's operational log retention is 48 hours, then purged. <strong>Your data is not used by Google for model training</strong> (paid tier guarantee).</li>
+      <li><strong>Subscription metadata:</strong> managed via RevenueCat (USA); your Apple user identifier and subscription events are transferred.</li>
     </ul>
 
-    <h2>5. Third-party services</h2>
-    <p>PALIMPS uses a small set of infrastructure services to function:</p>
+    <h2>5. Third-party services (Data Processors)</h2>
+    <p>PALIMPS uses the following infrastructure services. A Data Processing Agreement under KVKK Art. 9 and GDPR Art. 28 is in place with each.</p>
     <ul>
-      <li><strong>Apple (Sign in with Apple):</strong> authentication. See <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">Apple's privacy policy</a>.</li>
-      <li><strong>RevenueCat:</strong> subscription management for premium features. See <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat's privacy policy</a>.</li>
-      <li><strong>Cloudflare R2:</strong> photo storage. See <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare's privacy policy</a>.</li>
-      <li><strong>Sentry:</strong> crash and error reports (no personal data).</li>
-      <li><strong>Google Gemini</strong> (Google LLC, USA): used for page photo analysis (printed text OCR, highlight and handwritten margin-note detection), automatic summary/tag generation, and premium chat features. The content of your photos and notes is sent to Google's Gemini API for processing; Google's operational log retention is 48 hours, then purged. See <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's privacy policy</a>.</li>
+      <li><strong>Apple (Apple Inc., USA):</strong>
+        <ul>
+          <li><em>Sign in with Apple:</em> authentication.</li>
+          <li><em>App Store In-App Purchase:</em> processes PALIMPS Pro subscription payments. Card numbers and billing addresses remain with Apple.</li>
+        </ul>
+        See <a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noreferrer">Apple's privacy policy</a>.
+      </li>
+      <li><strong>Railway (Railway Corp., USA; server region EU-Amsterdam):</strong> application server and MySQL database infrastructure. Your text data is stored encrypted here. See <a href="https://railway.com/legal/privacy" target="_blank" rel="noreferrer">Railway's privacy policy</a>.</li>
+      <li><strong>Cloudflare R2 (Cloudflare, Inc., USA):</strong> photo storage. See <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer">Cloudflare's privacy policy</a>.</li>
+      <li><strong>Sentry (Functional Software, Inc.; data on EU servers):</strong> crash and error reports. Device model, OS version, anonymized user identifier and stack traces are processed. 90-day retention. Sharing for product improvement is explicitly <strong>disabled</strong>. See <a href="https://sentry.io/privacy/" target="_blank" rel="noreferrer">Sentry's privacy policy</a>.</li>
+      <li><strong>RevenueCat (RevenueCat, Inc., USA):</strong> subscription management and validation. Apple user identifier, subscription status and plan information are processed. No financial data is transferred. See <a href="https://www.revenuecat.com/privacy" target="_blank" rel="noreferrer">RevenueCat's privacy policy</a>.</li>
+      <li><strong>Google Gemini (Google LLC, USA):</strong> used for page photo analysis (OCR, highlight and handwritten margin-note detection), automatic summary/tag generation, and Pro chat features. The content of your photos and notes is sent to the Gemini API for processing. Google operational log retention: 48 hours. Your data is not used for model training (paid tier guarantee). See <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's privacy policy</a>.</li>
     </ul>
 
-    <h2>6. Children's privacy</h2>
-    <p>PALIMPS does not knowingly collect data from users under 13. If you believe your child has shared data with us, contact us and we will delete it promptly.</p>
+    <h2>6. Retention periods</h2>
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Duration</th><th>Legal basis</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Account (user row)</td><td>Until account deletion</td><td>Contract performance</td></tr>
+        <tr><td>Books, moments, text content</td><td>Until account deletion; individual items may be deleted</td><td>Explicit consent + contract</td></tr>
+        <tr><td>Photos (R2)</td><td>Deleted immediately upon account deletion</td><td>Contract performance</td></tr>
+        <tr><td>Subscription history</td><td>12 months pseudonymized after account deletion</td><td>Legal obligation (accounting)</td></tr>
+        <tr><td>Sentry error logs</td><td>90 days</td><td>Legitimate interest (error detection)</td></tr>
+        <tr><td>Gemini API requests</td><td>48 hours (Google operational log)</td><td>Legitimate interest</td></tr>
+        <tr><td>Session token (Keychain)</td><td>Until sign-out</td><td>Contract performance</td></tr>
+      </tbody>
+    </table>
 
-    <h2>7. Your rights</h2>
+    <h2>7. Children's privacy</h2>
+    <p>PALIMPS is not directed to and does not knowingly collect data from users under 13. If you believe your child has shared data with us, contact us and we will delete it promptly.</p>
+
+    <h2>8. Your rights</h2>
     <p>Under KVKK Art. 11 and GDPR Art. 15-22, every user has the right to:</p>
     <ul>
       <li>Know whether their personal data is being processed,</li>
@@ -256,18 +363,21 @@
       <li>Learn the purpose of processing and whether data is used accordingly,</li>
       <li>Know the third parties to which data is transferred domestically or internationally (see §5),</li>
       <li>Request correction if data is incomplete or inaccurate,</li>
-      <li>Request deletion or destruction of personal data: available directly in the app (Settings → Delete Account),</li>
-      <li>Request a copy of their data via <a href="mailto:hilalsumnu@gmail.com">email</a>,</li>
+      <li>Request deletion or destruction of personal data: available directly in the app (<em>Settings → Delete Account</em>),</li>
+      <li>Request a copy of their data via <a href="mailto:hello@palimps.app">email</a>,</li>
       <li>Object to decisions made solely by automated processing that affect them adversely,</li>
       <li>Seek damages for losses arising from unlawful processing.</li>
     </ul>
-    <p>Legal maximum for deletion is 30 days; our internal target is 7 days.</p>
+    <p>Legal maximum for deletion is 30 days; our internal target is 7 days. For requests: <a href="mailto:hello@palimps.app">hello@palimps.app</a>.</p>
 
-    <h2>8. Changes</h2>
+    <h2>9. Data breach notification</h2>
+    <p>In the event of a personal data breach, we commit to notify the relevant authorities within 72 hours, and affected users where there is a high risk to their rights and freedoms, pursuant to KVKK Art. 12 and GDPR Art. 33.</p>
+
+    <h2>10. Changes</h2>
     <p>When we update this policy, the "Last updated" date above will change. For significant changes we'll notify you within the app.</p>
 
-    <h2>9. Contact</h2>
-    <p>Questions? <a href="mailto:hilalsumnu@gmail.com">hilalsumnu@gmail.com</a></p>
+    <h2>11. Contact</h2>
+    <p>Questions? <a href="mailto:hello@palimps.app">hello@palimps.app</a></p>
   </div>
 
   <footer>
