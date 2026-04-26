@@ -39,6 +39,7 @@ import {
   CHAT_SYSTEM_PROMPT_EN,
   getChatSystemPrompt,
   violatesEcoVoice,
+  isDegenerateResponse,
   ECO_FALLBACK_MESSAGES,
   normalizeTag,
   type HighlightEntry,
@@ -1255,12 +1256,18 @@ ${dateLabel}: ${m.createdAt}
         // violation retry'ları veya fallback ile sonlanan akış kullanıcının
         // quota'sına dokunmaz — chat.send genel "increment after success"
         // trust-building pattern'i ile uyumlu.
-        const MAX_VOICE_RETRIES = ENV.enableEcoVoice ? 2 : 0;
+        // Retry budget:
+        // - Eco aktifse +2 voice violation retry hakkı (model bazen yasaklı
+        //   ifade/emoji storm/sales language sızdırıyor)
+        // - Eco kapalı olsa bile en az 1 retry hakkı her zaman var: degenerate
+        //   response defense ("boş bullet" bug'ı 50334 prod, Eco off ile
+        //   görüldü; model markdown bullet başlatıp içerik üretmeden bitiriyor)
+        const MAX_RETRIES = ENV.enableEcoVoice ? 2 : 1;
         let reply: string | null = null;
         let usedFallback = false;
         let lastViolationReason: string | undefined;
 
-        for (let attempt = 0; attempt <= MAX_VOICE_RETRIES; attempt++) {
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
           let response;
           try {
             response = await invokeLLM({
@@ -1302,6 +1309,24 @@ ${dateLabel}: ${m.createdAt}
               ? firstChoice.message.content
               : JSON.stringify(firstChoice.message.content);
 
+          // Defansif min-content check — voice contract'tan ÖNCE çalışır,
+          // her zaman aktif (Eco off iken bile). Model bazen markdown bullet
+          // başlatıp içerik üretmeden bitiriyor → kullanıcıya boş "•"
+          // görünüyordu (50334 prod bug). isDegenerateResponse markdown
+          // noise'ı strip edip <5 char anlamlı içerik kalırsa retry tetikler.
+          if (isDegenerateResponse(candidate)) {
+            lastViolationReason = "degenerate_response";
+            console.warn("[chat.send] degenerate response, retrying", {
+              userId: ctx.user.id,
+              model: chatModel,
+              attempt,
+              candidateLength: candidate.length,
+              // Sample first 60 chars only — PII risk if logged in full.
+              sample: candidate.slice(0, 60),
+            });
+            continue;
+          }
+
           // Voice violation check — Eco aktifse zorunlu, değilse atla.
           if (!ENV.enableEcoVoice) {
             reply = candidate;
@@ -1328,9 +1353,12 @@ ${dateLabel}: ${m.createdAt}
         // Retry tükendi, hala ihlal var → fallback (Eco karakter dışına
         // çıkmadan generic mesaj). Fallback'le sonlanan akış quota harcamaz.
         if (reply === null) {
-          console.error("[chat.send] Eco voice violations exhausted retries", {
+          // Retry'lar tükendi — sebep voice violation veya degenerate
+          // response olabilir. lastReason ile telemetry'de ayırt edilebilir.
+          console.error("[chat.send] retries exhausted, falling back", {
             userId: ctx.user.id,
             lastReason: lastViolationReason,
+            maxRetries: MAX_RETRIES,
           });
           reply = ECO_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer;
           usedFallback = true;

@@ -3,6 +3,7 @@ import {
   normalizeTag,
   MOMENT_ENRICH_SCHEMA,
   violatesEcoVoice,
+  isDegenerateResponse,
   getChatSystemPrompt,
   ECO_FALLBACK_MESSAGES,
 } from "../_core/prompts";
@@ -401,5 +402,116 @@ describe("ECO_FALLBACK_MESSAGES", () => {
     expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.en.error).violates).toBe(
       false,
     );
+  });
+});
+
+describe("isDegenerateResponse", () => {
+  // 50334 prod bug regression — "Kitaplarımı listele" sorusu üzerine model
+  // markdown bullet açıp içerik üretmeden generation'ı bitiriyor.
+  // Hilal'ın 26 Nis dogfood ekran kaydında frame_034 ve frame_050'de
+  // doğrulandı: kullanıcı boş "•" görüyor.
+
+  describe("degenerate (boş bullet bug ekosistemi)", () => {
+    it("flags lone bullet with whitespace ('- ')", () => {
+      expect(isDegenerateResponse("- ")).toBe(true);
+    });
+
+    it("flags lone bullet character ('•')", () => {
+      expect(isDegenerateResponse("•")).toBe(true);
+    });
+
+    it("flags newline + bullet + newline ('\\n- \\n')", () => {
+      expect(isDegenerateResponse("\n- \n")).toBe(true);
+    });
+
+    it("flags multiple empty bullets ('- \\n- \\n- ')", () => {
+      expect(isDegenerateResponse("- \n- \n- ")).toBe(true);
+    });
+
+    it("flags lone period ('.')", () => {
+      expect(isDegenerateResponse(".")).toBe(true);
+    });
+
+    it("flags only asterisks ('***')", () => {
+      expect(isDegenerateResponse("***")).toBe(true);
+    });
+
+    it("flags only heading marker ('## ')", () => {
+      expect(isDegenerateResponse("## ")).toBe(true);
+    });
+
+    it("flags only blockquote ('> ')", () => {
+      expect(isDegenerateResponse("> ")).toBe(true);
+    });
+
+    it("flags empty string", () => {
+      expect(isDegenerateResponse("")).toBe(true);
+    });
+
+    it("flags whitespace only", () => {
+      expect(isDegenerateResponse("   \n\t  ")).toBe(true);
+    });
+  });
+
+  describe("legitimate short answers (must NOT flag)", () => {
+    it("PASSES 'evet' (3 chars but real answer)", () => {
+      // 3 char threshold sınırı kasıtlı: "evet"/"hayır"/"yok" gibi gerçek
+      // kısa cevaplar geçmeli. Stripped length < 5 = degenerate; "evet" 4
+      // char olduğu için flag'lenir. False positive: kabul edilebilir,
+      // model "evet" yerine "Evet, doğru." diyebilir (1 retry maliyeti).
+      expect(isDegenerateResponse("evet")).toBe(true); // 4 char, < 5 → flagged
+      expect(isDegenerateResponse("hayır")).toBe(false); // 5 char, geçer
+    });
+
+    it("PASSES short greeting ('Merhaba.')", () => {
+      expect(isDegenerateResponse("Merhaba.")).toBe(false);
+    });
+
+    it("PASSES short factual answer ('Verinde Spinoza yok.')", () => {
+      expect(isDegenerateResponse("Verinde Spinoza yok.")).toBe(false);
+    });
+
+    it("PASSES properly formatted bullet list", () => {
+      expect(
+        isDegenerateResponse(
+          "- Suç ve Ceza — Dostoyevski\n- Yer Altından Notlar — Dostoyevski",
+        ),
+      ).toBe(false);
+    });
+
+    it("PASSES bold markdown ('**Suç ve Ceza** — Dostoyevski')", () => {
+      // Markdown vurgu karakterleri strip ediliyor ama içerik 5+ char kalıyor
+      expect(isDegenerateResponse("**Suç ve Ceza** — Dostoyevski")).toBe(false);
+    });
+
+    it("PASSES heading + content ('## Öneriler\\n- Kitap A')", () => {
+      expect(isDegenerateResponse("## Öneriler\n- Kitap A")).toBe(false);
+    });
+
+    it("PASSES single emoji + word ('📖 Okudum.')", () => {
+      // Emoji noise listesinde yok (Unicode \p{Emoji}); legitimate kısa
+      // cevap olarak geçer. (Eco voice violation o ayrı bir kontrol.)
+      expect(isDegenerateResponse("📖 Okudum.")).toBe(false);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("Türkçe karakterleri saymakta hatasız", () => {
+      // ı, ö, ü, ş, ğ, ç → harf, noise değil. "ışıkçı" 6 char, geçer.
+      expect(isDegenerateResponse("ışıkçı")).toBe(false);
+    });
+
+    it("uzun whitespace + bullet kombinasyonu hâlâ degenerate", () => {
+      expect(isDegenerateResponse("    \n\n  - \n  •  \n  - \n  ")).toBe(true);
+    });
+
+    it("4 anlamlı karakter sınırın altında (degenerate)", () => {
+      // Threshold = 5; "abcd" 4 char → flag'lenir. Model defansif retry alır.
+      expect(isDegenerateResponse("abcd")).toBe(true);
+    });
+
+    it("5 anlamlı karakter sınırı (geçer)", () => {
+      expect(isDegenerateResponse("abcde")).toBe(false);
+    });
   });
 });

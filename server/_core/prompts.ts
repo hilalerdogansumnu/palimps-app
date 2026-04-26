@@ -476,6 +476,34 @@ export function violatesEcoVoice(output: string): {
 }
 
 /**
+ * Defansif min-content kontrolü: model bazen markdown bullet/asterisk/dot
+ * başlatıp anlamlı içerik üretmeden generation'ı bitiriyor (token cutoff,
+ * safety stop, ya da generation drift). Markdown noise karakterlerini
+ * (boşluk, liste işareti, vurgu, başlık, blockquote) çıkardıktan sonra
+ * geriye 5 karakterden az anlamlı içerik kalıyorsa response degenerate'tir.
+ *
+ * Kullanım: chat.send candidate alındıktan sonra çağrılır; degenerate ise
+ * voice violation gibi retry tetiklenir, retry tükenince Eco fallback.
+ *
+ * Bu kontrol Eco aktif olsun olmasın çalışır — "boş bullet" bug'ı 50334
+ * production'da Eco kapalıyken görüldü (Hilal dogfood, 26 Nis akşam):
+ * model "Kitaplarımı listele" / "Etiketleri ver bana" sorularına `- `
+ * veya `\n• \n` gibi degenerate çıktı dönüyor, kullanıcı ekranda boş
+ * madde işareti görüyor.
+ *
+ * Threshold (5): "evet" / "hayır" / "yok" gibi gerçek kısa cevapları kabul
+ * etmek için bilinçli düşük tutuldu. Boş bullet vakalarında stripped
+ * length 0-1 char; false-positive riski minimum.
+ */
+export function isDegenerateResponse(output: string): boolean {
+  // Türkçe karakterler ve harfler bozulmaz; sadece markdown format
+  // gürültüsü (whitespace, list markers, emphasis, heading, blockquote)
+  // temizlenir.
+  const stripped = output.replace(/[\s\-*•·.>_~`#]+/g, "").trim();
+  return stripped.length < 5;
+}
+
+/**
  * Voice violation retry tükendiğinde veya fatal LLM error'da kullanıcıya
  * gösterilen Eco-uyumlu generic mesajlar. Her ihlal yakalansa bile kullanıcı
  * fallback gördüğünde Eco karakter dışına çıkmamalı — bu yüzden "Üzgünüm,
