@@ -256,6 +256,52 @@ const normalizeResponseFormat = ({
   };
 };
 
+// Transient hata tespiti — chat.send'de inner retry loop için kullanılır.
+// Gemini OpenAI-compatible endpoint 503 "high demand" sıkça döndürür ve
+// genelde 1-2 saniye içinde kendine geliyor. Bunu kullanıcıya
+// "LLM_UNAVAILABLE" olarak yansıtmadan önce küçük bir backoff ile yeniden
+// denemek istiyoruz.
+//
+// Kapsam:
+//  - HTTP statüleri (invokeLLM'in fırlattığı string formatından parse): 408
+//    request timeout, 429 rate limit, 500/502/503/504 server / gateway hatası
+//  - Gemini-spesifik keyword'ler: UNAVAILABLE, DEADLINE_EXCEEDED,
+//    RESOURCE_EXHAUSTED (per-minute quota'lar zamanla kalkar)
+//  - Network seviyesinde: fetch failed (Node 18+ undici), ECONNRESET,
+//    ETIMEDOUT, EAI_AGAIN — bunların hepsi geçici bağlantı sorunu
+//
+// Permanent (retry edilmemeli): 400 invalid request, 401/403 auth, 404 not
+// found, 422 unprocessable. Bu durumlarda retry sadece quota harcar ve
+// kullanıcıyı bekletir — direkt fırlat.
+const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const TRANSIENT_KEYWORDS = [
+  "UNAVAILABLE",
+  "DEADLINE_EXCEEDED",
+  "RESOURCE_EXHAUSTED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "FETCH FAILED",
+  "NETWORK ERROR",
+  "SOCKET HANG UP",
+];
+
+export function isTransientLLMError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (!msg) return false;
+
+  // invokeLLM "LLM invoke failed: <status> <statusText> – <body>" fırlatır.
+  // Hem üst seviye status hem de body içindeki "code: 503" varyantlarını yakala.
+  const statusMatch = msg.match(/(?:LLM invoke failed:\s*|status[\s:"]+|code[\s:"]+)(\d{3})\b/i);
+  if (statusMatch) {
+    const status = Number.parseInt(statusMatch[1], 10);
+    if (TRANSIENT_HTTP_STATUSES.has(status)) return true;
+  }
+
+  const upper = msg.toUpperCase();
+  return TRANSIENT_KEYWORDS.some((kw) => upper.includes(kw));
+}
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 

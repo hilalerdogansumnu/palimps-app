@@ -29,7 +29,7 @@ function getClient(): S3Client {
     },
   });
 }
-import { invokeLLM } from "./_core/llm";
+import { invokeLLM, isTransientLLMError } from "./_core/llm";
 import {
   MOMENT_ENRICH_PROMPT,
   MOMENT_ENRICH_SCHEMA,
@@ -1267,27 +1267,67 @@ ${dateLabel}: ${m.createdAt}
         let usedFallback = false;
         let lastViolationReason: string | undefined;
 
+        // Transient retry budget — Gemini OpenAI-compatible endpoint sıkça
+        // 503 "high demand" döndürüyor (Frame 148 kanıt: kullanıcı "Asistan
+        // şu an yanıt veremiyor" gördü, log'da `503 UNAVAILABLE`). Hata
+        // genelde 1-2 saniyede kendine geliyor; retry yoksa kullanıcı
+        // hatasız bir hatayla karşı karşıya kalıyor. Inner loop SADECE
+        // invokeLLM çağrısını sarıyor — voice/degenerate retry budget
+        // (MAX_RETRIES) ayrı kalıyor, transient hatası onları tüketmiyor.
+        const TRANSIENT_BACKOFF_MS = [600, 1200] as const;
+
         for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-          let response;
-          try {
-            response = await invokeLLM({
-              model: chatModel,
-              messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: input.message },
-              ],
-            });
-          } catch (err) {
-            console.error("[chat.send] invokeLLM failed", {
-              userId: ctx.user.id,
-              model: chatModel,
-              attempt,
-              error: err instanceof Error ? err.message : String(err),
-            });
+          let response: Awaited<ReturnType<typeof invokeLLM>> | undefined;
+          for (let llmAttempt = 0; ; llmAttempt++) {
+            try {
+              response = await invokeLLM({
+                model: chatModel,
+                messages: [
+                  { role: "system", content: systemPrompt },
+                  { role: "user", content: input.message },
+                ],
+              });
+              break;
+            } catch (err) {
+              const transient = isTransientLLMError(err);
+              if (transient && llmAttempt < TRANSIENT_BACKOFF_MS.length) {
+                const backoffMs = TRANSIENT_BACKOFF_MS[llmAttempt];
+                console.warn("[chat.send] transient LLM error, retrying", {
+                  userId: ctx.user.id,
+                  model: chatModel,
+                  attempt,
+                  llmAttempt,
+                  backoffMs,
+                  // First 120 chars only — full Gemini error bodies leak headers.
+                  sample:
+                    err instanceof Error
+                      ? err.message.slice(0, 120)
+                      : String(err).slice(0, 120),
+                });
+                await new Promise((resolve) => setTimeout(resolve, backoffMs));
+                continue;
+              }
+              console.error("[chat.send] invokeLLM failed", {
+                userId: ctx.user.id,
+                model: chatModel,
+                attempt,
+                llmAttempt,
+                transient,
+                error: err instanceof Error ? err.message : String(err),
+              });
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "LLM_UNAVAILABLE",
+                cause: err,
+              });
+            }
+          }
+          if (!response) {
+            // Type guard — yukarıdaki loop break veya throw ile çıkıyor;
+            // buraya düşmek imkânsız. Fail loud, sessizce devam etme.
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
               message: "LLM_UNAVAILABLE",
-              cause: err,
             });
           }
 
