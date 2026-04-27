@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeTag,
   MOMENT_ENRICH_SCHEMA,
-  violatesEcoVoice,
+  violatesVoiceContract,
   isDegenerateResponse,
   getChatSystemPrompt,
-  ECO_FALLBACK_MESSAGES,
+  CHAT_FALLBACK_MESSAGES,
 } from "../_core/prompts";
 
 describe("normalizeTag", () => {
@@ -130,61 +130,61 @@ describe("prompt injection defense", () => {
 // ECO voice contract — output post-process violation detection
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// chat.send'de Eco system prompt'una rağmen LLM bazen yasaklı ifadeleri
-// sızdırır. violatesEcoVoice() bu sızıntıyı yakalar; eşleşme varsa
-// rejenerasyon tetiklenir (max 2 retry, sonra ECO_FALLBACK_MESSAGES).
+// chat.send'de system prompt'una rağmen LLM bazen yasaklı ifadeleri
+// sızdırır. violatesVoiceContract() bu sızıntıyı yakalar; eşleşme varsa
+// rejenerasyon tetiklenir (max 2 retry, sonra CHAT_FALLBACK_MESSAGES).
 //
 // False-positive yapmaması kritik: meşru bir cevap "süpersin" demez.
 // False-negative kabul edilebilir kıyıda — yeni ihlal pattern'i tespit
 // edilirse buraya ek test + prompts.ts forbidden listesi güncelleme.
-describe("violatesEcoVoice", () => {
+describe("violatesVoiceContract", () => {
   describe("forbidden Turkish phrases", () => {
     it("flags 'harika seçim'", () => {
-      const r = violatesEcoVoice("Harika seçim, bu kitap muhteşem!");
+      const r = violatesVoiceContract("Harika seçim, bu kitap muhteşem!");
       expect(r.violates).toBe(true);
       expect(r.reason).toContain("forbidden_phrase_tr");
     });
 
     it("flags 'bayıldım' (model yargı sıfatı)", () => {
-      expect(violatesEcoVoice("Bu pasaja bayıldım.").violates).toBe(true);
+      expect(violatesVoiceContract("Bu pasaja bayıldım.").violates).toBe(true);
     });
 
     it("flags 'ben de okumuştum' (insan rolü)", () => {
       expect(
-        violatesEcoVoice("Ben de okumuştum bu kitabı, çok severim.").violates,
+        violatesVoiceContract("Ben de okumuştum bu kitabı, çok severim.").violates,
       ).toBe(true);
     });
 
     it("flags 'şüphesiz ki' (giriş cümlesi)", () => {
       expect(
-        violatesEcoVoice("Şüphesiz ki bu yazarın en iyi eseri.").violates,
+        violatesVoiceContract("Şüphesiz ki bu yazarın en iyi eseri.").violates,
       ).toBe(true);
     });
 
     it("flags Turkish casing variants — 'HARIKA SEÇİM' (uppercase)", () => {
       // tr-TR locale lowercase: "I" → "ı" (dotless), "İ" → "i" (dotted).
       // "HARIKA" → "harıka" değil, "harika" çıkar — forbidden phrase eşleşir.
-      const r = violatesEcoVoice("HARIKA SEÇİM, BAYILDIM!");
+      const r = violatesVoiceContract("HARIKA SEÇİM, BAYILDIM!");
       expect(r.violates).toBe(true);
     });
   });
 
   describe("forbidden English phrases", () => {
     it("flags 'great choice'", () => {
-      const r = violatesEcoVoice("Great choice! I love it.");
+      const r = violatesVoiceContract("Great choice! I love it.");
       expect(r.violates).toBe(true);
       expect(r.reason).toContain("forbidden_phrase_en");
     });
 
     it("flags 'i read it too' (human roleplay)", () => {
       expect(
-        violatesEcoVoice("I read it too, my favorite passage was on page 47.")
+        violatesVoiceContract("I read it too, my favorite passage was on page 47.")
           .violates,
       ).toBe(true);
     });
 
     it("flags case-insensitively — 'AWESOME!'", () => {
-      expect(violatesEcoVoice("AWESOME!").violates).toBe(true);
+      expect(violatesVoiceContract("AWESOME!").violates).toBe(true);
     });
   });
 
@@ -192,25 +192,25 @@ describe("violatesEcoVoice", () => {
     it("flags 3+ consecutive sparkles", () => {
       // NOT: Test input'unda forbidden phrase OLMAMALI ("mükemmel" forbidden,
       // ondan önce çekilirdi). Saf emoji storm test'i için yansız metin.
-      const r = violatesEcoVoice("Bu pasajı tutmuşsun ✨✨✨");
+      const r = violatesVoiceContract("Bu pasajı tutmuşsun ✨✨✨");
       expect(r.violates).toBe(true);
       expect(r.reason).toBe("emoji_storm");
     });
 
     it("flags fire emoji storm", () => {
-      expect(violatesEcoVoice("Bu fikir 🔥🔥🔥").violates).toBe(true);
+      expect(violatesVoiceContract("Bu fikir 🔥🔥🔥").violates).toBe(true);
     });
 
     it("does NOT flag single emoji (📖 acceptable)", () => {
-      // Eco brand voice doc: nadiren tek 📖 OK, ✨🔥 yasak.
+      // Voice contract: nadiren tek 📖 OK, ✨🔥 yasak.
       // Forbidden phrase yoksa tek emoji passes.
-      expect(violatesEcoVoice("Bu kitabını ekledim. 📖").violates).toBe(false);
+      expect(violatesVoiceContract("Bu kitabını ekledim. 📖").violates).toBe(false);
     });
   });
 
   describe("sales language", () => {
     it("flags 'premium ile daha'", () => {
-      const r = violatesEcoVoice(
+      const r = violatesVoiceContract(
         "Premium ile daha fazla feature alabilirsin.",
       );
       expect(r.violates).toBe(true);
@@ -219,21 +219,21 @@ describe("violatesEcoVoice", () => {
 
     it("flags 'subscribe to'", () => {
       expect(
-        violatesEcoVoice("Subscribe to our premium tier for unlimited.")
+        violatesVoiceContract("Subscribe to our premium tier for unlimited.")
           .violates,
       ).toBe(true);
     });
 
     it("flags 'abone ol' (verb form)", () => {
-      expect(violatesEcoVoice("Abone ol, sınırsız erişim al.").violates).toBe(
+      expect(violatesVoiceContract("Abone ol, sınırsız erişim al.").violates).toBe(
         true,
       );
     });
 
     it("does NOT flag mention of 'PALIMPS Premium' as plan name", () => {
-      // Eco "Bu özellik PALIMPS Premium ile gelir" diyebilir (Settings'e
+      // Asistan "Bu özellik PALIMPS Premium ile gelir" diyebilir (Settings'e
       // yönlendirme); "Premium ile daha fazla" yasak. İnce ayrım.
-      const r = violatesEcoVoice(
+      const r = violatesVoiceContract(
         "Bu özellik PALIMPS Premium aboneliğine dahil. Ayarlar bölümü daha doğru cevap verir.",
       );
       // "abone" + boundary kontrol — "aboneliğ" (subjunctive form) yakalamamalı
@@ -243,15 +243,15 @@ describe("violatesEcoVoice", () => {
   });
 
   describe("clean responses pass through", () => {
-    it("PASSES Eco-style description", () => {
+    it("PASSES voice-compliant description", () => {
       const eco =
         "Bu pasajı tutmuşsun. Yazarın aynı temaya 47. sayfada da dönüyor — istersen göstereyim.";
-      expect(violatesEcoVoice(eco).violates).toBe(false);
+      expect(violatesVoiceContract(eco).violates).toBe(false);
     });
 
     it("PASSES book lookup answer", () => {
       expect(
-        violatesEcoVoice(
+        violatesVoiceContract(
           "Bu kavramı Saatleri Ayarlama Enstitüsü'nde almıştın. Üç farklı yerde.",
         ).violates,
       ).toBe(false);
@@ -259,12 +259,12 @@ describe("violatesEcoVoice", () => {
 
     it("PASSES 'unknown' graceful response", () => {
       expect(
-        violatesEcoVoice("Bu kitabı senin notlarından tanımıyorum.").violates,
+        violatesVoiceContract("Bu kitabı senin notlarından tanımıyorum.").violates,
       ).toBe(false);
     });
 
     it("PASSES short greeting (TR)", () => {
-      expect(violatesEcoVoice("Selam. Bugün hangi kitapla?").violates).toBe(
+      expect(violatesVoiceContract("Selam. Bugün hangi kitapla?").violates).toBe(
         false,
       );
     });
@@ -273,133 +273,137 @@ describe("violatesEcoVoice", () => {
       // Pull-based recommendation, kullanıcı kendi geçmişinden öneri istedi.
       const reply =
         "Son üç kitabın yalnızlık üstüne. Devam istersen Mai ve Siyah; mola istersen Calvino'nun kısa kitapları.";
-      expect(violatesEcoVoice(reply).violates).toBe(false);
+      expect(violatesVoiceContract(reply).violates).toBe(false);
     });
 
     it("PASSES empty string", () => {
       // Edge case: empty output is not a "violation"; chat.send'de empty
       // choices ayrı olarak yakalanır (LLM_EMPTY_RESPONSE).
-      expect(violatesEcoVoice("").violates).toBe(false);
+      expect(violatesVoiceContract("").violates).toBe(false);
     });
   });
 });
 
 describe("getChatSystemPrompt", () => {
-  // v2 prompt iterate (25 Nisan 2026 dogfood feedback'i sonrası):
-  // sade kütüphaneci kimliği, Umberto Eco / Echo / Roma manastırı betimi
-  // çıkarıldı. "Eco'sun" ismi de kaldırıldı — kimlik artık "PALIMPS'in
-  // kütüphanecisin. Sade, mütevazi, bilgili." Test pattern'leri yeni
-  // semantiğe uyarlandı.
+  // 26 Nis 2026: tek unified prompt'a inildi (önceki Eco + legacy switch
+  // kaldırıldı). Kimlik: "PALIMPS'in okuma asistanısın". Voice contract,
+  // library-priority, anti-hallucination, anti-gaslighting kuralları
+  // korundu; "1-2 cümle" rigid sınırı gevşetildi; YENİ: empty-state ve
+  // tag-aware kuralları eklendi (Bug A + Bug B fix).
 
-  it("returns Eco TR prompt when enabled, locale=tr", () => {
-    const prompt = getChatSystemPrompt("tr", true);
-    expect(prompt).toContain("PALIMPS'in kütüphanecisin");
-    expect(prompt).toContain("Sade, mütevazi, bilgili");
-    expect(prompt).toContain("{USER_CONTEXT}");
-  });
-
-  it("returns Eco EN prompt when enabled, locale=en", () => {
-    const prompt = getChatSystemPrompt("en", true);
-    expect(prompt).toContain("PALIMPS's librarian");
-    expect(prompt).toContain("Plain, modest, knowledgeable");
-    expect(prompt).toContain("{USER_CONTEXT}");
-  });
-
-  it("returns legacy CHAT_SYSTEM_PROMPT_TR when disabled, locale=tr", () => {
-    const prompt = getChatSystemPrompt("tr", false);
+  it("returns TR prompt for locale=tr", () => {
+    const prompt = getChatSystemPrompt("tr");
     expect(prompt).toContain("PALIMPS'in okuma asistanısın");
-    expect(prompt).not.toContain("kütüphanecisin");
     expect(prompt).toContain("{USER_CONTEXT}");
   });
 
-  it("returns legacy CHAT_SYSTEM_PROMPT_EN when disabled, locale=en", () => {
-    const prompt = getChatSystemPrompt("en", false);
+  it("returns EN prompt for locale=en", () => {
+    const prompt = getChatSystemPrompt("en");
     expect(prompt).toContain("PALIMPS's reading assistant");
-    expect(prompt).not.toContain("librarian");
+    expect(prompt).toContain("{USER_CONTEXT}");
   });
 
-  it("preserves voice contract in BOTH Eco and legacy prompts", () => {
-    // Voice contract her iki prompt'ta da aynı (yorum yok / aksiyon önerisi
-    // yok). v2 Eco prompt "Yorum / yargı / aksiyon önerisi yok" diye tek
-    // satırda birleştirdi; legacy "Yorum yok, yargı yok, aksiyon önerisi yok"
-    // diye virgüllü ayrı tutar. Ortak semantic: "aksiyon önerisi yok" hard
-    // string match + "yorum" ile "yok" arasında bir bağ regex'i.
-    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
-    const legacyTr = getChatSystemPrompt("tr", false).toLocaleLowerCase("tr-TR");
-    expect(ecoTr).toMatch(/yorum.*yok/);
-    expect(ecoTr).toContain("aksiyon önerisi yok");
-    expect(legacyTr).toMatch(/yorum.*yok/);
-    expect(legacyTr).toContain("aksiyon önerisi yok");
+  it("preserves voice contract — yorum / yargı / aksiyon önerisi yok", () => {
+    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
+    const en = getChatSystemPrompt("en").toLowerCase();
+    expect(tr).toMatch(/yorum.*yok/);
+    expect(tr).toContain("aksiyon önerisi yok");
+    expect(en).toMatch(/no commentary/);
+    expect(en).toMatch(/calls to action/);
   });
 
-  // v2 iterate — 4 yeni regression test (sade kütüphaneci + library priority +
-  // anti-hallucination + anti-gaslighting + profesyonel format). Bu kuralların
-  // kazara silinmesini yakalar; "Sis Mustafa Kutlu" senaryosu bu kuralların
-  // eksikliğinden çıktı.
+  // Aşağıdaki regression test'ler eski Eco v2'den taşınan kuralları kapsar
+  // (library-priority + 3-layer anti-hallucination + anti-gaslighting +
+  // format teşviki). Bunlar unified prompt'ta da aynı semantikle korundu;
+  // kazara silinmesini yakalar — "Sis Mustafa Kutlu" senaryosu bu kuralların
+  // eksikliğinden çıkmıştı.
 
-  it("v2: enforces library-priority pattern (kütüphane öncelik vurgusu)", () => {
-    // Eco prompt'ta "ÖNCE kullanıcının verisinde ara" pattern'i bulunmalı —
-    // model kütüphane-öncelik mantığını uygulamalı.
-    const ecoTr = getChatSystemPrompt("tr", true);
-    expect(ecoTr).toMatch(/ÖNCE kullanıcının verisinde/);
-    // Kütüphane dışı bilgi açıkça etiketli — gaslighting / sessiz öneri yasak.
-    expect(ecoTr.toLocaleLowerCase("tr-TR")).toMatch(/kütüphanende yok/);
+  it("enforces library-priority pattern (kütüphane öncelik)", () => {
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/ÖNCE kullanıcının verisinde/);
+    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/kütüphanende yok/);
   });
 
-  it("v2: 3-layer anti-hallucination defense in Eco prompt", () => {
-    // Hilal "asla uydurmamalı" zero-tolerance kuralı — 3 katman:
+  it("3-layer anti-hallucination defense", () => {
+    // Hilal "asla uydurmamalı" zero-tolerance kuralı:
     //   1. Hayali kitap/alıntı/an üretme
     //   2. Bilmediğini söyle ("kesin bilgim yok")
     //   3. Tahmin etme (yanlış olabilecek tarih/yazar/alıntı)
-    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
-    expect(ecoTr).toMatch(/hayali.*üretme/s);
-    expect(ecoTr).toMatch(/kesin bilgim yok/);
-    expect(ecoTr).toMatch(/tahmin etme/);
+    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
+    expect(tr).toMatch(/hayali.*üretme/s);
+    expect(tr).toMatch(/kesin bilgim yok/);
+    expect(tr).toMatch(/tahmin etme/);
   });
 
-  it("v2: anti-gaslighting clause when previous context unclear", () => {
-    // 25 Nisan dogfood: Eco "Sis önerdim" iddiasına "kayıtsızım" inkârıyla
-    // gaslighting yaptı (chat history yok, model önceki cevabını görmüyor).
-    // Prompt-level workaround: "öncesini göremiyorum, tekrar sor" cümlesini
-    // teşvik et. Kalıcı fix Task #35 (chat history persistence).
-    const ecoTr = getChatSystemPrompt("tr", true);
-    expect(ecoTr).toMatch(/öncesini göremiyorum/);
-    expect(ecoTr.toLocaleLowerCase("tr-TR")).toMatch(/gaslighting yapma|inkâr etme/);
+  it("anti-gaslighting clause when previous context unclear", () => {
+    // 25 Nis dogfood: model "Sis önerdim" iddiasına "kayıtsızım" inkârıyla
+    // gaslighting yaptı (chat history yok). Prompt-level workaround:
+    // "öncesini göremiyorum, tekrar sor" cümlesini teşvik et.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/öncesini göremiyorum/);
+    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/gaslighting yapma|inkâr etme/);
   });
 
-  it("v2: Eco prompt teşvik eder profesyonel format (bold + liste)", () => {
-    // 25 Nisan Hilal feedback'i: "listeleme ve bold yapınca çok profesyoneldi".
-    // Markdown render zaten chat.tsx'te aktif (react-native-markdown-display);
-    // prompt artık modeli aktif olarak bold/liste kullanmaya yönlendiriyor.
-    const ecoTr = getChatSystemPrompt("tr", true).toLocaleLowerCase("tr-TR");
-    expect(ecoTr).toMatch(/bold.*vurgu|bold.*kitap/);
-    expect(ecoTr).toMatch(/liste|madde işaretli/);
+  it("encourages professional format (bold + list)", () => {
+    // 25 Nis Hilal feedback'i: "listeleme ve bold yapınca çok profesyoneldi".
+    // Markdown render zaten chat.tsx'te aktif (react-native-markdown-display).
+    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
+    expect(tr).toMatch(/bold/);
+    expect(tr).toMatch(/liste|madde işaretli/);
+  });
+
+  // 26 Nis 2026 yeni eklemeler — Bug A ve Bug B prompt-side fix'leri.
+
+  it("Bug A fix: empty-state rule (boş listede bullet açma)", () => {
+    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
+    // "Liste istiyorsa veride hiç YOKSA: bullet veya numbered list AÇMA"
+    expect(tr).toMatch(/boş bullet doldurmak yasak|veride hiç yoksa/);
+    const en = getChatSystemPrompt("en").toLowerCase();
+    expect(en).toMatch(/filling empty bullets is forbidden|don't open a bullet/);
+  });
+
+  it("Bug B fix: tag-aware rule (etiket sorularında ayrı bölümden cevap)", () => {
+    const tr = getChatSystemPrompt("tr");
+    // "Kullanıcı 'tag' / 'etiket' derse: SADECE Etiketler bölümünden cevap ver"
+    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/etiketler bölümünden/);
+    const en = getChatSystemPrompt("en").toLowerCase();
+    expect(en).toMatch(/asks for "tags"|tags section/);
+  });
+
+  it("audit gevşetme: rigid '1-2 cümle' sınırı kalktı", () => {
+    // Eski legacy: "her madde tek satır, en fazla 1 cümlelik gerekçe"
+    // Eski Eco: "Her madde tek satır veya 1-2 cümle"
+    // Yeni unified: "Maddeler kısa kalmaya çalışsın; gerekiyorsa daha uzun"
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).not.toMatch(/en fazla 1 cümle/);
+    expect(tr).not.toMatch(/tek satır veya 1-2 cümle/);
+    expect(tr).toMatch(/kısa kalmaya çalışsın|gerekiyorsa daha uzun/);
   });
 });
 
-describe("ECO_FALLBACK_MESSAGES", () => {
+describe("CHAT_FALLBACK_MESSAGES", () => {
   it("has cantAnswer and error messages for both locales", () => {
-    expect(ECO_FALLBACK_MESSAGES.tr.cantAnswer).toBeTruthy();
-    expect(ECO_FALLBACK_MESSAGES.tr.error).toBeTruthy();
-    expect(ECO_FALLBACK_MESSAGES.en.cantAnswer).toBeTruthy();
-    expect(ECO_FALLBACK_MESSAGES.en.error).toBeTruthy();
+    expect(CHAT_FALLBACK_MESSAGES.tr.cantAnswer).toBeTruthy();
+    expect(CHAT_FALLBACK_MESSAGES.tr.error).toBeTruthy();
+    expect(CHAT_FALLBACK_MESSAGES.en.cantAnswer).toBeTruthy();
+    expect(CHAT_FALLBACK_MESSAGES.en.error).toBeTruthy();
   });
 
-  it("fallback messages do NOT violate Eco voice (no recursion)", () => {
-    // Critical: fallback Eco karakter dışına çıkmamalı. Kullanıcı voice
-    // violation retry tükendiğinde gördüğü mesaj da Eco-uyumlu olmalı —
-    // yoksa filter sonsuz döngüye girer (gerçi chat.send retry sayacı
-    // bunu engeller, ama fallback semantic olarak doğru kalmalı).
-    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.tr.cantAnswer).violates).toBe(
+  it("fallback messages do NOT violate voice contract (no recursion)", () => {
+    // Critical: fallback asistan karakter dışına çıkmamalı. Kullanıcı voice
+    // violation retry tükendiğinde gördüğü mesaj da voice contract'a uygun
+    // olmalı — yoksa filter sonsuz döngüye girer (gerçi chat.send retry
+    // sayacı bunu engeller, ama fallback semantic olarak doğru kalmalı).
+    expect(violatesVoiceContract(CHAT_FALLBACK_MESSAGES.tr.cantAnswer).violates).toBe(
       false,
     );
-    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.tr.error).violates).toBe(
+    expect(violatesVoiceContract(CHAT_FALLBACK_MESSAGES.tr.error).violates).toBe(
       false,
     );
-    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.en.cantAnswer).violates).toBe(
+    expect(violatesVoiceContract(CHAT_FALLBACK_MESSAGES.en.cantAnswer).violates).toBe(
       false,
     );
-    expect(violatesEcoVoice(ECO_FALLBACK_MESSAGES.en.error).violates).toBe(
+    expect(violatesVoiceContract(CHAT_FALLBACK_MESSAGES.en.error).violates).toBe(
       false,
     );
   });
@@ -511,7 +515,7 @@ describe("isDegenerateResponse", () => {
 
     it("PASSES single emoji + word ('📖 Okudum.')", () => {
       // Emoji noise listesinde yok (Unicode \p{Emoji}); legitimate kısa
-      // cevap olarak geçer. (Eco voice violation o ayrı bir kontrol.)
+      // cevap olarak geçer. (Voice violation o ayrı bir kontrol.)
       expect(isDegenerateResponse("📖 Okudum.")).toBe(false);
     });
   });

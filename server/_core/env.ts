@@ -87,22 +87,10 @@ export const ENV = {
   // kapatmaz.
   enableMarkingCapture: process.env.ENABLE_MARKING_CAPTURE !== "false",
 
-  // Eco voice kill switch — DEFAULT OFF (25 Nisan 2026 dogfood feedback).
-  //
-  // Eco v1 ve v2 prompt iteration'ları cevap kalitesinde regresyon yarattı:
-  // 50332'deki legacy CHAT_SYSTEM_PROMPT_TR/EN ("Asistan" versiyonu)
-  // kullanıcı için daha iyi sonuç veriyordu. "Sis Mustafa Kutlu" senaryosu
-  // gaslighting + kütüphane-dışı öneri sızıntısı + sade-kütüphaneci voice
-  // taşırken bilgililik kaybı dogfood'da net görüldü. Eco kodu silinmedi
-  // (prompts.ts'te ECO_CHAT_SYSTEM_PROMPT_TR/EN duruyor) — gelecekte v3
-  // iterate açılabilir.
-  //
-  // Default'u OPT-IN'e (=== "true") çevirdik: Railway'de açıkça
-  // ENABLE_ECO_VOICE=true set edilmedikçe legacy "Asistan" prompt aktif.
-  // Diğer kill switch'lerden (markingCapture, momentEnrichment) farkı:
-  // onlar default-on çünkü tek prompt yolu var; Eco alternatif voice ve
-  // dogfood'da legacy daha iyi performansla çıktı.
-  enableEcoVoice: process.env.ENABLE_ECO_VOICE === "true",
+  // NOT: ENABLE_ECO_VOICE flag'i 26 Nis 2026'da kaldırıldı. İki paralel chat
+  // prompt'u (Eco + legacy "Asistan") tek bir CHAT_SYSTEM_PROMPT_TR/EN'e
+  // birleştirildi — bkz. SESSION-2026-04-26-submit-readiness-handoff.md.
+  // Acil revert için Railway redeploy yeterli (~5dk, Apple Review yok).
 
   // ─────────────────────────────────────────────────────────────────────────
   // Storage — Cloudflare R2 (S3-compatible)

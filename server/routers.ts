@@ -35,16 +35,15 @@ import {
   MOMENT_ENRICH_SCHEMA,
   MARKINGS_PROMPT,
   MARKINGS_SCHEMA,
-  CHAT_SYSTEM_PROMPT_TR,
-  CHAT_SYSTEM_PROMPT_EN,
   getChatSystemPrompt,
-  violatesEcoVoice,
+  violatesVoiceContract,
   isDegenerateResponse,
-  ECO_FALLBACK_MESSAGES,
+  CHAT_FALLBACK_MESSAGES,
   normalizeTag,
   type HighlightEntry,
   type MarginaliaEntry,
 } from "./_core/prompts";
+import { buildChatUserContext } from "./_core/chatContext";
 import { isUserPremium } from "./_core/premium";
 
 /**
@@ -1182,56 +1181,23 @@ ${bodyHtml}
         );
         const moments = allMoments.flat();
 
-        // Kullanıcı verilerini context olarak hazırla — data labels EN even for
-        // TR users; model interprets them either way. Only prose switches on locale.
-        const header = locale === "en" ? "User's Reading Data" : "Kullanıcının Okuma Verileri";
-        const booksLabel = locale === "en" ? "Books" : "Kitaplar";
-        const momentsLabel = locale === "en" ? "Reading Moments" : "Okuma Anları";
-        const countSuffix = locale === "en" ? "" : " adet";
-        const unknownBook = locale === "en" ? "Unknown" : "Bilinmeyen";
-        const ocrLabel = locale === "en" ? "OCR Text" : "OCR Metni";
-        const noteLabel = locale === "en" ? "Note" : "Kullanıcı Notu";
-        const dateLabel = locale === "en" ? "Date" : "Tarih";
-        const none = locale === "en" ? "None" : "Yok";
-        const bookTag = locale === "en" ? "Book" : "Kitap";
-
-        const userContext = `
-${header}:
-
-${booksLabel} (${books.length}${countSuffix}):
-${books.map((b) => `- "${b.title}" ${b.author ? `by ${b.author}` : ""}`).join("\n")}
-
-${momentsLabel} (${moments.length}${countSuffix}):
-${moments
-  .slice(0, 50) // Son 50 okuma anı
-  .map((m) => {
-    const book = books.find((b) => b.id === m.bookId);
-    return `
-[${bookTag}: ${book?.title || unknownBook}]
-${ocrLabel}: ${m.ocrText || none}
-${noteLabel}: ${m.userNote || none}
-${dateLabel}: ${m.createdAt}
-`;
-  })
-  .join("\n---\n")}
-`;
+        // Kullanıcı verilerini context olarak hazırla — buildChatUserContext
+        // helper'ı books + moments'ı sistem prompt'una gömülecek text bloğuna
+        // dönüştürür. Bug B fix (26 Nis): her moment'ın tag listesi + agregate
+        // "Tüm Etiketler" bölümü artık context'te. Bkz. server/_core/chatContext.ts.
+        const userContext = buildChatUserContext(books, moments, locale);
 
         // System prompt — voice contract gömülü, prompts.ts'te merkezi.
         // Eski inline prompt 50332 dogfood'da uzun-cevap bug'ı çıkardı:
-        // (a) "kısa ol" disiplini yoktu, Gemini full-flash 8-10 maddelik
-        // kapsamlı listeler döndürüyordu; (b) "yorum/öneri yok" voice
-        // contract'ı yoktu, "İlham verici" / "Bu fikri hayata uygula" tarzı
-        // LinkedIn-guru tonu sızıyordu; (c) "verinde olmayanı uydurma"
-        // anti-hallucination guard'ı yoktu, AppStore review riski.
+        // (a) "kısa ol" disiplini yoktu; (b) "yorum/öneri yok" voice contract'ı
+        // yoktu, LinkedIn-guru tonu sızıyordu; (c) "verinde olmayanı uydurma"
+        // anti-hallucination guard'ı yoktu (AppStore review riski).
         // {USER_CONTEXT} placeholder'ı ile veri prompt'a sondan gömülür —
         // kuralların user-content'ten önce, en üstte olması prompt-injection
         // defense için kritik.
-        // Eco voice (brand karakter) — ENV.enableEcoVoice ile seçim yapılır.
-        // Default ON: Eco augmented prompt aktif. ENABLE_ECO_VOICE=false ise
-        // legacy CHAT_SYSTEM_PROMPT_TR/EN'e düşer (voice contract aynı, sadece
-        // Eco kimlik metni ve karakter-spesifik kurallar kapanır).
-        // Doc: outputs/eco-brand-character.md
-        const systemPromptTemplate = getChatSystemPrompt(locale, ENV.enableEcoVoice);
+        // 26 Nis 2026: tek unified CHAT_SYSTEM_PROMPT_TR/EN. Eski iki-prompt
+        // (legacy + Eco) switch'i kaldırıldı. Bkz. SESSION-2026-04-26-handoff.
+        const systemPromptTemplate = getChatSystemPrompt(locale);
         const systemPrompt = systemPromptTemplate.replace("{USER_CONTEXT}", userContext);
 
         // Basit router: kısa + tek cümlelik soru → flash-lite (ucuz), uzun /
@@ -1250,19 +1216,17 @@ ${dateLabel}: ${m.createdAt}
         // LLM'e gönder — wrap to surface actionable error codes instead of
         // leaking stack traces to the client. Eco aktifse output post-process
         // ile voice violation tespit edilir; ihlal varsa aynı messages ile
-        // rejenerasyon tetikler (max 2 retry). Tükenince ECO_FALLBACK_MESSAGES.
+        // rejenerasyon tetikler (max 2 retry). Tükenince CHAT_FALLBACK_MESSAGES.
         //
         // Quota: SADECE non-fallback voice-clean response'ta artırılır. Voice
         // violation retry'ları veya fallback ile sonlanan akış kullanıcının
         // quota'sına dokunmaz — chat.send genel "increment after success"
         // trust-building pattern'i ile uyumlu.
-        // Retry budget:
-        // - Eco aktifse +2 voice violation retry hakkı (model bazen yasaklı
-        //   ifade/emoji storm/sales language sızdırıyor)
-        // - Eco kapalı olsa bile en az 1 retry hakkı her zaman var: degenerate
-        //   response defense ("boş bullet" bug'ı 50334 prod, Eco off ile
-        //   görüldü; model markdown bullet başlatıp içerik üretmeden bitiriyor)
-        const MAX_RETRIES = ENV.enableEcoVoice ? 2 : 1;
+        // Retry budget: 2 retry (model bazen yasaklı ifade/emoji storm/sales
+        // language sızdırıyor; ayrıca degenerate response defense — "boş
+        // bullet" bug'ı 50334 prod, model markdown bullet başlatıp içerik
+        // üretmeden bitiriyor — burada da retry tetikler).
+        const MAX_RETRIES = 2;
         let reply: string | null = null;
         let usedFallback = false;
         let lastViolationReason: string | undefined;
@@ -1349,11 +1313,10 @@ ${dateLabel}: ${m.createdAt}
               ? firstChoice.message.content
               : JSON.stringify(firstChoice.message.content);
 
-          // Defansif min-content check — voice contract'tan ÖNCE çalışır,
-          // her zaman aktif (Eco off iken bile). Model bazen markdown bullet
-          // başlatıp içerik üretmeden bitiriyor → kullanıcıya boş "•"
-          // görünüyordu (50334 prod bug). isDegenerateResponse markdown
-          // noise'ı strip edip <5 char anlamlı içerik kalırsa retry tetikler.
+          // Defansif min-content check — voice contract'tan ÖNCE çalışır.
+          // Model bazen markdown bullet başlatıp içerik üretmeden bitiriyor
+          // → kullanıcıya boş "•" görünüyordu (50334 prod bug). Threshold:
+          // <5 anlamlı harf kaldıysa retry tetikler.
           if (isDegenerateResponse(candidate)) {
             lastViolationReason = "degenerate_response";
             console.warn("[chat.send] degenerate response, retrying", {
@@ -1367,20 +1330,16 @@ ${dateLabel}: ${m.createdAt}
             continue;
           }
 
-          // Voice violation check — Eco aktifse zorunlu, değilse atla.
-          if (!ENV.enableEcoVoice) {
-            reply = candidate;
-            break;
-          }
-
-          const check = violatesEcoVoice(candidate);
+          // Voice contract violation check — yasaklı ifade / emoji storm /
+          // sales language sızıntısı varsa retry tetikler.
+          const check = violatesVoiceContract(candidate);
           if (!check.violates) {
             reply = candidate;
             break;
           }
 
           lastViolationReason = check.reason;
-          console.warn("[chat.send] Eco voice violation, retrying", {
+          console.warn("[chat.send] voice contract violation, retrying", {
             userId: ctx.user.id,
             model: chatModel,
             attempt,
@@ -1390,7 +1349,7 @@ ${dateLabel}: ${m.createdAt}
           });
         }
 
-        // Retry tükendi, hala ihlal var → fallback (Eco karakter dışına
+        // Retry tükendi, hala ihlal var → fallback (asistan karakter dışına
         // çıkmadan generic mesaj). Fallback'le sonlanan akış quota harcamaz.
         if (reply === null) {
           // Retry'lar tükendi — sebep voice violation veya degenerate
@@ -1400,7 +1359,7 @@ ${dateLabel}: ${m.createdAt}
             lastReason: lastViolationReason,
             maxRetries: MAX_RETRIES,
           });
-          reply = ECO_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer;
+          reply = CHAT_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer;
           usedFallback = true;
         }
 

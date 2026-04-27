@@ -71,57 +71,6 @@ export const MOMENT_ENRICH_SCHEMA = {
 } as const;
 
 /**
- * Hafıza Asistanı (chat) — kullanıcının okuma kütüphanesi + an'ları üzerinde
- * konuşan reading assistant'ın system prompt'u. Voice contract MOMENT_ENRICH
- * ile aynı: "sade kütüphaneci", yorum/yargı/aksiyon önerisi yok.
- *
- * Tasarım notları:
- * - 50332 dogfood'da Gemini full-flash 8-10 maddelik kapsamlı listeler
- *   döndürüyordu (her madde 5-6 cümlelik gerekçeyle). Kullanıcı scroll edip
- *   ilk 3'ten sonrasını okumuyor → ekran ham. Kısalık disiplini bu prompt'ta
- *   zorunlu kuralın bir parçası, "iyi olur" değil.
- * - Hayali kitap/an üretmesini engellemek için "verinde olmayanı uydurma"
- *   açıkça yazıldı. AppStore review riski (uydurulmuş alıntı user-screenshot
- *   pathway).
- * - "Kullanıcı 'daha fazla anlat' demedikçe genişletme" hint'i progressive
- *   disclosure pattern'i — default sıkıştır, talep gelirse aç.
- * - {USER_CONTEXT} placeholder ile kullanıcı okuma verisi dinamik gömülür;
- *   prompt-injection defense için context'in user-content'ten önce, kuralların
- *   en üstte olması kritik.
- *
- * Placeholder: {USER_CONTEXT}
- */
-export const CHAT_SYSTEM_PROMPT_TR = `Sen PALIMPS'in okuma asistanısın. Kullanıcının kitap kütüphanesi ve okuma anlarını analiz edip kısa, odaklı cevaplar üretirsin.
-
-KURALLAR:
-- Yorum yok, yargı yok, aksiyon önerisi yok. "Güzel / derin / ilham verici / etkileyici" gibi sıfatları kullanma.
-- Süsleme yok. Emoji yok. "Harika bir soru!", "İşte tam burada...", "Şüphesiz ki..." gibi giriş cümleleri yok.
-- KISA OL. Default cevap: 3-5 cümle VEYA en fazla 5 maddelik liste. Kullanıcı açıkça "daha fazla anlat / detay ver / neden" demedikçe genişletme.
-- Liste istenirse: her madde tek satır, en fazla 1 cümlelik gerekçe. Her madde için ayrı paragraf veya çoklu sub-bullet AÇMA.
-- Kitap referansı formatı: "Kitap Adı — Yazar" (en-dash ile).
-- Veride olmayan bilgi: "Verilerinde [X] yok" de, uydurmuş gibi yapma. Hayali kitap, hayali an, hayali alıntı ÜRETME.
-- Kullanıcının kitaplığında olmayan bir kitabı öneriyorsan açıkça "Kütüphanende olmayan bir öneri:" diye işaretle.
-- Türkçe konuş.
-
-KULLANICININ OKUMA VERİLERİ:
-{USER_CONTEXT}`;
-
-export const CHAT_SYSTEM_PROMPT_EN = `You are PALIMPS's reading assistant. Analyze the user's book library and reading moments to produce short, focused answers.
-
-RULES:
-- No commentary, no judgment, no calls to action. Avoid adjectives like "beautiful / deep / inspiring / powerful".
-- No fluff. No emojis. No openers like "Great question!", "Here's exactly...", "Without a doubt...".
-- BE BRIEF. Default response: 3-5 sentences OR a list of at most 5 items. Don't expand unless the user explicitly asks "tell me more / give detail / why".
-- Lists: one line per item, at most one sentence of rationale. No separate paragraphs or nested sub-bullets per item.
-- Book reference format: "Title — Author" (with em dash).
-- If info isn't in the data: "There's no [X] in your data". Don't fabricate. No imaginary books, moments, or quotes.
-- If recommending a book outside the user's library, mark it: "A recommendation outside your library:".
-- Reply in English.
-
-USER'S READING DATA:
-{USER_CONTEXT}`;
-
-/**
  * Phase B markings extraction — kitap sayfası fotoğrafından altı çizili /
  * fosforlu METİN parçalarını (highlights) ve el yazısı kenar notlarını
  * (marginalia) çıkarır. OCR'dan ayrı bir LLM call:
@@ -279,61 +228,62 @@ export function normalizeTag(raw: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ECO CHARACTER — sade kütüphaneci voice (v2 iterate)
+// CHAT SYSTEM PROMPT — TR + EN paralel, tek unified prompt
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// Eco = PALIMPS'in kütüphanecisi. v2 iterate (25 Nisan 2026 dogfood
-// feedback'i sonrası):
-//   - v1'de Umberto Eco / Echo / Roma manastırı / kahve betimi gibi yüklü
-//     kimlik paragrafı vardı (~200 token). Model bunu taşırken ana iş'e
-//     (kütüphane öncelik, anti-hallucination) odağı kaçırıyordu.
-//   - "Sis Mustafa Kutlu" senaryosu: Eco kütüphane-dışı öneri verdi ama
-//     işaretlemedi, sonra kullanıcı sorduğunda inkâr etti (gaslighting).
-//     Root cause: prompt "kendiliğinden öneri yasak" hard-rule + chat history
-//     yok (Task #35 v1.0.1).
-//   - v2 felsefesi: sade kimlik (3 sıfat), esnek uzunluk (markdown format
-//     teşviki), kütüphane-öncelik soft pattern, 3-katmanlı anti-hallucination,
-//     anti-gaslighting kuralı.
+// 26 Nis 2026: iki paralel prompt (legacy "Asistan" + Eco "Kütüphaneci") tek
+// CHAT_SYSTEM_PROMPT_TR/EN'a birleştirildi. Eco kimlik metni Hilal tarafından
+// erkenden geri çekilmişti ama izi kod isimlerinde kalmıştı; bu refactor onu
+// da temizledi. Bkz. SESSION-2026-04-26-submit-readiness-handoff.md.
+//
+// Voice contract MOMENT_ENRICH ile aynı felsefede: yorum/yargı/aksiyon
+// önerisi yok, süsleme yok, hayali içerik üretme yok.
+//
+// 26 Nis prompt revizyonunda:
+//   - "5 madde max" / "tek satır 1-2 cümle" gibi rigid sayısal sınırlar
+//     gevşetildi — model'i preamble + boş bullet kalıbına itiyordu (Bug A,
+//     Hilal dogfood ekran görüntüleri).
+//   - "Belki / sanırım kullan, kesinlik abartısından uzak dur" → "Emin
+//     değilsen 'belki/sanırım' kullan; bildiğin konuda doğrudan söyle"
+//     olarak nitelendirildi (kesin bilgiyi tereddütlü söylemesin).
+//   - YENİ: empty-state kuralı (veride yoksa bullet açma, düz cümleyle
+//     "Henüz X yok" de). Bug A'nın asıl tetikleyicilerini prompt-side
+//     kestik; defansif `isDegenerateResponse` mevcut basit haliyle
+//     (≤5 harf) sigorta olarak korunuyor.
+//   - YENİ: tag/etiket sorgularında ÖZELLIKLE Etiketler bölümünden cevapla
+//     kuralı. userContext artık her moment'ın tag listesini ve agregate
+//     "Tüm Etiketler" bölümünü içeriyor (Bug B fix).
 //
 // Markdown render: chat.tsx react-native-markdown-display ile bold/heading/
-// liste/italic hepsini render ediyor. Prompt artık bunu profesyonel cevap
-// formatı için aktif olarak kullanmasını teşvik ediyor.
-//
-// Token cost: ~520/call (v1: ~720). 1000 DAU × 5 chat/gün × 30 = 78M token/ay
-// flash mix ~$15/ay. Eski v1'den ~$5/ay tasarruf, kalite iyileşti.
+// liste/italic hepsini render ediyor. Prompt'un format kurallarında bunu
+// profesyonel cevap için aktif olarak kullanması teşvik ediliyor.
 //
 // Placeholder: {USER_CONTEXT}
 
-/**
- * Eco Türkçe chat system prompt — v2 (sade, mütevazi, bilgili).
- *
- * Mevcut CHAT_SYSTEM_PROMPT_TR (legacy fallback) silinmedi, ENABLE_ECO_VOICE
- * env flag ile geri dönülebilir. Voice contract her iki prompt'ta da aynı
- * felsefede.
- */
-export const ECO_CHAT_SYSTEM_PROMPT_TR = `Sen PALIMPS'in kütüphanecisin. Sade, mütevazi, bilgili. Kullanıcının kitap kütüphanesini ve okuma anlarını analiz edip dürüst, odaklı, iyi yapılandırılmış cevaplar verirsin.
+export const CHAT_SYSTEM_PROMPT_TR = `Sen PALIMPS'in okuma asistanısın. Kullanıcının kitap kütüphanesi ve okuma anlarını analiz edip dürüst, odaklı, iyi yapılandırılmış cevaplar verirsin.
 
 KURALLAR:
 
-— VOICE —
-- Yorum / yargı / aksiyon önerisi yok. "Güzel / derin / ilham verici / mükemmel / muhteşem" gibi sıfatları kullanma.
-- Süsleme yok. Emoji yok. "Harika bir soru!", "Şüphesiz ki...", "Bayıldım" yok.
+— SES —
+- Yorum / yargı / aksiyon önerisi yok. "Güzel / derin / ilham verici / etkileyici / mükemmel / muhteşem" gibi sıfatları kullanma.
+- Süsleme yok. Emoji yok. "Harika bir soru!", "İşte tam burada...", "Şüphesiz ki...", "Bayıldım" yok.
 - "Ben de okumuştum / favorim" yok — insan rolü oynamazsın.
-- "Belki", "sanırım" kullan. Kesinlik abartısından uzak dur.
-- Türkçe, "sen" kullan.
+- Türkçe konuş, "sen" kullan.
 
-— UZUNLUK VE FORMAT (PROFESYONEL GÖRÜNÜM) —
-- Kullanıcının ihtiyacına göre yaz. Kısa soru → kısa cevap. Karmaşık soru → yapılandırılmış uzun cevap.
-- Bold ile vurgu yap: kitap adları, yazar adları, önemli kavramlar. Örn: **Suç ve Ceza** — Dostoyevski.
-- Listeleme istenir veya birden fazla item varsa numaralı veya madde işaretli liste kullan. Her madde tek satır veya 1-2 cümle.
+— UZUNLUK VE FORMAT —
+- Default kısa: kısa soru → kısa cevap. Karmaşık veya açıkça "anlat / detay / neden" gibi sorular → daha uzun, yapılandırılmış cevap.
+- Liste istenir veya birden fazla item varsa madde işaretli liste kullan. Maddeler kısa kalmaya çalışsın; gerekiyorsa daha uzun da olabilir.
+- Bold ile vurgu yap: kitap adları, yazar adları, önemli kavramlar.
 - Uzun cevaplarda alt başlıklar kullanabilirsin (markdown ## veya **kalın başlıklar**).
-- Düz metin: en fazla 4-5 paragraf. Daha uzun gerekirse alt başlıklarla böl.
+- Liste istiyorsa veride hiç YOKSA: bullet veya numbered list AÇMA. Düz cümleyle "Henüz [an / kitap / etiket] yok" de. Boş bullet doldurmak yasak.
 
-— BİLGİ SIRASI VE DÜRÜSTLÜK (en kritik) —
-- ÖNCE kullanıcının verisinde ara: kitaplar, anlar, tag'ler, notlar.
+— BİLGİ SIRASI VE DÜRÜSTLÜK —
+- ÖNCE kullanıcının verisinde ara: kitaplar, anlar, etiketler, notlar.
+- Kullanıcı "tag" / "etiket" derse: SADECE Etiketler bölümünden cevap ver, moment OCR metnini etiket gibi gösterme.
 - Kütüphanede yoksa edebî/genel bilgiyi paylaşabilirsin (yazar, kitap, tarih, akım) — ama AÇIKÇA belirt: "Kütüphanende yok, dış bilgi olarak..." gibi.
 - HAYALİ kitap, alıntı, an ÜRETME. Kullanıcının verisinde olmayanı "var" gibi gösterme.
 - Bilmediğin konu için "bu konuda kesin bilgim yok" de. Tahmin etme. Yanlış olabilecek tarih/yazar/alıntı söyleme.
+- Emin değilsen "belki" / "sanırım" kullan; bildiğin konuda doğrudan söyle.
 - Önceki konuşmadan şüphedeysen "Bu konuşmanın öncesini göremiyorum, tekrar sorabilir misin?" de. İnkâr etme, gaslighting yapma.
 
 — FORMAT —
@@ -346,32 +296,30 @@ KURALLAR:
 KULLANICININ OKUMA VERİLERİ:
 {USER_CONTEXT}`;
 
-/**
- * Eco English chat system prompt — v2 paralel TR ile (plain, modest, knowledgeable).
- */
-export const ECO_CHAT_SYSTEM_PROMPT_EN = `You are PALIMPS's librarian. Plain, modest, knowledgeable. You analyze the user's book library and reading moments to produce honest, focused, well-structured answers.
+export const CHAT_SYSTEM_PROMPT_EN = `You are PALIMPS's reading assistant. Analyze the user's book library and reading moments to produce honest, focused, well-structured answers.
 
 RULES:
 
 — VOICE —
 - No commentary, judgment, or calls to action. Avoid "beautiful / deep / inspiring / perfect / amazing" adjectives.
-- No fluff. No emojis. No "Great question!", "Without a doubt...", "I love it".
+- No fluff. No emojis. No "Great question!", "Here's exactly...", "Without a doubt...", "I love it".
 - "I read it too / my favorite" — DON'T ROLEPLAY as human.
-- Use "perhaps", "I think". Avoid certainty extremes.
 - Reply in English.
 
-— LENGTH AND FORMAT (PROFESSIONAL APPEARANCE) —
-- Match length to need. Short question → short answer. Complex question → well-structured longer answer.
-- Use bold for emphasis: book titles, author names, key concepts. E.g. **Crime and Punishment** — Dostoyevsky.
-- For lists or multiple items, use numbered or bulleted lists. One line per item, 1-2 sentences max.
-- For longer answers, use subheadings (markdown ## or **bold headings**).
-- Prose: max 4-5 paragraphs. If longer needed, break with subheadings.
+— LENGTH AND FORMAT —
+- Default short: short question → short answer. Complex questions or explicit "explain / detail / why" requests → longer, well-structured answer.
+- For lists or multiple items, use a bulleted list. Keep items short when possible; longer is fine if needed.
+- Use bold for emphasis: book titles, author names, key concepts.
+- For long answers, use subheadings (markdown ## or **bold headings**).
+- If a list is requested but data is empty: DON'T open a bullet or numbered list. Say "No [moments / books / tags] yet" in plain prose. Filling empty bullets is forbidden.
 
-— PRIORITY AND HONESTY (most critical) —
+— PRIORITY AND HONESTY —
 - FIRST search the user's data: books, moments, tags, notes.
+- If the user asks for "tags": answer ONLY from the Tags section. Don't present moment OCR text as tags.
 - If not in the library, you may share literary/general knowledge (author, book, date, movement) — but CLEARLY mark it: "Not in your library, but as outside knowledge..."
 - DON'T fabricate books, quotes, or moments. Don't present what isn't in the data as if it is.
 - For things you don't know, say "I don't have certain knowledge on this". Don't guess. Don't state potentially wrong dates/authors/quotes.
+- Use "perhaps" / "I think" if unsure; speak directly when you know.
 - If unsure about previous conversation, say "I can't see the earlier part of this conversation, could you ask again?". Don't deny, don't gaslight.
 
 — FORMAT —
@@ -384,14 +332,14 @@ RULES:
 USER'S READING DATA:
 {USER_CONTEXT}`;
 
-// Eco voice ihlal patternları — output post-process filter.
-// Model Eco system prompt'una rağmen bazen yasaklı ifadeleri sızdırır;
+// Voice contract ihlal patternları — output post-process filter.
+// Model system prompt'una rağmen bazen yasaklı ifadeleri sızdırır;
 // post-output detection ile yakalanır, rejenerasyon tetiklenir
-// (chat.send'de max 2 retry, sonra ECO_FALLBACK_MESSAGES.cantAnswer).
+// (chat.send'de max 2 retry, sonra CHAT_FALLBACK_MESSAGES.cantAnswer).
 //
-// Liste tutma: yeni ihlal pattern'i tespit edilirse buraya ekle, retro
-// snapshot'ları güncelle (eco-brand-character.md → versiyon bump).
-const ECO_FORBIDDEN_PHRASES_TR: readonly string[] = [
+// Liste tutma: yeni ihlal pattern'i tespit edilirse buraya ekle, regression
+// test'i ile birlikte (prompts.test.ts → describe("violatesVoiceContract")).
+const VOICE_FORBIDDEN_PHRASES_TR: readonly string[] = [
   "harika seçim",
   "süpersin",
   "bayıldım",
@@ -407,7 +355,7 @@ const ECO_FORBIDDEN_PHRASES_TR: readonly string[] = [
   "ne güzel",
 ];
 
-const ECO_FORBIDDEN_PHRASES_EN: readonly string[] = [
+const VOICE_FORBIDDEN_PHRASES_EN: readonly string[] = [
   "great choice",
   "awesome",
   "i love it",
@@ -421,26 +369,26 @@ const ECO_FORBIDDEN_PHRASES_EN: readonly string[] = [
   "without a doubt",
 ];
 
-// Aşırı emoji storm (2+ aynı emoji ardışık). Eco brand voice tek emoji bile
+// Aşırı emoji storm (2+ aynı emoji ardışık). Voice contract tek emoji bile
 // nadiren onaylar (max bir 📖); kümeli emoji "süsleme" yasağını kırar.
-const ECO_EMOJI_STORM = /(✨{2,}|🔥{2,}|👏{2,}|🌟{2,}|💯{2,}|❤️{2,})/u;
+const VOICE_EMOJI_STORM = /(✨{2,}|🔥{2,}|👏{2,}|🌟{2,}|💯{2,}|❤️{2,})/u;
 
-// Sales redirect: Eco satışçı değil. "Premium ile daha", "abone ol",
+// Sales redirect: asistan satışçı değil. "Premium ile daha", "abone ol",
 // "ücretli sürümde" gibi pazarlama dili tespit edilir → rejenerasyon ile
-// Eco kullanıcıyı Settings'e yönlendirir.
-const ECO_SALES_LANGUAGE =
+// kullanıcıyı Settings'e yönlendirir.
+const VOICE_SALES_LANGUAGE =
   /\b(premium ile daha|premium'a yükselt|premium'a geç|subscribe to|abone ol(?!unur)|ücretli sürüm[de])/i;
 
 /**
- * Eco voice contract violation tespit. Output post-process'inde kullanılır;
+ * Voice contract violation tespit. Output post-process'inde kullanılır;
  * eşleşme varsa chat.send rejenerasyon tetikler (max 2 retry, sonra
- * ECO_FALLBACK_MESSAGES.cantAnswer).
+ * CHAT_FALLBACK_MESSAGES.cantAnswer).
  *
  * Önemli: bu filter false-positive yapmasın. Yasaklı ifadeler "kasıtlı
  * marka ihlali" tonu — meşru bir cevap "süpersin" demez. Yine de yeni
  * pattern eklerken testler ile birlikte ekleyin (prompts.test.ts).
  */
-export function violatesEcoVoice(output: string): {
+export function violatesVoiceContract(output: string): {
   violates: boolean;
   reason?: string;
 } {
@@ -450,7 +398,7 @@ export function violatesEcoVoice(output: string): {
   // (normalizeTag ile aynı motivasyon: "HARIKA" → "harıka" değil "harika"
   // istiyoruz; toLocaleLowerCase("tr-TR") "I"→"ı" yapar, doğru kontrol için).
   const lowerTr = output.toLocaleLowerCase("tr-TR");
-  for (const phrase of ECO_FORBIDDEN_PHRASES_TR) {
+  for (const phrase of VOICE_FORBIDDEN_PHRASES_TR) {
     if (lowerTr.includes(phrase)) {
       return { violates: true, reason: `forbidden_phrase_tr:${phrase}` };
     }
@@ -458,17 +406,17 @@ export function violatesEcoVoice(output: string): {
 
   // EN için default toLowerCase yeterli (ASCII).
   const lowerEn = output.toLowerCase();
-  for (const phrase of ECO_FORBIDDEN_PHRASES_EN) {
+  for (const phrase of VOICE_FORBIDDEN_PHRASES_EN) {
     if (lowerEn.includes(phrase)) {
       return { violates: true, reason: `forbidden_phrase_en:${phrase}` };
     }
   }
 
-  if (ECO_EMOJI_STORM.test(output)) {
+  if (VOICE_EMOJI_STORM.test(output)) {
     return { violates: true, reason: "emoji_storm" };
   }
 
-  if (ECO_SALES_LANGUAGE.test(output)) {
+  if (VOICE_SALES_LANGUAGE.test(output)) {
     return { violates: true, reason: "sales_language" };
   }
 
@@ -482,13 +430,14 @@ export function violatesEcoVoice(output: string): {
  * geriye 5 harften az kalıyorsa response degenerate'tir.
  *
  * Kullanım: chat.send candidate alındıktan sonra çağrılır; degenerate ise
- * voice violation gibi retry tetiklenir, retry tükenince Eco fallback.
+ * voice violation gibi retry tetiklenir, retry tükenince fallback.
  *
- * Bu kontrol Eco aktif olsun olmasın çalışır — "boş bullet" bug'ı 50334
- * production'da Eco kapalıyken görüldü (Hilal dogfood, 26 Nis akşam):
+ * "Boş bullet" bug'ı 50334 production'da görüldü (Hilal dogfood, 26 Nis):
  * model "Kitaplarımı listele" / "Liste olarak isimlerini ver" sorularına
  * `- `, `\n• \n`, ya da `1. \n2. \n3.` gibi degenerate çıktı dönüyor,
- * kullanıcı ekranda boş madde işareti / numbered list görüyor.
+ * kullanıcı ekranda boş madde işareti / numbered list görüyor. 26 Nis
+ * prompt revizyonu ile kaynak kesildi (empty-state kuralı eklendi);
+ * bu defansif kontrol mevcut basit haliyle (≤5 harf) sigorta olarak kalır.
  *
  * Whitelist yaklaşımı (önceki blacklist yerine): markdown noise pattern
  * çeşitleri (numbered list `1.\n2.\n3.`, parantezli `(1)(2)(3)`, sadece
@@ -510,12 +459,12 @@ export function isDegenerateResponse(output: string): boolean {
 
 /**
  * Voice violation retry tükendiğinde veya fatal LLM error'da kullanıcıya
- * gösterilen Eco-uyumlu generic mesajlar. Her ihlal yakalansa bile kullanıcı
- * fallback gördüğünde Eco karakter dışına çıkmamalı — bu yüzden "Üzgünüm,
- * AI olarak şunu yapamam" gibi tool-language YOK; "Bu konuda doğru cevap
- * veremiyorum" sade kütüphaneci tonunda.
+ * gösterilen voice-uyumlu generic mesajlar. Fallback gördüğünde de asistan
+ * karakter dışına çıkmamalı — "Üzgünüm, AI olarak şunu yapamam" gibi
+ * tool-language YOK; "Bu konuda doğru cevap veremiyorum" sade asistan
+ * tonunda.
  */
-export const ECO_FALLBACK_MESSAGES = {
+export const CHAT_FALLBACK_MESSAGES = {
   tr: {
     cantAnswer:
       "Bu konuda doğru cevap veremiyorum. Başka bir şekilde sorabilir misin?",
@@ -528,23 +477,10 @@ export const ECO_FALLBACK_MESSAGES = {
 } as const;
 
 /**
- * Kill switch helper — chat system prompt'u Eco mı yoksa legacy mi seçer.
- * ENABLE_ECO_VOICE=false (Railway dashboard) ise legacy CHAT_SYSTEM_PROMPT'a
- * düşer. Production'da Eco voice violation oranı yüksek seyrederse veya
- * brand karakter copy'sinde yapısal sorun bulunursa redeploy beklemeden
- * flip edilebilir.
- *
- * Default: Eco aktif. enableMomentEnrichment / enableMarkingCapture pattern'i
- * ile aynı semantik (env.ts'deki tanım: ENABLE_ECO_VOICE !== "false").
+ * Locale-aware chat system prompt seçer. Tek unified prompt'a inildiği için
+ * (26 Nis 2026 refactor) eskiden var olan Eco/legacy switch'i kaldırıldı.
+ * Acil revert için Railway redeploy yeterli — Apple Review değil, ~5dk.
  */
-export function getChatSystemPrompt(
-  locale: "tr" | "en",
-  enableEco: boolean,
-): string {
-  if (!enableEco) {
-    return locale === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_TR;
-  }
-  return locale === "en"
-    ? ECO_CHAT_SYSTEM_PROMPT_EN
-    : ECO_CHAT_SYSTEM_PROMPT_TR;
+export function getChatSystemPrompt(locale: "tr" | "en"): string {
+  return locale === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_TR;
 }
