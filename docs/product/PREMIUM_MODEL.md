@@ -19,7 +19,6 @@ PALIMPS, **tek ve basit bir premium abonelik modeli** sunar. Kredi sistemi, katm
 | **AI Not Oluşturma** | ❌ | ✅ Sınırsız |
 | **AI Özet Çıkarma** | ❌ | ✅ Sınırsız |
 | **AI Tematik Analiz** | ❌ | ✅ Sınırsız |
-| **Çoklu Dil Desteği** | ❌ | ✅ (TR, EN, DE, ES) |
 | **Okuma İstatistikleri** | ❌ | ✅ Detaylı grafikler |
 | **Export (PDF, Markdown)** | ❌ | ✅ Sınırsız |
 | **Bulut Senkronizasyon** | ✅ Temel | ✅ Sınırsız |
@@ -71,13 +70,12 @@ Okuma anlarınızı ve notlarınızı dışa aktarın:
 - **Markdown**: Obsidian, Notion gibi araçlarla uyumlu
 - **Plain Text**: Evrensel format
 
-### 7. Çoklu Dil Desteği
-- Türkçe (TR)
-- İngilizce (EN)
-- Almanca (DE)
-- İspanyolca (ES)
+## Dil Desteği
 
-AI özellikleri tüm dillerde çalışır.
+Uygulama arayüzü Türkçe (TR) ve İngilizce (EN) olarak ship ediyor.
+AI özellikleri her iki dilde de çalışır. DE/ES gibi ek diller yol
+haritasında değil; eklenirse premium ayrımı olmaksızın tüm kullanıcılar
+için açılır.
 
 ## Fiyatlandırma
 
