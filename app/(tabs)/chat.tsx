@@ -3,8 +3,8 @@ import { useState, useMemo } from "react";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { router } from "expo-router";
-import Markdown from "react-native-markdown-display";
 
+import { AssistantMessage } from "@/components/assistant-message";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
@@ -175,160 +175,166 @@ export default function ChatScreen() {
     router.push("/premium");
   };
 
-  // Markdown render stilleri — Gemini cevapları `**bold**`, `1. item`, `### Heading`
-  // üretiyor; `react-native-markdown-display` bunları düzgün renderlar. Tema-aware:
-  // foreground + border + muted color token'larıyla dark/light otomatik uyumlu.
-  // Sadece **normal assistant mesajları** markdown render edilir; user/error/
-  // quota kartları düz Text — onlarda markdown yok, üstelik error mesajlarında
-  // render `color` override'ı bubble-level override'ını ezerdi.
-  const markdownStyles = {
-    body: { fontSize: 16, lineHeight: 22, color: colors.foreground },
-    strong: { fontWeight: "700" as const, color: colors.foreground },
-    em: { fontStyle: "italic" as const },
-    heading1: { fontSize: 18, fontWeight: "700" as const, marginTop: 8, marginBottom: 4, color: colors.foreground },
-    heading2: { fontSize: 17, fontWeight: "600" as const, marginTop: 6, marginBottom: 4, color: colors.foreground },
-    heading3: { fontSize: 16, fontWeight: "600" as const, marginTop: 4, marginBottom: 2, color: colors.foreground },
-    paragraph: { marginTop: 0, marginBottom: 8 },
-    bullet_list: { marginVertical: 4 },
-    ordered_list: { marginVertical: 4 },
-    list_item: { marginBottom: 4 },
-    code_inline: {
-      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-      fontSize: 14,
-      backgroundColor: colors.border,
-      paddingHorizontal: 4,
-      borderRadius: 4,
-    },
-    blockquote: {
-      borderLeftWidth: 3,
-      borderLeftColor: colors.border,
-      paddingLeft: 12,
-      marginVertical: 8,
-      opacity: 0.85,
-    },
-    link: { color: colors.primary, textDecorationLine: "underline" as const },
-    hr: { backgroundColor: colors.border, height: 1, marginVertical: 8 },
-  };
-
+  // 26 Nis 2026 UI redesign (Hilal onayı, "Yön B refined"):
+  // - User mesajı: sağda mor balon (korunur)
+  // - Asistan normal cevap: balonsuz, AssistantMessage component'i
+  //   parse'lar ve uygun kart/prose render'ı seçer
+  // - Error/quota cevapları: küçük surface balonda kalır (kart paradigmasına
+  //   girmez, sistem mesajı niteliğinde)
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
     const isError = item.kind === "error";
     const isQuotaUpsell = item.kind === "quotaExhausted";
+    const isSystemCard = isError || isQuotaUpsell;
     const showsRetry = isError && !!item.retryPrompt;
     const showsPremiumCta = isQuotaUpsell;
-    // Markdown sadece AI'ın normal cevaplarına uygulanır. User plain text yazar,
-    // error/quota mesajları i18n string — hiçbiri markdown içermez.
-    const useMarkdown = !isUser && !isError && !isQuotaUpsell;
 
-    const bubbleBg = isUser
-      ? colors.primary
-      : isError
-        ? colors.surface
-        : colors.surface;
-    const bubbleBorder = isError ? colors.error : colors.border;
+    const timestamp = new Date(item.timestamp).toLocaleTimeString("tr-TR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-    return (
-      <View
-        style={{
-          marginBottom: 16,
-          alignItems: isUser ? "flex-end" : "flex-start",
-          paddingHorizontal: 16,
-        }}
-      >
+    // User mesajı — sağda mor balon
+    if (isUser) {
+      return (
         <View
           style={{
-            maxWidth: "85%",
-            backgroundColor: bubbleBg,
-            borderWidth: isUser ? 0 : isError ? 1 : 0.5,
-            borderColor: isUser ? undefined : bubbleBorder,
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderBottomRightRadius: isUser ? 4 : 12,
-            borderBottomLeftRadius: isUser ? 12 : 4,
+            marginBottom: 14,
+            alignItems: "flex-end",
+            paddingHorizontal: 16,
           }}
         >
-          {isQuotaUpsell && (
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "600",
-                color: colors.accent,
-                marginBottom: 4,
-              }}
-            >
-              {t("freemium.assistantQuota.title")}
+          <View
+            style={{
+              maxWidth: "78%",
+              backgroundColor: colors.primary,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+            }}
+          >
+            <Text style={{ fontSize: 15, lineHeight: 21, color: "white" }}>
+              {item.content}
             </Text>
-          )}
-          {useMarkdown ? (
-            <Markdown style={markdownStyles}>{item.content}</Markdown>
-          ) : (
+          </View>
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              marginTop: 3,
+              paddingHorizontal: 4,
+            }}
+          >
+            {timestamp}
+          </Text>
+        </View>
+      );
+    }
+
+    // Sistem kartı (error / quota upsell) — kart, sola yaslı, surface balon
+    if (isSystemCard) {
+      return (
+        <View style={{ marginBottom: 14, paddingHorizontal: 16, alignItems: "flex-start" }}>
+          <View
+            style={{
+              maxWidth: "85%",
+              backgroundColor: colors.surface,
+              borderWidth: isError ? 1 : 0.5,
+              borderColor: isError ? colors.error : colors.border,
+              borderRadius: 12,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+            }}
+          >
+            {isQuotaUpsell && (
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: colors.accent,
+                  marginBottom: 4,
+                }}
+              >
+                {t("freemium.assistantQuota.title")}
+              </Text>
+            )}
             <Text
               style={{
-                fontSize: 16,
-                lineHeight: 22,
-                color: isUser ? "white" : isError ? colors.error : colors.foreground,
+                fontSize: 15,
+                lineHeight: 21,
+                color: isError ? colors.error : colors.foreground,
               }}
             >
               {item.content}
             </Text>
+          </View>
+          {showsRetry && (
+            <Pressable
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={t("chat.retry")}
+              onPress={() => handleRetry(item.retryPrompt!)}
+              disabled={sendMutation.isPending}
+              style={({ pressed }) => ({
+                marginTop: 6,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: 8,
+                opacity: sendMutation.isPending ? 0.5 : pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
+                {t("chat.retry")}
+              </Text>
+            </Pressable>
           )}
+          {showsPremiumCta && (
+            <Pressable
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={t("chat.premiumCta")}
+              onPress={handleGoPremium}
+              style={({ pressed }) => ({
+                marginTop: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                backgroundColor: colors.accent,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 15, fontWeight: "600", color: "white" }}>
+                {t("chat.premiumCta")}
+              </Text>
+            </Pressable>
+          )}
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              marginTop: 3,
+              paddingHorizontal: 4,
+            }}
+          >
+            {timestamp}
+          </Text>
         </View>
+      );
+    }
 
-        {showsRetry && (
-          <Pressable
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={t("chat.retry")}
-            onPress={() => handleRetry(item.retryPrompt!)}
-            disabled={sendMutation.isPending}
-            style={({ pressed }) => ({
-              marginTop: 6,
-              paddingVertical: 6,
-              paddingHorizontal: 10,
-              borderRadius: 8,
-              opacity: sendMutation.isPending ? 0.5 : pressed ? 0.7 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>
-              {t("chat.retry")}
-            </Text>
-          </Pressable>
-        )}
-
-        {showsPremiumCta && (
-          <Pressable
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={t("chat.premiumCta")}
-            onPress={handleGoPremium}
-            style={({ pressed }) => ({
-              marginTop: 8,
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              backgroundColor: colors.accent,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "white" }}>
-              {t("chat.premiumCta")}
-            </Text>
-          </Pressable>
-        )}
-
+    // Asistan normal cevap — balonsuz, AssistantMessage parse'lar ve render'lar
+    return (
+      <View style={{ marginBottom: 18, alignItems: "flex-start" }}>
+        <AssistantMessage content={item.content} />
         <Text
           style={{
-            fontSize: 12,
+            fontSize: 11,
             color: colors.muted,
             marginTop: 4,
-            paddingHorizontal: 8,
+            paddingHorizontal: 18,
           }}
         >
-          {new Date(item.timestamp).toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {timestamp}
         </Text>
       </View>
     );

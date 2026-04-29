@@ -277,6 +277,24 @@ KURALLAR:
 - Uzun cevaplarda alt başlıklar kullanabilirsin (markdown ## veya **kalın başlıklar**).
 - Liste istiyorsa veride hiç YOKSA: bullet veya numbered list AÇMA. Düz cümleyle "Henüz [an / kitap / etiket] yok" de. Boş bullet doldurmak yasak.
 
+— KART YAPISI (yapısal cevaplarda kritik — UI render bu kurala bağlı) —
+Yapısal cevap üretirken (liste, etiket, vurgulama, öneri) İLK SATIRDA tam olarak bu kart başlıklarından birini kullan:
+
+  # KÜTÜPHANENDE N KİTAP        → kitap listesi (N = sayı)
+  # TÜM ETİKETLERİN              → tüm etiketler
+  # "{KİTAP_ADI}" ETİKETLERİ    → tek kitabın etiketleri
+  # VURGULADIKLARIN              → vurgulama listesi
+  # ÖNERİLER                     → kitap önerileri (kütüphane içi veya dışı)
+
+Başlıktan sonra:
+- Kitap listesi: bullet'lar — \`- **Kitap Adı** — Yazar\`
+- Etiket listesi: virgül ile ayrılmış düz metin — \`felsefe, spinoza (3), yapay-zeka (2), ...\` (frekans 2+ ise parantez içinde)
+- Vurgulama: her kitap için \`## **Kitap Adı** — Yazar\` alt başlığı, sonra alıntılar \`> alıntı metni\`, kullanıcı notu \`> [SENİN NOTUN] not metni\`
+- Öneri: 1-2 cümle intro paragraf, sonra \`## Kategori Adı\` (cümle düzeninde), her öneri \`- **Kitap** — Yazar\` + sonraki satırda 1-2 cümle gerekçe
+- Vurgulama sıralaması: en son kaydedilen kitap üstte (frekans veya alfabetik DEĞİL).
+
+Sohbet cevaplarında (kim olduğunu soru, kısa açıklama, evet/hayır, "anlat", "neden" vb.) # başlığı KOYMA. Düz prose yaz. # başlığı yoksa cevap konuşma sayılır.
+
 — BİLGİ SIRASI VE DÜRÜSTLÜK —
 - ÖNCE kullanıcının verisinde ara: kitaplar, anlar, etiketler, notlar.
 - Kullanıcı "tag" / "etiket" derse: SADECE Etiketler bölümünden cevap ver, moment OCR metnini etiket gibi gösterme.
@@ -312,6 +330,24 @@ RULES:
 - Use bold for emphasis: book titles, author names, key concepts.
 - For long answers, use subheadings (markdown ## or **bold headings**).
 - If a list is requested but data is empty: DON'T open a bullet or numbered list. Say "No [moments / books / tags] yet" in plain prose. Filling empty bullets is forbidden.
+
+— CARD STRUCTURE (critical for structured answers — UI render depends on this) —
+For structured answers (list, tags, highlights, recommendations) the FIRST LINE must be exactly one of these card headings:
+
+  # N BOOKS IN YOUR LIBRARY      → book list (N = count)
+  # ALL TAGS                     → all tags
+  # TAGS FOR "{BOOK_TITLE}"      → tags for a single book
+  # YOUR HIGHLIGHTS              → highlight list
+  # RECOMMENDATIONS              → book recommendations (in or out of library)
+
+After the heading:
+- Book list: bullets — \`- **Book Title** — Author\`
+- Tag list: comma-separated plain text — \`philosophy, spinoza (3), ai (2), ...\` (count in parens if 2+)
+- Highlights: for each book a sub-heading \`## **Book Title** — Author\`, then quotes \`> quote text\`, user note \`> [YOUR NOTE] note text\`
+- Recommendations: 1-2 sentence intro paragraph, then \`## Category Name\` (sentence case), each recommendation \`- **Book** — Author\` + on the next line a 1-2 sentence rationale
+- Highlight ordering: most recently saved book on top (NOT frequency or alphabetical).
+
+For conversational answers (who-are-you, short explanations, yes/no, "tell me", "why" etc.) DO NOT use a # heading. Write plain prose. If no # heading, the answer is treated as conversation.
 
 — PRIORITY AND HONESTY —
 - FIRST search the user's data: books, moments, tags, notes.
@@ -426,35 +462,54 @@ export function violatesVoiceContract(output: string): {
 /**
  * Defansif min-content kontrolü: model bazen markdown bullet/numbered list
  * başlatıp anlamlı içerik üretmeden generation'ı bitiriyor (token cutoff,
- * safety stop, ya da generation drift). Sadece harf karakterlerini sayar;
- * geriye 5 harften az kalıyorsa response degenerate'tir.
+ * safety stop, ya da generation drift). İki katmanlı kontrol:
+ *
+ * Katman 1 — Toplam harf eşiği (≤5):
+ * Whitelist yaklaşımı (önceki blacklist yerine): sadece Unicode harfleri sayar.
+ * Markdown noise pattern çeşitleri (numbered list `1.\n2.\n3.`, parantezli
+ * `(1)(2)(3)`, sadece sayı dizisi `12345`, tek `•`, vs.) tek seferde yakalanır.
+ * Threshold 5: "evet" / "hayır" / "yok" gibi gerçek kısa cevapları kabul etmek
+ * için bilinçli düşük tutuldu.
+ *
+ * Katman 2 — Anlamlı satır oranı (3+ satırlık response'larda):
+ * 26 Nis 2026 dogfood (Hilal real-device) bypass vakası: "İşte anların:\n• \n
+ * • \n• " cevabı Katman 1'i geçer (`İşteanların` = 11 harf > 5) ama client
+ * markdown render'da "tek nokta + boş kart" görünür. Pattern: preamble heading
+ * + boş bullet'lar. Çözüm: 3+ satırlık response'da, bullet/numbered prefix
+ * sıyrıldıktan sonra ≥3 harf kalan satır oranı 0.5'in altındaysa degenerate.
+ *
+ * Kısa cevaplara dokunmaz (lines.length < 3 → Katman 2 skip). Anlamlı liste
+ * koruması: "İşte anların:\n• Spinoza...\n• Cadılar..." → 3 satır, 3 anlamlı,
+ * ratio 1.0 → PASS. İlk turn'da prompt revizyonu kaynağı kesti, bu Katman 2
+ * sigortası nondeterministic LLM drift için.
  *
  * Kullanım: chat.send candidate alındıktan sonra çağrılır; degenerate ise
  * voice violation gibi retry tetiklenir, retry tükenince fallback.
- *
- * "Boş bullet" bug'ı 50334 production'da görüldü (Hilal dogfood, 26 Nis):
- * model "Kitaplarımı listele" / "Liste olarak isimlerini ver" sorularına
- * `- `, `\n• \n`, ya da `1. \n2. \n3.` gibi degenerate çıktı dönüyor,
- * kullanıcı ekranda boş madde işareti / numbered list görüyor. 26 Nis
- * prompt revizyonu ile kaynak kesildi (empty-state kuralı eklendi);
- * bu defansif kontrol mevcut basit haliyle (≤5 harf) sigorta olarak kalır.
- *
- * Whitelist yaklaşımı (önceki blacklist yerine): markdown noise pattern
- * çeşitleri (numbered list `1.\n2.\n3.`, parantezli `(1)(2)(3)`, sadece
- * sayı dizisi `12345`, vs.) blacklist'le yakalanması zor — her vakaya yeni
- * regex eklemek yerine "anlamlı içerik = harf" ilkesi sıkı ve sürdürülebilir.
- *
- * Threshold (5): "evet" / "hayır" / "yok" gibi gerçek kısa cevapları kabul
- * etmek için bilinçli düşük tutuldu. Boş bullet/numbered list vakalarında
- * harf sayısı 0; false-positive riski minimum (sayı-ağırlıklı meşru cevap
- * "2024 yılında" gibi olur, harf yine 5+ kalır).
  */
 export function isDegenerateResponse(output: string): boolean {
-  // Whitelist: sadece Unicode harfleri tut. Türkçe karakterler (ı, ş, ğ,
-  // ü, ç, ö) \p{L}'ye dahil. Rakam, noktalama, whitespace, markdown
-  // sembolleri (-, *, •, #, >, vb.), parantez, emoji — hepsi silinir.
+  // Katman 1: toplam harf eşiği. Türkçe karakterler (ı, ş, ğ, ü, ç, ö)
+  // \p{L}'ye dahil. Rakam, noktalama, whitespace, markdown sembolleri
+  // (-, *, •, #, >, vb.), parantez, emoji — hepsi silinir.
   const letters = output.replace(/[^\p{L}]/gu, "");
-  return letters.length < 5;
+  if (letters.length < 5) return true;
+
+  // Katman 2: 3+ satırlık response'larda anlamlı satır oranı kontrolü.
+  // "preamble + boş bullet" bypass'ı (26 Nis 2026 prod, Hilal real-device).
+  const lines = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length >= 3) {
+    const meaningfulLines = lines.filter((line) => {
+      // Bullet/numbered prefix strip: •, -, *, ·, –, —, "1.", "1)", "(1)"
+      const stripped = line.replace(/^([-*•·–—]|\d+[.)]|\(\d+\))\s*/, "");
+      const lineLetters = stripped.replace(/[^\p{L}]/gu, "");
+      return lineLetters.length >= 3;
+    });
+    if (meaningfulLines.length / lines.length < 0.5) return true;
+  }
+
+  return false;
 }
 
 /**

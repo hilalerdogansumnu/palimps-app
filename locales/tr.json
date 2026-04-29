@@ -313,7 +313,27 @@
     "example1": "Okuma alışkanlıklarıma göre yeni kitap öner",
     "example2": "Son eklediğim kitabın notlarımdan kısa özetini çıkar",
     "example3": "Okuduğum kitapları listele",
-    "example4": "Kaydettiğim AN'ları listele"
+    "example4": "Kaydettiğim AN'ları listele",
+    "cards": {
+      "bookCount_one": "KÜTÜPHANENDE {{count}} KİTAP",
+      "bookCount_other": "KÜTÜPHANENDE {{count}} KİTAP",
+      "allTags": "TÜM ETİKETLERİN",
+      "tagsForBook": "\"{{book}}\" ETİKETLERİ",
+      "tagCount_one": "{{count}} etiket",
+      "tagCount_other": "{{count}} etiket",
+      "highlights": "VURGULADIKLARIN",
+      "highlightCount_one": "{{books}} kitap · {{quotes}} alıntı",
+      "highlightCount_other": "{{books}} kitap · {{quotes}} alıntı",
+      "quoteCount_one": "{{count}} alıntı",
+      "quoteCount_other": "{{count}} alıntı",
+      "userNote": "SENİN NOTUN",
+      "recommendations": "ÖNERİLER",
+      "fromWeb": "İNTERNETTEN",
+      "empty": "Henüz veri yok.",
+      "emptyTags": "Henüz etiket yok.",
+      "emptyHighlights": "Henüz vurgulama yok.",
+      "emptyRecommendations": "Şu an öneri üretemiyorum."
+    }
   },
   "languages": { "en": "English", "tr": "Türkçe" },
   "notifications": {

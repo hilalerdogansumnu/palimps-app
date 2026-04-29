@@ -370,6 +370,24 @@ describe("getChatSystemPrompt", () => {
     expect(en).toMatch(/asks for "tags"|tags section/);
   });
 
+  it("UI redesign: kart yapısı kontratı prompt'ta var", () => {
+    // 26 Nis 2026 UI redesign (Yön B refined). Client'ta parse.ts ilk satırın
+    // # KART_BAŞLIĞI pattern'ine bakıp kart tipi tespit ediyor; prompt'un bu
+    // başlıkları LLM'e dayatması gerek. Kazara silinme = kart render bozulur.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toContain("KÜTÜPHANENDE");
+    expect(tr).toContain("TÜM ETİKETLERİN");
+    expect(tr).toContain("VURGULADIKLARIN");
+    expect(tr).toContain("ÖNERİLER");
+    expect(tr).toContain("[SENİN NOTUN]");
+    const en = getChatSystemPrompt("en");
+    expect(en).toContain("BOOKS IN YOUR LIBRARY");
+    expect(en).toContain("ALL TAGS");
+    expect(en).toContain("YOUR HIGHLIGHTS");
+    expect(en).toContain("RECOMMENDATIONS");
+    expect(en).toContain("[YOUR NOTE]");
+  });
+
   it("audit gevşetme: rigid '1-2 cümle' sınırı kalktı", () => {
     // Eski legacy: "her madde tek satır, en fazla 1 cümlelik gerekçe"
     // Eski Eco: "Her madde tek satır veya 1-2 cümle"
@@ -517,6 +535,71 @@ describe("isDegenerateResponse", () => {
       // Emoji noise listesinde yok (Unicode \p{Emoji}); legitimate kısa
       // cevap olarak geçer. (Voice violation o ayrı bir kontrol.)
       expect(isDegenerateResponse("📖 Okudum.")).toBe(false);
+    });
+  });
+
+  describe("Katman 2: preamble + boş bullet ratio (Bug A intermittent, 26 Nis 2026)", () => {
+    // Hilal real-device test, 26 Nis 2026 (50334 prod, post-prompt-unify):
+    // "Okuduğum kitapları listele" sorusu ilk denemede tek noktalı boş kart
+    // döndürdü, ikinci denemede dolu cevap. Pattern: model "İşte anların:\n
+    // • \n• \n• " gibi preamble + boş bullet üretiyor; Katman 1'i (≤5 harf)
+    // preamble harfleriyle bypass'lıyor. Katman 2 ratio check kaynağı keser.
+
+    it("flags 'preamble + 3 empty bullets'", () => {
+      // letters = "İşteanların" (11) > 5 → Katman 1 PASS.
+      // 4 satır: 1 anlamlı (İşte anların:), 3 anlamsız (• boş, • boş, • boş)
+      // ratio = 1/4 = 0.25 < 0.5 → Katman 2 flag.
+      expect(isDegenerateResponse("İşte anların:\n• \n• \n• ")).toBe(true);
+    });
+
+    it("flags 'short header + empty numbered list'", () => {
+      // 4 satır: 1 anlamlı (Kitaplar:), 3 anlamsız (1. boş, 2. boş, 3. boş)
+      // Mevcut "numbered list 10 items" testi Katman 1 yakalıyor; bu vakada
+      // header preamble var, Katman 1 bypass'lanıyor, Katman 2 yakalıyor.
+      expect(isDegenerateResponse("Kitaplar:\n1. \n2. \n3. ")).toBe(true);
+    });
+
+    it("flags 'colon line + 3 noise bullets (?)'", () => {
+      // "?" tek karakter, harf sıfır → bullet strip sonrası 0 harf → anlamsız.
+      // 4 satır: 1 anlamlı (Anlamlar:), 3 anlamsız → 0.25 → flag.
+      expect(isDegenerateResponse("Anlamlar:\n• ?\n• ?\n• ?")).toBe(true);
+    });
+
+    it("flags 'all-empty bullets (no preamble)'", () => {
+      // Edge case: preamble yok, 3 satır hep boş bullet. Katman 1 letters=0
+      // < 5 → degenerate. Katman 2 zaten devreye girmeden. Mevcut behavior
+      // korundu (regression: Katman 2 eklerken Katman 1 bozulmadı).
+      expect(isDegenerateResponse("• \n• \n• ")).toBe(true);
+    });
+
+    it("PASSES 'preamble + meaningful bullets' (Hilal'in 2. denemede gördüğü doğru cevap)", () => {
+      // 3 satır: 3 anlamlı → ratio 1.0 → PASS.
+      expect(
+        isDegenerateResponse(
+          "İşte kitaplarınız:\n- Spinoza'nın Sevinci — Çetin Balanuye\n- Bugünün Cadıları — Mona Chollet",
+        ),
+      ).toBe(false);
+    });
+
+    it("PASSES '3-line response with all meaningful lines'", () => {
+      expect(
+        isDegenerateResponse(
+          "## Öneriler\n- Suç ve Ceza — Dostoyevski\n- Yer Altından Notlar — Dostoyevski",
+        ),
+      ).toBe(false);
+    });
+
+    it("PASSES '2-line response stays under ratio threshold (Katman 2 skip)'", () => {
+      // lines.length=2 < 3 → ratio check tetiklenmez. Katman 1 letters=12+
+      // → PASS. Bu kuralın amacı: kısa cevaplara dokunmamak.
+      expect(isDegenerateResponse("Anlar:\n• Spinoza")).toBe(false);
+    });
+
+    it("PASSES 'short header + 1 meaningful + 1 empty bullet (3 lines, ratio 0.66)'", () => {
+      // 3 satır: 2 anlamlı (Anlar:, • Spinoza), 1 anlamsız (• boş)
+      // ratio = 2/3 ≈ 0.66 > 0.5 → PASS. Threshold 0.5 bilinçli: "yarısı
+      // anlamsız" sıkı ama makul; meşru cevap çoğunluk anlamlı satır içerir.
+      expect(isDegenerateResponse("Anlar:\n• Spinoza'nın sevinci\n• ")).toBe(false);
     });
   });
 

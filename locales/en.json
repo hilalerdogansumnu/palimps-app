@@ -313,7 +313,27 @@
     "example1": "Recommend a new book based on my reading habits",
     "example2": "Summarize my notes from the last book I added",
     "example3": "List the books I've read",
-    "example4": "List the moments I've saved"
+    "example4": "List the moments I've saved",
+    "cards": {
+      "bookCount_one": "{{count}} BOOK IN YOUR LIBRARY",
+      "bookCount_other": "{{count}} BOOKS IN YOUR LIBRARY",
+      "allTags": "ALL TAGS",
+      "tagsForBook": "TAGS FOR \"{{book}}\"",
+      "tagCount_one": "{{count}} tag",
+      "tagCount_other": "{{count}} tags",
+      "highlights": "YOUR HIGHLIGHTS",
+      "highlightCount_one": "{{books}} book · {{quotes}} quote",
+      "highlightCount_other": "{{books}} books · {{quotes}} quotes",
+      "quoteCount_one": "{{count}} quote",
+      "quoteCount_other": "{{count}} quotes",
+      "userNote": "YOUR NOTE",
+      "recommendations": "RECOMMENDATIONS",
+      "fromWeb": "FROM WEB",
+      "empty": "No data yet.",
+      "emptyTags": "No tags yet.",
+      "emptyHighlights": "No highlights yet.",
+      "emptyRecommendations": "Can't generate recommendations right now."
+    }
   },
   "languages": { "en": "English", "tr": "Türkçe" },
   "notifications": {
