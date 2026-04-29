@@ -45,6 +45,12 @@ import {
 } from "./_core/prompts";
 import { buildChatUserContext } from "./_core/chatContext";
 import { isUserPremium } from "./_core/premium";
+import {
+  assistantResponseJsonSchema,
+  parseAssistantJson,
+  buildProseFallback,
+  type AssistantResponse,
+} from "../shared/chatSchema";
 
 /**
  * Freemium paket limitleri — tek yerden okunur ki pazarlama/UX değiştiğinde
@@ -1227,7 +1233,7 @@ ${bodyHtml}
         // bullet" bug'ı 50334 prod, model markdown bullet başlatıp içerik
         // üretmeden bitiriyor — burada da retry tetikler).
         const MAX_RETRIES = 2;
-        let reply: string | null = null;
+        let reply: AssistantResponse | null = null;
         let usedFallback = false;
         let lastViolationReason: string | undefined;
 
@@ -1236,20 +1242,28 @@ ${bodyHtml}
         // şu an yanıt veremiyor" gördü, log'da `503 UNAVAILABLE`). Hata
         // genelde 1-2 saniyede kendine geliyor; retry yoksa kullanıcı
         // hatasız bir hatayla karşı karşıya kalıyor. Inner loop SADECE
-        // invokeLLM çağrısını sarıyor — voice/degenerate retry budget
-        // (MAX_RETRIES) ayrı kalıyor, transient hatası onları tüketmiyor.
+        // invokeLLM çağrısını sarıyor — voice/degenerate/JSON-parse retry
+        // budget (MAX_RETRIES) ayrı kalıyor, transient onları tüketmiyor.
         const TRANSIENT_BACKOFF_MS = [600, 1200] as const;
 
         for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
           let response: Awaited<ReturnType<typeof invokeLLM>> | undefined;
           for (let llmAttempt = 0; ; llmAttempt++) {
             try {
+              // Plan C — JSON mode. Gemini schema'ya uymak ZORUNDA;
+              // schema dışı çıktı zaten Gemini tarafında reddedilir, bizim
+              // tarafımızda Zod ek validation yapar (paranoid double-gate).
               response = await invokeLLM({
                 model: chatModel,
                 messages: [
                   { role: "system", content: systemPrompt },
                   { role: "user", content: input.message },
                 ],
+                outputSchema: {
+                  name: "assistant_response",
+                  schema: assistantResponseJsonSchema as Record<string, unknown>,
+                  strict: true,
+                },
               });
               break;
             } catch (err) {
@@ -1308,33 +1322,66 @@ ${bodyHtml}
             });
           }
 
-          const candidate =
+          const rawJson =
             typeof firstChoice.message.content === "string"
               ? firstChoice.message.content
               : JSON.stringify(firstChoice.message.content);
 
-          // Defansif min-content check — voice contract'tan ÖNCE çalışır.
-          // Model bazen markdown bullet başlatıp içerik üretmeden bitiriyor
-          // → kullanıcıya boş "•" görünüyordu (50334 prod bug). Threshold:
-          // <5 anlamlı harf kaldıysa retry tetikler.
-          if (isDegenerateResponse(candidate)) {
-            lastViolationReason = "degenerate_response";
-            console.warn("[chat.send] degenerate response, retrying", {
+          // Plan C — JSON parse + Zod validate. Schema'ya uymayan output
+          // null döner, retry tetikler. Aşırı durumda fallback'e düşer.
+          const parsed = parseAssistantJson(rawJson);
+          if (!parsed) {
+            lastViolationReason = "json_parse_failed";
+            console.warn("[chat.send] JSON parse / schema validation failed", {
               userId: ctx.user.id,
               model: chatModel,
               attempt,
-              candidateLength: candidate.length,
-              // Sample first 60 chars only — PII risk if logged in full.
-              sample: candidate.slice(0, 60),
+              candidateLength: rawJson.length,
+              sample: rawJson.slice(0, 80),
             });
             continue;
           }
 
-          // Voice contract violation check — yasaklı ifade / emoji storm /
-          // sales language sızıntısı varsa retry tetikler.
-          const check = violatesVoiceContract(candidate);
+          // Defansif min-content check — Plan C'de ham JSON yerine parsed
+          // payload'ın user-visible text'ine bakılır. prose/recommendations
+          // intro'da tek karakter yakalanırsa retry. Diğer kart tiplerinde
+          // (book-list/tag-cloud/highlights) içerik boş gelirse zaten
+          // empty-state prose'a düşmesi gerekir (prompt kuralı); o gelmezse
+          // retry, retry de yetmezse fallback.
+          const userVisibleText =
+            parsed.kind === "prose"
+              ? parsed.text
+              : parsed.kind === "recommendations"
+                ? parsed.intro
+                : "";
+          if (parsed.kind === "prose" && isDegenerateResponse(userVisibleText)) {
+            lastViolationReason = "degenerate_response";
+            console.warn("[chat.send] degenerate prose, retrying", {
+              userId: ctx.user.id,
+              model: chatModel,
+              attempt,
+              candidateLength: userVisibleText.length,
+              sample: userVisibleText.slice(0, 60),
+            });
+            continue;
+          }
+
+          // Voice contract violation check — sadece prose ve recommendations
+          // intro'da metin var. Liste cevaplarında (book-list/tag-cloud/
+          // highlights) zaten "harika seçim" gibi şeyler kullanılmaz, voice
+          // ihlal yüzeyi yok.
+          const textToCheck =
+            parsed.kind === "prose"
+              ? parsed.text
+              : parsed.kind === "recommendations"
+                ? parsed.intro
+                : "";
+          const check =
+            textToCheck.length > 0
+              ? violatesVoiceContract(textToCheck)
+              : { violates: false as const };
           if (!check.violates) {
-            reply = candidate;
+            reply = parsed;
             break;
           }
 
@@ -1344,22 +1391,22 @@ ${bodyHtml}
             model: chatModel,
             attempt,
             reason: check.reason,
-            // Sample first 80 chars only — PII risk if logged in full.
-            sample: candidate.slice(0, 80),
+            sample: textToCheck.slice(0, 80),
           });
         }
 
-        // Retry tükendi, hala ihlal var → fallback (asistan karakter dışına
-        // çıkmadan generic mesaj). Fallback'le sonlanan akış quota harcamaz.
+        // Retry tükendi, hala bozuk → prose fallback (kullanıcı boş kart
+        // değil, açıklayıcı bir mesaj görür). Fallback ile sonlanan akış
+        // quota harcamaz.
         if (reply === null) {
-          // Retry'lar tükendi — sebep voice violation veya degenerate
-          // response olabilir. lastReason ile telemetry'de ayırt edilebilir.
           console.error("[chat.send] retries exhausted, falling back", {
             userId: ctx.user.id,
             lastReason: lastViolationReason,
             maxRetries: MAX_RETRIES,
           });
-          reply = CHAT_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer;
+          reply = buildProseFallback(
+            CHAT_FALLBACK_MESSAGES[locale === "en" ? "en" : "tr"].cantAnswer,
+          );
           usedFallback = true;
         }
 

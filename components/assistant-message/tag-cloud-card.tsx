@@ -11,10 +11,10 @@ import { View, Text } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
 
-import type { TagCloudPayload } from "./parse";
+import type { TagCloudResponse } from "../../shared/chatSchema";
 
 export type TagCloudCardProps = {
-  payload: TagCloudPayload;
+  payload: TagCloudResponse;
 };
 
 export function TagCloudCard({ payload }: TagCloudCardProps) {

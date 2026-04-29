@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useSubscription } from "@/hooks/use-subscription";
 import { captureException } from "@/lib/_core/sentry";
+import type { AssistantResponse } from "../../shared/chatSchema";
 
 // "quotaExhausted" = free user 10 lifetime Hafıza sorusunu tüketti; upsell CTA
 // renderlanır. Legacy "premiumRequired" kind'ini artık üretmiyoruz — free user
@@ -17,14 +18,31 @@ import { captureException } from "@/lib/_core/sentry";
 // "upsell" kolunu kullanıyoruz.
 type MessageKind = "normal" | "error" | "quotaExhausted";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  kind?: MessageKind;
-  retryPrompt?: string;
-};
+// Plan C (27 Nis 2026): asistan normal cevabı artık string yerine structured
+// AssistantResponse payload. User mesajı + system kart'lar (error/quota) hâlâ
+// content string kullanıyor — kart layout'ları yok, sadece düz metin.
+type Message =
+  | {
+      id: string;
+      role: "user";
+      content: string;
+      timestamp: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "normal";
+      payload: AssistantResponse;
+      timestamp: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "error" | "quotaExhausted";
+      content: string;
+      timestamp: string;
+      retryPrompt?: string;
+    };
 
 export default function ChatScreen() {
   const colors = useColors();
@@ -66,7 +84,11 @@ export default function ChatScreen() {
     // accumulate dead system messages.
     if (options?.isRetry) {
       setMessages((prev) =>
-        prev.filter((m) => m.kind !== "error" && m.kind !== "quotaExhausted"),
+        prev.filter(
+          (m) =>
+            m.role === "user" ||
+            (m.role === "assistant" && m.kind !== "error" && m.kind !== "quotaExhausted"),
+        ),
       );
     } else {
       const userMessage: Message = {
@@ -84,12 +106,14 @@ export default function ChatScreen() {
       const locale = i18n.language?.startsWith("en") ? "en" : "tr";
       const response = await sendMutation.mutateAsync({ message: textToSend, locale });
 
+      // Plan C: response.reply artık AssistantResponse object (server JSON
+      // mode). Eski string-content path'i system kart'lara ait kaldı.
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.reply,
-        timestamp: response.timestamp,
         kind: "normal",
+        payload: response.reply,
+        timestamp: response.timestamp,
       };
       setMessages((prev) => [...prev, assistantMessage]);
       // Server free user için quotaRemaining döner; optimistic UI update
@@ -111,9 +135,9 @@ export default function ChatScreen() {
         const quotaMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
+          kind: "quotaExhausted",
           content: t("freemium.assistantQuota.body"),
           timestamp: new Date().toISOString(),
-          kind: "quotaExhausted",
         };
         setMessages((prev) => [...prev, quotaMessage]);
         setLocalRemaining(0);
@@ -152,9 +176,9 @@ export default function ChatScreen() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
+        kind: "error",
         content: isKnownServerError ? t("chat.errorUnavailable") : t("chat.errorMessage"),
         timestamp: new Date().toISOString(),
-        kind: "error",
         retryPrompt: textToSend,
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -183,8 +207,8 @@ export default function ChatScreen() {
   //   girmez, sistem mesajı niteliğinde)
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
-    const isError = item.kind === "error";
-    const isQuotaUpsell = item.kind === "quotaExhausted";
+    const isError = item.role === "assistant" && item.kind === "error";
+    const isQuotaUpsell = item.role === "assistant" && item.kind === "quotaExhausted";
     const isSystemCard = isError || isQuotaUpsell;
     const showsRetry = isError && !!item.retryPrompt;
     const showsPremiumCta = isQuotaUpsell;
@@ -195,7 +219,7 @@ export default function ChatScreen() {
     });
 
     // User mesajı — sağda mor balon
-    if (isUser) {
+    if (item.role === "user") {
       return (
         <View
           style={{
@@ -232,7 +256,7 @@ export default function ChatScreen() {
     }
 
     // Sistem kartı (error / quota upsell) — kart, sola yaslı, surface balon
-    if (isSystemCard) {
+    if (item.role === "assistant" && (item.kind === "error" || item.kind === "quotaExhausted")) {
       return (
         <View style={{ marginBottom: 14, paddingHorizontal: 16, alignItems: "flex-start" }}>
           <View
@@ -322,22 +346,29 @@ export default function ChatScreen() {
       );
     }
 
-    // Asistan normal cevap — balonsuz, AssistantMessage parse'lar ve render'lar
-    return (
-      <View style={{ marginBottom: 18, alignItems: "flex-start" }}>
-        <AssistantMessage content={item.content} />
-        <Text
-          style={{
-            fontSize: 11,
-            color: colors.muted,
-            marginTop: 4,
-            paddingHorizontal: 18,
-          }}
-        >
-          {timestamp}
-        </Text>
-      </View>
-    );
+    // Asistan normal cevap — balonsuz, AssistantMessage server'dan gelen
+    // structured payload'ı doğrudan render eder (Plan C, 27 Nis).
+    if (item.role === "assistant" && item.kind === "normal") {
+      return (
+        <View style={{ marginBottom: 18, alignItems: "flex-start" }}>
+          <AssistantMessage payload={item.payload} />
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.muted,
+              marginTop: 4,
+              paddingHorizontal: 18,
+            }}
+          >
+            {timestamp}
+          </Text>
+        </View>
+      );
+    }
+
+    // Type-exhaustiveness guard — yeni bir Message variant eklendiğinde
+    // TypeScript burada hata verir.
+    return null;
   };
 
   return (

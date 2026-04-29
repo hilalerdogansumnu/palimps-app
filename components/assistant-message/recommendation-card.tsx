@@ -13,10 +13,10 @@ import { View, Text } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
 
-import type { RecommendationsPayload } from "./parse";
+import type { RecommendationsResponse } from "../../shared/chatSchema";
 
 export type RecommendationCardProps = {
-  payload: RecommendationsPayload;
+  payload: RecommendationsResponse;
 };
 
 export function RecommendationCard({ payload }: RecommendationCardProps) {

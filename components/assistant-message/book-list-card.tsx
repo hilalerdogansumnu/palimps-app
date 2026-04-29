@@ -11,17 +11,17 @@ import { View, Text } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
 
-import type { BookListPayload } from "./parse";
+import type { BookListResponse } from "../../shared/chatSchema";
 
 export type BookListCardProps = {
-  payload: BookListPayload;
+  payload: BookListResponse;
 };
 
 export function BookListCard({ payload }: BookListCardProps) {
   const colors = useColors();
   const { t } = useTranslation();
 
-  const { count, items } = payload;
+  const { count, books } = payload;
 
   return (
     <View style={{ paddingHorizontal: 14 }}>
@@ -55,20 +55,20 @@ export function BookListCard({ payload }: BookListCardProps) {
           </Text>
         </View>
 
-        {items.length === 0 ? (
+        {books.length === 0 ? (
           <View style={{ paddingHorizontal: 14, paddingVertical: 12 }}>
             <Text style={{ fontSize: 14, color: colors.muted, fontStyle: "italic" }}>
               {t("chat.cards.empty")}
             </Text>
           </View>
         ) : (
-          items.map((item, index) => (
+          books.map((book, index) => (
             <View
-              key={`${item.title}-${index}`}
+              key={`${book.title}-${index}`}
               style={{
                 paddingHorizontal: 14,
                 paddingVertical: 10,
-                borderBottomWidth: index === items.length - 1 ? 0 : 0.5,
+                borderBottomWidth: index === books.length - 1 ? 0 : 0.5,
                 borderBottomColor: colors.border,
               }}
             >
@@ -78,14 +78,14 @@ export function BookListCard({ payload }: BookListCardProps) {
                   fontWeight: "500",
                   color: colors.foreground,
                   lineHeight: 21,
-                  marginBottom: item.author ? 2 : 0,
+                  marginBottom: book.author ? 2 : 0,
                 }}
               >
-                {item.title}
+                {book.title}
               </Text>
-              {item.author && (
+              {book.author && (
                 <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }}>
-                  {item.author}
+                  {book.author}
                 </Text>
               )}
             </View>

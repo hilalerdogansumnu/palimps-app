@@ -14,10 +14,10 @@ import { Platform, View, Text } from "react-native";
 
 import { useColors } from "@/hooks/use-colors";
 
-import type { HighlightsPayload } from "./parse";
+import type { HighlightsResponse } from "../../shared/chatSchema";
 
 export type HighlightsCardProps = {
-  payload: HighlightsPayload;
+  payload: HighlightsResponse;
 };
 
 export function HighlightsCard({ payload }: HighlightsCardProps) {

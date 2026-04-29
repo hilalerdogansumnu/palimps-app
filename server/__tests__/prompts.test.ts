@@ -344,58 +344,84 @@ describe("getChatSystemPrompt", () => {
     expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/gaslighting yapma|inkâr etme/);
   });
 
-  it("encourages professional format (bold + list)", () => {
-    // 25 Nis Hilal feedback'i: "listeleme ve bold yapınca çok profesyoneldi".
-    // Markdown render zaten chat.tsx'te aktif (react-native-markdown-display).
-    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
-    expect(tr).toMatch(/bold/);
-    expect(tr).toMatch(/liste|madde işaretli/);
-  });
+  // Plan C (27 Nis 2026): markdown KART YAPISI ve UZUNLUK VE FORMAT bölümleri
+  // silindi. LLM artık JSON döndürür, format kontratı shared/chatSchema.ts'te
+  // Gemini responseSchema ile dayatılır. Bu blok'taki test'ler prompt'un JSON
+  // mode için doğru kuralları içerdiğini doğrular.
 
-  // 26 Nis 2026 yeni eklemeler — Bug A ve Bug B prompt-side fix'leri.
-
-  it("Bug A fix: empty-state rule (boş listede bullet açma)", () => {
-    const tr = getChatSystemPrompt("tr").toLocaleLowerCase("tr-TR");
-    // "Liste istiyorsa veride hiç YOKSA: bullet veya numbered list AÇMA"
-    expect(tr).toMatch(/boş bullet doldurmak yasak|veride hiç yoksa/);
-    const en = getChatSystemPrompt("en").toLowerCase();
-    expect(en).toMatch(/filling empty bullets is forbidden|don't open a bullet/);
-  });
-
-  it("Bug B fix: tag-aware rule (etiket sorularında ayrı bölümden cevap)", () => {
+  it("Plan C: JSON output kontratı prompt'ta var", () => {
+    // LLM'e "SADECE JSON döndür" + 5 kind enum verilmeli. Schema dışı output
+    // Gemini tarafında reddedilir; bu prompt sigortası çift gate'in kaynağı.
     const tr = getChatSystemPrompt("tr");
-    // "Kullanıcı 'tag' / 'etiket' derse: SADECE Etiketler bölümünden cevap ver"
-    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/etiketler bölümünden/);
-    const en = getChatSystemPrompt("en").toLowerCase();
-    expect(en).toMatch(/asks for "tags"|tags section/);
-  });
-
-  it("UI redesign: kart yapısı kontratı prompt'ta var", () => {
-    // 26 Nis 2026 UI redesign (Yön B refined). Client'ta parse.ts ilk satırın
-    // # KART_BAŞLIĞI pattern'ine bakıp kart tipi tespit ediyor; prompt'un bu
-    // başlıkları LLM'e dayatması gerek. Kazara silinme = kart render bozulur.
-    const tr = getChatSystemPrompt("tr");
-    expect(tr).toContain("KÜTÜPHANENDE");
-    expect(tr).toContain("TÜM ETİKETLERİN");
-    expect(tr).toContain("VURGULADIKLARIN");
-    expect(tr).toContain("ÖNERİLER");
-    expect(tr).toContain("[SENİN NOTUN]");
+    expect(tr).toMatch(/SADECE JSON/);
+    expect(tr).toContain("prose");
+    expect(tr).toContain("book-list");
+    expect(tr).toContain("tag-cloud");
+    expect(tr).toContain("highlights");
+    expect(tr).toContain("recommendations");
     const en = getChatSystemPrompt("en");
-    expect(en).toContain("BOOKS IN YOUR LIBRARY");
-    expect(en).toContain("ALL TAGS");
-    expect(en).toContain("YOUR HIGHLIGHTS");
-    expect(en).toContain("RECOMMENDATIONS");
-    expect(en).toContain("[YOUR NOTE]");
+    expect(en).toMatch(/Return ONLY JSON/);
+    expect(en).toContain("prose");
+    expect(en).toContain("book-list");
+    expect(en).toContain("tag-cloud");
+    expect(en).toContain("highlights");
+    expect(en).toContain("recommendations");
   });
 
-  it("audit gevşetme: rigid '1-2 cümle' sınırı kalktı", () => {
-    // Eski legacy: "her madde tek satır, en fazla 1 cümlelik gerekçe"
-    // Eski Eco: "Her madde tek satır veya 1-2 cümle"
-    // Yeni unified: "Maddeler kısa kalmaya çalışsın; gerekiyorsa daha uzun"
+  it("Plan C: intent classification kuralları (Anları ver → highlights)", () => {
+    // Hilal real-device dogfood'da "Anları ver" kitap listesi dönüyordu;
+    // prompt explicit kural: "Anları ver" → kind: "highlights" (NOT book-list).
     const tr = getChatSystemPrompt("tr");
-    expect(tr).not.toMatch(/en fazla 1 cümle/);
-    expect(tr).not.toMatch(/tek satır veya 1-2 cümle/);
-    expect(tr).toMatch(/kısa kalmaya çalışsın|gerekiyorsa daha uzun/);
+    expect(tr).toMatch(/Anları ver.*highlights/s);
+    expect(tr).toMatch(/book-list DEĞİL/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/Show my moments.*highlights/s);
+    expect(en).toMatch(/NOT book-list/);
+  });
+
+  it("Plan C: halüsinasyon defense (count==Books(N) + tekrar etmeme)", () => {
+    // Hilal real-device dogfood: "22 KİTAP" halüsinasyonu (gerçekte 6),
+    // aynı kitap birden fazla listelenmişti. Prompt explicit kural:
+    // count alanı USER_CONTEXT'teki Kitaplar(N) sayısıyla AYNI olsun.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Kitaplar \(N\).*AYNI/);
+    expect(tr).toMatch(/TEKRAR ETME/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/Books \(N\)/);
+    expect(en).toMatch(/Don't repeat the same book|repeat the same book/);
+  });
+
+  it("Bug A fix: empty-state kuralı (Plan C versiyonu)", () => {
+    // Plan C'de empty-state kuralı: liste istiyorsa veride yoksa,
+    // boş kart döndürme — kind: "prose" + text: "Henüz X yok" şeklinde dön.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Henüz \[an \/ kitap \/ etiket\] yok/);
+    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/içeriği boş döndürme/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/No \[moments \/ books \/ tags\] yet/);
+    expect(en).toMatch(/don't return an empty card/);
+  });
+
+  it("Bug B fix: kullanıcı verisinde önce ara (library-priority korundu)", () => {
+    // Plan C'de tag-aware kural prompt-driven yerine intent classification
+    // ile çözüldü ("tag" / "etiket" → kind: "tag-cloud"). Library-priority
+    // genel kuralı hâlâ korunur.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/ÖNCE kullanıcının verisinde ara/);
+    expect(tr.toLocaleLowerCase("tr-TR")).toMatch(/kitaplar, anlar, etiketler/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/FIRST search the user's data/);
+    expect(en).toMatch(/books, moments, tags/);
+  });
+
+  it("Plan C: prose içeriği düz metin (markdown DEĞİL)", () => {
+    // Prose payload'ı düz metin içindir; JSON içinde markdown render edilmez.
+    // Bu kural LLM'in "**bold**" veya "- bullet" üretip kart-yerine-prose
+    // dönmesini engeller (Plan B'nin asıl bug'ı).
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/markdown DEĞİL/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/NOT markdown/);
   });
 });
 
