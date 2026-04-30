@@ -67,7 +67,7 @@ const config: ExpoConfig = {
     // v1.1+'da proper iPad layout + Apple Sign In iPad fix ile açılacak.
     supportsTablet: false,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "50334",
+    buildNumber: "50336",
     usesAppleSignIn: true,
     privacyManifests: {
       NSPrivacyTracking: false,
