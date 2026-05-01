@@ -95,7 +95,26 @@ export const MARKINGS_PROMPT = `Bu kitap sayfası fotoğrafını analiz et. İki
    - text: işaretlenen metnin tam dökümü (basılı metinden, yorum katma)
    - kind: "highlighter" (fosforlu) veya "underline" (altı çizili). Emin değilsen "underline" yaz.
    Kurallar:
-   - İtalik metni işaret SANMA — kitap tipografisi, kullanıcı işareti değil.
+   - YALNIZCA KULLANICININ EL HAREKETIYLE EKLEDIĞI İŞARETLER highlight'tır.
+     Sayfada AYRI bir fosfor/mürekkep katmanı GÖRMÜYORSAN — entry AÇMA.
+     Kitabın kendi tipografik unsurları işaret DEĞİL: italik, italic, bold
+     (kalın), ALL CAPS, başlık, alt başlık, dipnot, girintili alıntı
+     blokları, diyalog satırları, farklı puntolu metinler — bunların
+     hiçbiri kullanıcı işareti değildir. İtalik metni işaret SANMA. Sadece
+     kullanıcının eliyle çekilmiş fosforlu/altı çizili çizgi varsa entry aç.
+   - FALSE POSITIVE > FALSE NEGATIVE'den DAHA KÖTÜ. Kaçırmayı uydurmaya
+     tercih et. Kullanıcı kaçırılan bir vurguyu manuel ekleyebilir, ama
+     uydurulmuş bir vurguyu silmek zaman harcatır ve güvenini sarsar.
+     Şüpheli durumlarda HER ZAMAN atla, "olabilir" kararıyla entry açma.
+   - KESİNTİSİZ İŞARET = TEK ENTRY. Sayfada görsel olarak kesintisiz tek
+     bir fosforlu/altı çizili blok TEK bir highlight'tır. İşaret cümle,
+     virgül, paragraf veya satır sonu BOYUNCA DEVAM EDİYORSA, segmentlere
+     bölme — tüm devam eden işaretli metni TEK \`text\` alanında ver.
+     Cümleye veya paragrafa göre BÖLMEK YASAK. Vurgu uzun olsa bile
+     birleştir. Sadece görsel olarak AYRIK işaretler ayrı entry'dir:
+     aralarında işaretsiz boşluk/satır var, farklı sayfa konumunda
+     yeniden başlamış, veya farklı renk/tip (bir vurgu fosforlu sarı,
+     diğeri altı çizili). AYRIK olduğundan EMIN DEĞILSEN birleştir.
    - PARMAK / GÖLGE / SAYFA KIRIŞIKLIĞI / MÜREKKEP YAYILMASI / KAĞIT LEKESİ highlight DEĞİL — atla.
    - DÜŞÜK GÜVEN durumunda ATLA. Bir highlight entry'si açmadan önce işareti net görüyor olmalısın; şüphede ise yoksay.
    - AYNI METNİ iki kez işaretlemiş olarak gösterme — duplicate entry açma.

@@ -159,6 +159,31 @@ describe("MARKINGS_PROMPT — safety clauses regression", () => {
     expect(lower).toMatch(/aynı metni.*iki kez/);
     expect(lower).toMatch(/duplicate/);
   });
+
+  // Polish v3 (1 May 2026 dogfood — Hilal IMG_7507 page): markings extraction
+  // sayfa metnindeki TEK kesintisiz uzun fosforlu vurguyu 3 ayrı entry'ye
+  // bölüyordu. Plus vurgusuz düz metin (italic alıntı blokları) highlight
+  // olarak çıkıyordu (false positive). İki yeni güç-kuralı.
+  it("requires continuous mark = single entry (segmentation defense)", () => {
+    // "kesintisiz" + "tek entry" + "bölme yasak" semantiği.
+    const lower = MARKINGS_PROMPT.toLocaleLowerCase("tr-TR");
+    expect(lower).toMatch(/kesintisiz.*tek entry/s);
+    expect(lower).toMatch(/(bölmek? yasak|bölme)/);
+    expect(lower).toMatch(/(birleştir|tek.*text)/);
+  });
+
+  it("requires user hand-mark only (false-positive defense)", () => {
+    // "kullanıcının el hareketi" + "tipografik unsurlar işaret değil" +
+    // "false positive > false negative" disiplini.
+    // NOT: tr-TR locale lowercase Latin "I" → "ı" (dotless) yapar; "FALSE
+    // POSITIVE" → "false posıtıve" olur. Bu yüzden "false positive" gibi
+    // Latin yazım pattern'lerini orijinal MARKINGS_PROMPT'ta (caps korunmuş)
+    // arıyoruz — line 131'deki "JSON dışında HİÇBİR ŞEY" testinin tersine.
+    const lower = MARKINGS_PROMPT.toLocaleLowerCase("tr-TR");
+    expect(lower).toMatch(/(el hareketi|kullanıcının eliyle)/);
+    expect(lower).toMatch(/(tipografik|italik|italic|bold|alıntı blok)/);
+    expect(MARKINGS_PROMPT).toMatch(/FALSE POSITIVE > FALSE NEGATIVE/);
+  });
 });
 
 describe("ENABLE_MARKING_CAPTURE kill switch", () => {
