@@ -282,6 +282,149 @@ describe("violatesVoiceContract", () => {
       expect(violatesVoiceContract("").violates).toBe(false);
     });
   });
+
+  // Polish v2 (1 May 2026 dogfood) — Hilal Asistan tab'ında 5 ekran:
+  // Üzgünüm + İsteklerinizi + edebilir misiniz / size yardımcı olmaktan
+  // memnuniyet duyarım / iletişime geçebilirsiniz / teknik destek ile.
+  // Müşteri-hizmetleri tonu sade kütüphaneci brand'ına aykırı.
+  describe("Polish v2: customer-service tone leaks", () => {
+    it("flags 'memnuniyet duyarım'", () => {
+      const r = violatesVoiceContract(
+        "Lütfen sorunuzu belirtin, size yardımcı olmaktan memnuniyet duyarım.",
+      );
+      expect(r.violates).toBe(true);
+      expect(r.reason).toContain("memnuniyet duyarım");
+    });
+
+    it("flags 'iletişime geçebilirsiniz' (TR)", () => {
+      const r = violatesVoiceContract(
+        "Teknik destek ile iletişime geçebilirsiniz.",
+      );
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 'üzgünüm' özür açılışı", () => {
+      const r = violatesVoiceContract(
+        "Üzgünüm, bu mesajı anlamadım.",
+      );
+      expect(r.violates).toBe(true);
+      expect(r.reason).toContain("üzgünüm");
+    });
+
+    it("flags 'müşteri hizmetleri'", () => {
+      const r = violatesVoiceContract(
+        "Müşteri hizmetleri ile iletişim kurabilirsin.",
+      );
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags EN 'i'd be happy to'", () => {
+      const r = violatesVoiceContract("I'd be happy to help with that.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags EN 'please contact support'", () => {
+      const r = violatesVoiceContract("Please contact support for help.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags EN 'i apologize'", () => {
+      const r = violatesVoiceContract(
+        "I apologize, but I didn't understand.",
+      );
+      expect(r.violates).toBe(true);
+    });
+  });
+
+  // Polish v2: formal "siz" address tespit (regex tabanlı, word-boundary
+  // korumalı). LLM bazen sade voice contract dışına çıkıp formal hitabı
+  // sızdırıyor — Hilal'in 1 May ekran görüntülerinde net.
+  describe("Polish v2: formal address (TR)", () => {
+    it("flags 'edebilirsiniz' suffix", () => {
+      const r = violatesVoiceContract(
+        "Uygulama ayarlarınızı kontrol edebilirsiniz.",
+      );
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 'edebilir misiniz' (siz hitap)", () => {
+      const r = violatesVoiceContract(
+        "İsteklerinizi daha açık ifade edebilir misiniz?",
+      );
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags standalone 'size'", () => {
+      const r = violatesVoiceContract("Size yardımcı olmak isterim.");
+      expect(r.violates).toBe(true);
+      expect(r.reason).toContain("formal_address_tr");
+    });
+
+    it("flags 'sizin' kelime sınırı içinde", () => {
+      const r = violatesVoiceContract("Bu sizin tercihinize bağlı.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 'tarafınızdan' genitif", () => {
+      const r = violatesVoiceContract("Tarafınızdan gönderilen veriler.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 2pl iyelik suffix '-ınız' (ayarlarınızı)", () => {
+      // -iniz/-ınız/-unuz/-ünüz + opsiyonel case eki (acc, loc, abl...)
+      const r = violatesVoiceContract("Uygulama ayarlarınızı kontrol et.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 2pl iyelik '-unuz' nominatif (telefonunuz)", () => {
+      const r = violatesVoiceContract("Telefonunuz açık mı?");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 2pl aorist suffix '-sünüz' (düşünürsünüz)", () => {
+      // 2pl predicative/aorist — formal "you would think"
+      const r = violatesVoiceContract("Onu düşünürsünüz, doğru.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("flags 2pl predicative '-siniz' (iyisiniz)", () => {
+      const r = violatesVoiceContract("İyisiniz umarım.");
+      expect(r.violates).toBe(true);
+    });
+
+    it("PASSES 'asistanıyım' (-ıyım self-reference, formal değil)", () => {
+      // 1sg "I am" suffix; 2pl iyelik -ınız ile karışmasın.
+      const r = violatesVoiceContract("Ben PALIMPS'in okuma asistanıyım.");
+      expect(r.violates).toBe(false);
+    });
+
+    it("PASSES 'üniversite' (siz alt-string yok)", () => {
+      const r = violatesVoiceContract("Üniversitede okudum.");
+      expect(r.violates).toBe(false);
+    });
+
+    it("PASSES tekil 'sen' / 'edebilir misin'", () => {
+      const r = violatesVoiceContract(
+        "Aynı kitabı tekrar sorabilir misin?",
+      );
+      expect(r.violates).toBe(false);
+    });
+
+    it("PASSES word-boundary guard 'kimsesizleri'", () => {
+      // 'sizler' alt-string'i ortada ama \p{L} ile çevrili → match olmamalı
+      const r = violatesVoiceContract(
+        "Kimsesizleri ve evsizleri düşün.",
+      );
+      expect(r.violates).toBe(false);
+    });
+
+    it("PASSES 'tarafsız' (tarafın- alt-string değil)", () => {
+      const r = violatesVoiceContract(
+        "Tarafsız bir okuma deneyimi sunarım.",
+      );
+      expect(r.violates).toBe(false);
+    });
+  });
 });
 
 describe("getChatSystemPrompt", () => {
@@ -422,6 +565,51 @@ describe("getChatSystemPrompt", () => {
     expect(tr).toMatch(/markdown DEĞİL/);
     const en = getChatSystemPrompt("en");
     expect(en).toMatch(/NOT markdown/);
+  });
+
+  // Polish v2 (1 May 2026) regression — Hilal dogfood ekran görüntülerinden
+  // çıkan 4 saçmalama için prompt-içi kuralları eksik bırakmamak.
+  it("Polish v2: TR'de formal 'siz' yasağı SES bölümünde", () => {
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Formal "siz" hitabı YASAK/);
+    expect(tr).toMatch(/-ebilirsiniz \/ -abilirsiniz/);
+    expect(tr).toMatch(/Müşteri-hizmetleri tonu YASAK/);
+  });
+
+  it("Polish v2: EN'de customer-service tone yasağı", () => {
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/Customer-service tone is FORBIDDEN/);
+    expect(en).toMatch(/I'd be happy to/);
+    expect(en).toMatch(/please contact support/);
+  });
+
+  it("Polish v2: kısa belirsiz soru kuralı (Tarih? → prose)", () => {
+    // "Tarih?" gibi tek kelimelik sorular tag-cloud'a düşmesin.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/KISA BELİRSİZ SORU KURALI/);
+    expect(tr).toMatch(/1-2 kelimelik/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/SHORT AMBIGUOUS QUERY RULE/);
+    expect(en).toMatch(/1-2 words/);
+  });
+
+  it("Polish v2: aynı oturumda inkâr palyatifi (conversation history yok)", () => {
+    // Conv history v1.1 mimari işi; şimdilik prompt seviyesinde inkâr etmeme.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/AYNI OTURUMDA az önce ürettiğin/);
+    expect(tr).toMatch(/INKAR ETME/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/DO NOT DENY a card or answer/);
+  });
+
+  it("Polish v2: app-feature kapsam dışı kuralı (kopyalama vb.)", () => {
+    // "Neden kopyalama yapamıyorum" → müşteri-hizmetleri tonu yerine sade
+    // "okuma asistanıyım, Profil > Yardım'a bak" tarzı kısa cevap.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/App içi özelliklerle/);
+    expect(tr).toMatch(/kopyalama, paylaşma, export/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/app-feature questions/);
   });
 });
 

@@ -306,11 +306,15 @@ Kullanıcının sorusunu oku, şuna göre kind seç:
 
 ÖNEMLI: "Anları ver" → kind: "highlights" (book-list DEĞİL!). "Anlar" PALIMPS'te kullanıcının kaydettiği vurgulamalardır, kitap listesi değil.
 
+ÖNEMLI 2 — KISA BELİRSİZ SORU KURALI: Kullanıcı mesajı 1-2 kelimelik / tek kelime + soru işareti ise (ör. "Tarih?", "Ne?", "Nasıl?", "Anla?", "Felsefe?"), bir etiket adıyla EŞLEŞSE BİLE kind: "prose" seç ve netleştirme iste: "Bu tek başına net değil — ne hakkında soruyorsun?" gibi kısa cevap. Tag-cloud / book-list / highlights / recommendations kartı AÇMA. Kart açmak için kullanıcı niyetinin net olması şart.
+
 — SES —
 - Yorum / yargı / aksiyon önerisi yok. "Güzel / derin / ilham verici / etkileyici / mükemmel / muhteşem" gibi sıfatları kullanma.
 - Süsleme yok. Emoji yok. "Harika bir soru!", "İşte tam burada...", "Şüphesiz ki...", "Bayıldım" yok.
 - "Ben de okumuştum / favorim" yok — insan rolü oynamazsın.
-- Türkçe konuş. Kullanıcıya "sen" diye hitap et; kendinden "ben" olarak bahset (örn. kullanıcı kimliğini sorarsa "Ben PALIMPS'in okuma asistanıyım" de — "Ben sen..." gibi karma kullanma).
+- Türkçe konuş. Kullanıcıya HER ZAMAN tekil "sen" ile hitap et; kendinden "ben" olarak bahset (örn. "Ben PALIMPS'in okuma asistanıyım" — "Ben sen..." karması yok).
+- Formal "siz" hitabı YASAK. Şu kelimeleri/kalıpları KULLANMA: "siz", "sizin", "size", "sizden", "sizi", "sizinle", "sizler", "tarafınızdan", "isteklerinizi", "ayarlarınızı". Fiil çekiminde -ebilirsiniz / -abilirsiniz suffix'i KULLANMA — daima -ebilir misin / -ebilirsin (tekil) kullan. "Edebilir misiniz" değil "edebilir misin"; "kontrol edebilirsiniz" değil "kontrol edebilirsin".
+- Müşteri-hizmetleri tonu YASAK: "memnuniyet duyarım", "üzgünüm", "iletişime geçebilirsiniz", "teknik destek ile iletişim", "size yardımcı olmaktan" — sade kütüphaneci özür dilemez, müşteri temsilcisi gibi konuşmaz.
 
 — BİLGİ SIRASI VE DÜRÜSTLÜK —
 - ÖNCE kullanıcının verisinde ara: kitaplar, anlar, etiketler, notlar.
@@ -320,6 +324,7 @@ Kullanıcının sorusunu oku, şuna göre kind seç:
 - Bilmediğin konu için "bu konuda kesin bilgim yok" de. Tahmin etme. Yanlış olabilecek tarih/yazar/alıntı söyleme.
 - Emin değilsen "belki" / "sanırım" kullan; bildiğin konuda doğrudan söyle.
 - Önceki konuşmadan şüphedeysen "Bu konuşmanın öncesini göremiyorum, tekrar sorabilir misin?" de. İnkâr etme, gaslighting yapma.
+- AYNI OTURUMDA az önce ürettiğin bir kart veya cevabı INKAR ETME. Kullanıcı "az önce verdin", "demin önerdin" gibi referans yapıyorsa, "yapmadım / oluşturmuyorum / edemem" deme. Yerine "Önceki cevabımın detayını göremiyorum, ama tekrar sorarsan veririm" tarzı kısa, dürüst bir karşılık ver.
 
 — EMPTY STATE —
 - Kullanıcı liste istiyorsa veride hiç YOKSA: ilgili kart kind'ını seç ama içeriği boş döndürme — bunun yerine kind: "prose" + text: "Henüz [an / kitap / etiket] yok" şeklinde dön.
@@ -331,6 +336,7 @@ Kullanıcının sorusunu oku, şuna göre kind seç:
 — KISITLAR —
 - "Premium ile...", "Abone ol..." — satışçı değilsin. Ücret/abonelik için kullanıcıyı Ayarlar'a yönlendir (prose içinde).
 - Politik / dini görüş bildirmezsin.
+- App içi özelliklerle (kopyalama, paylaşma, export, ayarlar, bildirimler, hesap silme, abonelik iptali, hata bildirimi vb.) ilgili sorulara: "Ben okuma asistanınım — uygulamanın bu özelliği konusunda yardımcı olamıyorum. Profil sekmesinden ilgili ayarlara bakabilirsin." gibi kısa prose. "Müşteri hizmetleri", "teknik destek ile iletişim", "destek ekibimiz" tonu YASAK.
 
 KULLANICININ OKUMA VERİLERİ:
 {USER_CONTEXT}`;
@@ -377,11 +383,14 @@ Read the user's question and pick kind accordingly:
 
 IMPORTANT: "Show my moments" → kind: "highlights" (NOT book-list!). "Moments" in PALIMPS are user-saved highlights, not the book list.
 
+IMPORTANT 2 — SHORT AMBIGUOUS QUERY RULE: If the user's message is 1-2 words / a single word with "?" (e.g. "Date?", "What?", "How?", "Philosophy?"), pick kind: "prose" and ask for clarification — even if the word matches a tag/book name. Do NOT open a tag-cloud / book-list / highlights / recommendations card on ambiguous input. The user's intent must be unambiguous before you open a card.
+
 — VOICE —
 - No commentary, judgment, or calls to action. Avoid "beautiful / deep / inspiring / perfect / amazing" adjectives.
 - No fluff. No emojis. No "Great question!", "Here's exactly...", "Without a doubt...", "I love it".
 - "I read it too / my favorite" — DON'T ROLEPLAY as human.
 - Reply in English. Address the user as "you"; refer to yourself as "I" (e.g. "I'm PALIMPS's reading assistant" — never mix pronouns).
+- Customer-service tone is FORBIDDEN: never say "I'd be happy to", "I would be happy to help", "I apologize", "I'm sorry, but…", "please contact support", "customer service", "feel free to reach out". A plain librarian doesn't apologize, doesn't pose as a service rep.
 
 — PRIORITY AND HONESTY —
 - FIRST search the user's data: books, moments, tags, notes.
@@ -391,6 +400,7 @@ IMPORTANT: "Show my moments" → kind: "highlights" (NOT book-list!). "Moments" 
 - For things you don't know, say "I don't have certain knowledge on this". Don't guess. Don't state potentially wrong dates/authors/quotes.
 - Use "perhaps" / "I think" if unsure; speak directly when you know.
 - If unsure about previous conversation, say "I can't see the earlier part of this conversation, could you ask again?". Don't deny, don't gaslight.
+- DO NOT DENY a card or answer you produced earlier in the same session. If the user references "you just gave me…", "you recommended…", do NOT say "I didn't / I can't generate that". Instead reply briefly and honestly, e.g. "I can't see the detail of my earlier reply, but if you ask again I'll show it."
 
 — EMPTY STATE —
 - If the user asks for a list and the data is empty: pick kind: "prose" with text: "No [moments / books / tags] yet" — don't return an empty card.
@@ -402,6 +412,7 @@ IMPORTANT: "Show my moments" → kind: "highlights" (NOT book-list!). "Moments" 
 — CONSTRAINTS —
 - "Premium offers more...", "Subscribe..." — you're not a salesperson. Direct subscription/pricing questions to Settings (within prose).
 - No political or religious opinions.
+- For app-feature questions (copy/share, export, settings, notifications, account deletion, subscription cancel, bug reporting, etc.): reply briefly in prose like "I'm a reading assistant — I can't help with that app feature. Check the Profile tab for related settings." Phrases like "customer service", "contact support", "our support team" are FORBIDDEN.
 
 USER'S READING DATA:
 {USER_CONTEXT}`;
@@ -427,6 +438,18 @@ const VOICE_FORBIDDEN_PHRASES_TR: readonly string[] = [
   "harika bir soru",
   "şüphesiz ki",
   "ne güzel",
+  // Polish v2 (1 May 2026 dogfood) — müşteri-hizmetleri tonu sızıntıları.
+  // Hilal Asistan tab'ında: "size yardımcı olmaktan memnuniyet duyarım",
+  // "iletişime geçebilirsiniz", "üzgünüm, bu mesajı anlamadım".
+  "memnuniyet duyarım",
+  "iletişime geçebilirsiniz",
+  "iletişime geç",
+  "teknik destek",
+  "destek ekibimiz",
+  "müşteri hizmetleri",
+  "müşteri temsilcisi",
+  "üzgünüm",
+  "size yardımcı olmaktan",
 ];
 
 const VOICE_FORBIDDEN_PHRASES_EN: readonly string[] = [
@@ -441,11 +464,56 @@ const VOICE_FORBIDDEN_PHRASES_EN: readonly string[] = [
   "great question",
   "wonderful",
   "without a doubt",
+  // Polish v2 (1 May 2026) — customer-service tone leaks (parallel to TR).
+  "i'd be happy to",
+  "i would be happy to",
+  "i apologize",
+  "please contact support",
+  "contact our support",
+  "customer service",
+  "our support team",
+  "feel free to reach out",
 ];
 
 // Aşırı emoji storm (2+ aynı emoji ardışık). Voice contract tek emoji bile
 // nadiren onaylar (max bir 📖); kümeli emoji "süsleme" yasağını kırar.
 const VOICE_EMOJI_STORM = /(✨{2,}|🔥{2,}|👏{2,}|🌟{2,}|💯{2,}|❤️{2,})/u;
+
+// Polish v2 (1 May 2026): formal "siz" hitabı tespit. Sade kütüphaneci tekil
+// "sen" kullanır — formal hitabın TÜM Türkçe morfolojik formları voice
+// contract ihlali. Word-boundary için lookbehind/lookahead \p{L} kullanıyoruz
+// çünkü ASCII \b Türkçe karakterleri kelime sınırı olarak görmez (Unicode
+// flag /u + \p{L} doğru sınırı sağlar; "ülkesizen" / "kimsesizleri" gibi
+// alt-string false-positive'lerini önler).
+//
+// Yakaladığı 4 kategori:
+//
+//   1) Standalone "siz" zamir formları:
+//      siz, sizin, size, sizden, sizi, sizler, sizleri, sizinle, sizce
+//      (kelime sınırlı — "kimsesiz" / "evsizler" PASS)
+//
+//   2) "tarafınız(dan|a|da)?" — formal genitif/dative/locative
+//
+//   3) 2pl predicative/aorist suffix: -siniz / -sınız / -sunuz / -sünüz
+//      "edebilirsiniz", "iyisiniz", "okursunuz", "düşünürsünüz"
+//      Boşluklu yes/no soru kalıbı da bu pattern'le yakalanır:
+//      "edebilir misiniz" → " " + "misiniz" (mi + siniz, en az 2 ön harf)
+//
+//   4) 2pl iyelik suffix: -iniz / -ınız / -unuz / -ünüz + opsiyonel case eki
+//      "isteklerinizi" (acc), "ayarlarınızda" (loc), "telefonunuz" (nom),
+//      "tarafınızdan" 3. kategoriden ayrı ele alındı (kelime spesifik).
+//      \p{L}* trail: case ekleri 1-5 harf olabilir (-i, -e, -de, -dir,
+//      -dedir...) — kelime sınırına kadar tüket.
+//
+// İstemediği (false-positive guards — testlerde sabit):
+// - "kimsesizleri", "evsizleri" — "sizler" alt-string'i ortada \p{L} ile
+//   çevrili, lookbehind fail.
+// - "tarafsız" — "tarafınız" değil, alfabetik olarak farklı.
+// - "kalpsiz" / "edepsiz" — "siz" word-boundary'siz alt-string.
+// - Tekil "sen" formları: "sorabilir misin", "edebilir misin" — "siniz/sınız"
+//   suffix'i yok, pattern eşleşmez.
+const VOICE_FORMAL_ADDRESS_TR =
+  /(?<![\p{L}])(siz|sizin|size|sizler|sizleri|sizden|sizinle|sizi|sizce)(?![\p{L}])|(?<![\p{L}])tarafınız(dan|a|da)?(?![\p{L}])|(?<![\p{L}])\p{L}{2,}(siniz|sınız|sunuz|sünüz)(?![\p{L}])|(?<![\p{L}])\p{L}{2,}(iniz|ınız|unuz|ünüz)\p{L}*(?![\p{L}])/iu;
 
 // Sales redirect: asistan satışçı değil. "Premium ile daha", "abone ol",
 // "ücretli sürümde" gibi pazarlama dili tespit edilir → rejenerasyon ile
@@ -492,6 +560,10 @@ export function violatesVoiceContract(output: string): {
 
   if (VOICE_SALES_LANGUAGE.test(output)) {
     return { violates: true, reason: "sales_language" };
+  }
+
+  if (VOICE_FORMAL_ADDRESS_TR.test(output)) {
+    return { violates: true, reason: "formal_address_tr" };
   }
 
   return { violates: false };
