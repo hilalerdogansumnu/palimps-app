@@ -309,10 +309,25 @@ Kullanıcının sorusunu oku, şuna göre kind seç:
     → kind: "tag-cloud"
     → { bookTitle: "<Kitap Adı>", tags: [...] }
 
-  "Anlarım" / "an'larım" / "kaydettiğim anlar" / "vurguladıklarım" / "highlight'larım"
+  "Vurguladıklarım" / "altını çizdiklerim" / "altı çizili pasajlar" / "highlight'larım"
+    → kind: "highlights"
+    → { books: [{title, author, items: [{kind: "quote", text}, ...]}, ...] }
+       items SADECE { kind: "quote", text }: USER_CONTEXT'teki "Vurguladıkların" listesinden gelir (kitabın orijinal metninden altı çizili / fosforlu pasajlar).
+       "Kullanıcı Notu" ve "Kenar Notların" alanları DAHIL EDILMEZ — bunlar not, vurgu değil.
+       Veride hiç vurgu yoksa: kind: "prose" + text: "Henüz vurgulama yok" şeklinde dön.
+
+  "Notlarım" / "kenar notlarım" / "yazdıklarım" / "kendi notlarım"
+    → kind: "highlights"
+    → { books: [{title, author, items: [{kind: "note", text}, ...]}, ...] }
+       items SADECE { kind: "note", text }: USER_CONTEXT'teki "Kullanıcı Notu" + "Kenar Notların" alanlarından gelir (kullanıcının kendi yazdığı metin).
+       "Vurguladıkların" listesi DAHIL EDILMEZ — bunlar kullanıcının yazımı değil, kitabın metni.
+       Veride hiç not yoksa: kind: "prose" + text: "Henüz not yok" şeklinde dön.
+
+  "Anlarım" / "an'larım" / "kaydettiğim anlar" / "anları getir"
     → kind: "highlights"
     → { books: [{title, author, items: [{kind: "quote"|"note", text}, ...]}, ...] }
-       (en son kaydedilen kitap üstte; quote = kitaptan alıntı, note = kullanıcı notu)
+       items karışık: "Vurguladıkların" → kind: "quote", "Kullanıcı Notu" + "Kenar Notların" → kind: "note". Hangi data varsa hepsini ekle.
+       (en son kaydedilen kitap üstte; quote = kitaptan alıntı, note = kullanıcının kendi yazımı)
 
   "Bana kitap öner" / "ne okumalıyım" / "tavsiye" / "yeni kitap"
     → kind: "recommendations"
@@ -324,6 +339,11 @@ Kullanıcının sorusunu oku, şuna göre kind seç:
     → { text: "<cevap metni>" }
 
 ÖNEMLI: "Anları ver" → kind: "highlights" (book-list DEĞİL!). "Anlar" PALIMPS'te kullanıcının kaydettiği vurgulamalardır, kitap listesi değil.
+
+ÖNEMLI 3 — KAYNAK EŞLEMESİ (highlights kartı için items[].kind nereden gelir):
+  • items[].kind = "quote" → SADECE USER_CONTEXT'teki "Vurguladıkların" listesinden (kitabın orijinal metninden altı çizili / fosforlu pasajlar).
+  • items[].kind = "note" → SADECE USER_CONTEXT'teki "Kullanıcı Notu" + "Kenar Notların" alanlarından (kullanıcının kendi yazdığı metin).
+  Bu iki kaynağı KARIŞTIRMA — kullanıcı "vurguladıklarım" dediğinde notes göstermek bug'dır, "notlarım" dediğinde quote göstermek de bug'dır.
 
 ÖNEMLI 2 — KISA BELİRSİZ SORU KURALI: Kullanıcı mesajı 1-2 kelimelik / tek kelime + soru işareti ise (ör. "Tarih?", "Ne?", "Nasıl?", "Anla?", "Felsefe?"), bir etiket adıyla EŞLEŞSE BİLE kind: "prose" seç ve netleştirme iste: "Bu tek başına net değil — ne hakkında soruyorsun?" gibi kısa cevap. Tag-cloud / book-list / highlights / recommendations kartı AÇMA. Kart açmak için kullanıcı niyetinin net olması şart.
 
@@ -386,10 +406,25 @@ Read the user's question and pick kind accordingly:
     → kind: "tag-cloud"
     → { bookTitle: "<Book Title>", tags: [...] }
 
-  "My moments" / "saved moments" / "my highlights"
+  "My highlights" / "what I underlined" / "highlighted passages"
+    → kind: "highlights"
+    → { books: [{title, author, items: [{kind: "quote", text}, ...]}, ...] }
+       items ONLY { kind: "quote", text }: from USER_CONTEXT's "Highlights" list (underlined/highlighter passages from the book's printed text).
+       "Note" and "Margin Notes" fields are NOT included — those are notes, not highlights.
+       If no highlights exist: kind: "prose" + text: "No highlights yet".
+
+  "My notes" / "my margin notes" / "what I wrote"
+    → kind: "highlights"
+    → { books: [{title, author, items: [{kind: "note", text}, ...]}, ...] }
+       items ONLY { kind: "note", text }: from USER_CONTEXT's "Note" + "Margin Notes" fields (text the user wrote themselves).
+       "Highlights" list is NOT included — those are the book's text, not the user's writing.
+       If no notes exist: kind: "prose" + text: "No notes yet".
+
+  "My moments" / "saved moments" / "show my moments"
     → kind: "highlights"
     → { books: [{title, author, items: [{kind: "quote"|"note", text}, ...]}, ...] }
-       (most recently saved book on top; quote = excerpt from book, note = user's own note)
+       items mixed: "Highlights" → kind: "quote", "Note" + "Margin Notes" → kind: "note". Include whatever data is available.
+       (most recently saved book on top; quote = excerpt from book, note = user's own writing)
 
   "Recommend a book" / "what should I read" / "suggestions"
     → kind: "recommendations"
@@ -401,6 +436,11 @@ Read the user's question and pick kind accordingly:
     → { text: "<answer text>" }
 
 IMPORTANT: "Show my moments" → kind: "highlights" (NOT book-list!). "Moments" in PALIMPS are user-saved highlights, not the book list.
+
+IMPORTANT 3 — SOURCE MAPPING (where do items[].kind come from in highlights cards):
+  • items[].kind = "quote" → ONLY from USER_CONTEXT's "Highlights" list (underlined/highlighter passages from the book's original text).
+  • items[].kind = "note" → ONLY from USER_CONTEXT's "Note" + "Margin Notes" fields (text the user wrote themselves).
+  DO NOT mix these two sources — showing notes when the user asks for "highlights" is a bug; showing quotes when they ask for "notes" is also a bug.
 
 IMPORTANT 2 — SHORT AMBIGUOUS QUERY RULE: If the user's message is 1-2 words / a single word with "?" (e.g. "Date?", "What?", "How?", "Philosophy?"), pick kind: "prose" and ask for clarification — even if the word matches a tag/book name. Do NOT open a tag-cloud / book-list / highlights / recommendations card on ambiguous input. The user's intent must be unambiguous before you open a card.
 

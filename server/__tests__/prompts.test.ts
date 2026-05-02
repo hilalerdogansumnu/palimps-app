@@ -522,6 +522,53 @@ describe("getChatSystemPrompt", () => {
     expect(en).toMatch(/NOT book-list/);
   });
 
+  it("Bug #4 (2 May 2026): vurguladıklarım → highlights, items SADECE quote", () => {
+    // TestFlight 50336 dogfood: Hilal "vurguladıklarımı istiyorum" dedi,
+    // asistan SENİN NOTUN kartlarını döndürdü. Root cause: chatContext'te
+    // markings.highlights yoktu, model "quote" kaynağı bulamıyordu, sadece
+    // userNote'tan "note" üretiyordu. Fix: prompt'ta explicit kaynak ayrımı
+    // + chatContext.ts'e markings serialization. Bu test prompt tarafının
+    // regression'ı; chatContext.test.ts ayrı.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Vurguladıklarım.*altı çizili pasajlar/s);
+    expect(tr).toMatch(/items SADECE \{ kind: "quote"/);
+    expect(tr).toMatch(/Vurguladıkların.*listesinden gelir/);
+    expect(tr).toMatch(/DAHIL EDILMEZ — bunlar not, vurgu değil/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/My highlights.*what I underlined/s);
+    expect(en).toMatch(/items ONLY \{ kind: "quote"/);
+    expect(en).toMatch(/from USER_CONTEXT's "Highlights" list/);
+  });
+
+  it("Bug #4 mirror: notlarım → highlights, items SADECE note", () => {
+    // Aynı bug'ın mirror'ı — "notlarım/kenar notlarım" sorulduğunda quote
+    // göstermek de bug. Prompt explicit ayrım yapmalı, simetrik.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Notlarım.*kenar notlarım/s);
+    expect(tr).toMatch(/items SADECE \{ kind: "note"/);
+    expect(tr).toMatch(/Kullanıcı Notu.*Kenar Notların.*alanlarından gelir/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/My notes.*margin notes/s);
+    expect(en).toMatch(/items ONLY \{ kind: "note"/);
+    expect(en).toMatch(/from USER_CONTEXT's "Note" \+ "Margin Notes" fields/);
+  });
+
+  it("Bug #4 source mapping (quote ↔ Vurguladıkların, note ↔ Kullanıcı Notu/Kenar Notların)", () => {
+    // Eski prompt'ta sadece "quote = kitaptan alıntı, note = kullanıcı notu"
+    // yazıyordu, ama USER_CONTEXT'in hangi alanına bakacağı explicit değildi.
+    // Yeni KAYNAK EŞLEMESİ blokuna model'i USER_CONTEXT alanlarına yönlendiriyor.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toContain("KAYNAK EŞLEMESİ");
+    expect(tr).toMatch(/items\[\]\.kind = "quote".*Vurguladıkların/);
+    expect(tr).toMatch(/items\[\]\.kind = "note".*Kullanıcı Notu.*Kenar Notların/);
+    expect(tr).toMatch(/KARIŞTIRMA/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toContain("SOURCE MAPPING");
+    expect(en).toMatch(/items\[\]\.kind = "quote".*Highlights/);
+    expect(en).toMatch(/items\[\]\.kind = "note".*Note.*Margin Notes/);
+    expect(en).toMatch(/DO NOT mix/);
+  });
+
   it("Plan C: halüsinasyon defense (count==Books(N) + tekrar etmeme)", () => {
     // Hilal real-device dogfood: "22 KİTAP" halüsinasyonu (gerçekte 6),
     // aynı kitap birden fazla listelenmişti. Prompt explicit kural:
