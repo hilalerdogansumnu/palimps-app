@@ -553,6 +553,81 @@ describe("getChatSystemPrompt", () => {
     expect(en).toMatch(/from USER_CONTEXT's "Note" \+ "Margin Notes" fields/);
   });
 
+  it("Bug #6 (2 May 2026): brand voice non-negotiable — 'sade kütüphaneci' + 'sadece kütüphanenden'", () => {
+    // TestFlight 50336 dogfood'unda Hilal "PALIMPS hafızam gerçekten anlamıyor"
+    // hissi raporladı. Kök neden: brand belgeleri (Mesaj Defteri + Pazar
+    // Analizi) "sadece senin kütüphanenden konuşur, internet karıştırmaz,
+    // güzelleme yapmaz" diyor ama prompt'ta bu satır yoktu. Bu test brand
+    // voice contract'ın prompt'a gömülü kaldığını koruma altına alır.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toContain("sade bir kütüphaneci");
+    expect(tr).toContain("BRAND VOICE (NON-NEGOTIABLE)");
+    expect(tr).toContain("Sadece senin kütüphanenden");
+    expect(tr).toContain("ChatGPT veya Google değilsin");
+    expect(tr).toMatch(/internet karıştırmaz/);
+    expect(tr).toMatch(/methiyeli laf etmez/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toContain("plain librarian");
+    expect(en).toContain("BRAND VOICE (NON-NEGOTIABLE)");
+    expect(en).toContain("Only from your library");
+    expect(en).toContain("NOT ChatGPT or Google");
+    expect(en).toMatch(/don't browse the internet/);
+  });
+
+  it("Bug #6: sentez kuralı — kütüphane lookup tablosu DEĞİL", () => {
+    // Hilal: "Tanrılar Okulu ana karakter kim → veride yok" hatası. Halbuki
+    // vurgularda Dreamer geçiyor. Lookup OK ama inference yok. Prompt'a
+    // explicit "BÜTÜN olarak tara, sentez üret" kuralı.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Kütüphane lookup tablosu DEĞİL/);
+    expect(tr).toMatch(/BÜTÜN olarak tara/);
+    expect(tr).toMatch(/paragraf seviyesinde sentez/);
+    expect(tr).toMatch(/vurgularında en sık X geçiyor/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/NOT a lookup table/);
+    expect(en).toMatch(/HOLISTICALLY/);
+    expect(en).toMatch(/paragraph-level synthesis/);
+    expect(en).toMatch(/recurs most often in your highlights/);
+  });
+
+  it("Bug #6: 'X ne anlatıyor / ana fikri / karakterleri' → kind: prose (intent classification)", () => {
+    // Hilal: "Tanrılar okulu ne anlatıyor" → highlights kartı açıldı, prose
+    // olmalıydı. Mevcut prompt'ta bu intent açıkça yoktu, model "kitap adı +
+    // soru" görünce highlights'a yöneliyordu.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/<Kitap> ne anlatıyor.*<Kitap> ana fikri/s);
+    expect(tr).toMatch(/<Kitap> karakterleri kim/);
+    expect(tr).toMatch(/KART AÇMA — bu prose/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/What is <Book> about.*<Book>'s main idea/s);
+    expect(en).toMatch(/<Book> characters/);
+    expect(en).toMatch(/DO NOT open a card — this is prose/);
+  });
+
+  it("Bug #6: 'veride yok' cevabını zorlaştır", () => {
+    // Anti-"veride yok" defansı. Model'in ilk refleks olarak "kütüphanende
+    // yok" demesini engellemek için prompt'ta açık kural.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/VERIDE YOK.*ZORLAŞTIR/);
+    expect(tr).toMatch(/Doğrudan eşleşme olmasa bile dolaylı bağ/);
+    expect(tr).toMatch(/Tek bir field'da yok diye/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/MAKE "NOT IN THE DATA" HARD TO SAY/);
+    expect(en).toMatch(/build indirect connections/);
+  });
+
+  it("Bug #6: kütüphane-dışı bilgi kullanımı AÇIKÇA belirtilmeli", () => {
+    // Brand: internet ortalaması yok, "kapsamlı görünme" çabası yok.
+    // Kütüphane-dışı bilgi kullanılırsa "senin vurgularında bu detay yok,
+    // ama..." formatında işaretlenmeli.
+    const tr = getChatSystemPrompt("tr");
+    expect(tr).toMatch(/Senin vurgularında bu detay yok, ama/);
+    expect(tr).toMatch(/internet ortalaması.*YOK|kapsamlı görünme.*YOK/);
+    const en = getChatSystemPrompt("en");
+    expect(en).toMatch(/Not in your highlights, but/);
+    expect(en).toMatch(/no internet averages/);
+  });
+
   it("Bug #4 source mapping (quote ↔ Vurguladıkların, note ↔ Kullanıcı Notu/Kenar Notların)", () => {
     // Eski prompt'ta sadece "quote = kitaptan alıntı, note = kullanıcı notu"
     // yazıyordu, ama USER_CONTEXT'in hangi alanına bakacağı explicit değildi.

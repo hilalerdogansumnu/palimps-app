@@ -1211,11 +1211,17 @@ ${bodyHtml}
         // keyword taraması yapıyor; false-negative maliyet farkı kabul
         // edilebilir — kötü yönlendirirsek kullanıcı flash-lite'ın kısa
         // cevabını görür, dünyanın sonu değil.
+        // 2 May 2026 (Bug #6, TestFlight 50336 dogfood): kütüphane-sentezi
+        // intent'leri eklendi — "anlatıyor / ana fikri / özeti / konusu /
+        // karakter / kahraman / tema". Bunlar USER_CONTEXT'in bütün taraması
+        // ve paragraf seviyesi sentez gerektiriyor; flash-lite'ın kalitesi
+        // user-visible şekilde yetersiz kalıyordu ("Tanrılar Okulu ana
+        // karakter kim → veride yok" cevabı).
         const msg = input.message.trim();
         const complexityKeywords =
           locale === "en"
-            ? /(compare|recommend|recommendation|analy[sz]e|why|how|explain|summar[iy])/i
-            : /(karşılaştır|öner|öneri|analiz|neden|nasıl|açıkla|özetle)/i;
+            ? /(compare|recommend|recommendation|analy[sz]e|why|how|explain|summar[iy]|main idea|main character|protagonist|themes?)/i
+            : /(karşılaştır|öner|öneri|analiz|neden|nasıl|açıkla|özetle|özeti|anlatıyor|ana fikri?|konusu|karakter|kahraman|temaları?)/i;
         const isSimple = msg.length < 120 && !complexityKeywords.test(msg);
         const chatModel = isSimple ? ENV.geminiModelOcr : ENV.geminiModelChat;
 
