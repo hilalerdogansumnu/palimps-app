@@ -29,8 +29,9 @@ function getClient(): S3Client {
     },
   });
 }
-import { invokeLLM, isTransientLLMError } from "./_core/llm";
+import { invokeLLM, isTransientLLMError, detectOcrRepetition } from "./_core/llm";
 import {
+  OCR_PROMPT,
   MOMENT_ENRICH_PROMPT,
   MOMENT_ENRICH_SCHEMA,
   MARKINGS_PROMPT,
@@ -605,19 +606,6 @@ export const appRouter = router({
         // (client onSuccess'te kullanıcıya "OCR yapılamadı" uyarısı gösterir).
         let ocrText: string | null = null;
         const ocrImageUrl = (await toDisplayUrl(pageImageUrl)) ?? pageImageUrl;
-        const ocrPrompt = [
-          "Bu kitap sayfasındaki metni OKUNABİLİR bir şekilde çıkar.",
-          "",
-          "KURALLAR:",
-          "1. Satır sonunda tire (-) ile bölünmüş kelimeleri BİRLEŞTİR. Örnek: 'di-\\nzim' → 'dizim'.",
-          "2. Paragraf içindeki satır sonlarını KALDIR — metni akıcı cümleler halinde yaz. Bir paragraf tek bir satırda akmalı.",
-          "3. Paragraflar arasına tek bir boş satır koy.",
-          "4. Noktalama işaretlerini, tırnakları ve diyalog tire'lerini (—) koru.",
-          "5. Üst/alt bilgi, sayfa numarası, bölüm başlığı ve kitap başlığını ATLA.",
-          "6. Çeviri yapma, yorum ekleme, '\"\"\"' veya benzer kod blokları kullanma.",
-          "",
-          "Sadece düzenlenmiş metni döndür, başka hiçbir şey ekleme.",
-        ].join("\n");
 
         const runOcr = async (): Promise<string | null> => {
           const ocrResponse = await invokeLLM({
@@ -626,7 +614,7 @@ export const appRouter = router({
               {
                 role: "user",
                 content: [
-                  { type: "text", text: ocrPrompt },
+                  { type: "text", text: OCR_PROMPT },
                   {
                     type: "image_url",
                     image_url: { url: ocrImageUrl, detail: "high" },
@@ -634,12 +622,50 @@ export const appRouter = router({
                 ],
               },
             ],
+            // Bug #5 (May 2026) defansları — defense-in-depth, üçü birlikte:
+            // - maxTokens: 8192 → ~32K char güvenli üst sınır (DB ocrText
+            //   TEXT kolon utf8mb4'te effective ~16K char cap'in 2x altı).
+            //   LLM repetition loop'a girse bile output bu cap'te kesilir,
+            //   INSERT'i patlatmaz. Gerçek sayfada OCR çıktısı 2-5 KB —
+            //   8192 token (~32K char) bol bol yetiyor.
+            // - temperature: 0.1 → deterministik OCR. Gemini default ~1.0
+            //   sampling repetition loop probability'sini artırıyor;
+            //   düşük temp aynı input'ta tutarlı sonuç verir.
+            // - timeoutMs: 30_000 → 30s sonra abort. Önceki bug'da fetch
+            //   1m36s asılı kalıp 500 fırlatmıştı; flash-lite OCR makul
+            //   sürelerde dönmeli, 30s zaten generous.
+            maxTokens: 8192,
+            temperature: 0.1,
+            timeoutMs: 30_000,
           });
           const firstChoice = ocrResponse.choices[0];
           if (!firstChoice || !firstChoice.message) return null;
           const content = firstChoice.message.content;
           const text = typeof content === "string" ? content : JSON.stringify(content);
-          return text && text.trim().length > 0 ? text : null;
+          if (!text || text.trim().length === 0) return null;
+
+          // Bug #5 post-process guard — Gemini OCR rare ama deterministik
+          // bir failure mode'da aynı cümleyi defalarca tekrar üretiyor
+          // (~500 kez, ~35 KB). Detect edilirse retry-friendly throw →
+          // outer try/catch ikinci attempt'i tetikler (cooler temp + yeni
+          // timeout genelde temiz output verir). İkinci attempt de fail
+          // ederse outer catch null'a düşer, moment summary/tags olmadan
+          // kaydedilir (graceful degradation: kullanıcı "OCR yapılamadı"
+          // uyarısı görür ama fotoğrafı kaybetmez).
+          //
+          // PII: text içeriğini log'a YAZMA — sadece length (kullanıcının
+          // okuduğu özel metin loglara sızmasın).
+          if (detectOcrRepetition(text)) {
+            console.warn("[OCR] repetition detected", {
+              userId: ctx.user.id,
+              model: ENV.geminiModelOcr,
+              promptName: "OCR",
+              textLength: text.length,
+            });
+            throw new Error("OCR_REPETITION_DETECTED");
+          }
+
+          return text;
         };
 
         try {
@@ -654,6 +680,26 @@ export const appRouter = router({
             // OCR başarısız olsa bile devam et — client null ocrText görünce
             // kullanıcıya bildirecek.
           }
+        }
+
+        // Bug #5 (May 2026) belt-and-suspenders defansı:
+        // LLM-side maxTokens: 8192 cap zaten output'u ~32K char civarına
+        // sınırlar (defense layer 3). DB ocrText TEXT kolon cap 65,535 byte;
+        // utf8mb4 worst case 4 byte/char → effective ~16K char. Türkçe
+        // ortalama 2 byte/char olduğu için pratikte ~30K char güvenli, ama
+        // emoji-yoğun veya nadir CJK karakteri içeren ham sayfada efektif
+        // cap düşebilir. detectOcrRepetition repetition'ı kapatır — bu
+        // truncation "uzun ama tekrarsız" rare edge case'i için.
+        // Truncation > rejection: kullanıcı moment'ını kaybetmesin.
+        // 30K char cap conservative — gerçek kitap sayfası 2-7K char,
+        // hiç tetiklenmemesi normal; tetiklenirse warn log incident sinyali.
+        if (ocrText && ocrText.length > 30_000) {
+          console.warn("[moments.create] ocrText abnormally long, truncating", {
+            userId: ctx.user.id,
+            originalLength: ocrText.length,
+            truncatedTo: 30_000,
+          });
+          ocrText = ocrText.slice(0, 30_000);
         }
 
         // 2.5. Enrichment (Gemini Phase A) — OCR başarılıysa summary + tags
@@ -700,6 +746,13 @@ export const appRouter = router({
                 type: "json_schema",
                 json_schema: MOMENT_ENRICH_SCHEMA,
               },
+              // Bug #5 (May 2026) defense-in-depth: enrichment output küçük
+              // (summary 280 char + 3 tags ≈ 350 char + JSON overhead ~50).
+              // 1024 token (~4K char) bol bol yetiyor. Repetition loop teorik
+              // mümkün, schema strict olsa bile model loop'ta JSON'u
+              // yamultabilir; cap çıktıyı kesin sınırlar.
+              maxTokens: 1024,
+              timeoutMs: 30_000,
             });
             const choice = enrichResponse.choices[0];
             const raw = choice?.message?.content;
@@ -789,6 +842,17 @@ export const appRouter = router({
                 type: "json_schema",
                 json_schema: MARKINGS_SCHEMA,
               },
+              // Bug #5 (May 2026) defense-in-depth: markings output max
+              // 10 highlights × 500 char + 8 marginalia × 500 char ≈ 9K
+              // char + JSON overhead. 4096 token (~16K char) generous cap.
+              // Schema strict + slice(0,10) ve slice(0,500) zaten defansif,
+              // cap üçüncü katman.
+              // temperature: 0.0 (deterministik OCR-benzeri görev — yorum
+              // satırında zaten "yaratıcı değil" yazıyordu, şimdi explicit).
+              // timeoutMs: 45_000 (full flash flash-lite'tan biraz yavaş).
+              maxTokens: 4096,
+              temperature: 0.0,
+              timeoutMs: 45_000,
             });
             const choice = markingsResponse.choices[0];
             const raw = choice?.message?.content;

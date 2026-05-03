@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeTag,
   MOMENT_ENRICH_SCHEMA,
+  OCR_PROMPT,
   violatesVoiceContract,
   isDegenerateResponse,
   getChatSystemPrompt,
@@ -957,5 +958,58 @@ describe("isDegenerateResponse", () => {
     it("5 anlamlı karakter sınırı (geçer)", () => {
       expect(isDegenerateResponse("abcde")).toBe(false);
     });
+  });
+});
+
+/**
+ * OCR_PROMPT — kitap sayfası fotoğrafından düzenli metin çıkarma prompt'u.
+ * Inline string'di routers.ts'te (cardinal sin); Bug #5 (May 2026) fix'i
+ * sırasında prompts.ts'e taşındı + 2 yeni defansif kural eklendi:
+ * - Kural 7: aynı cümleyi tekrar yazma (repetition loop önlemi)
+ * - Kural 8: boş sayfada boş döndür (hayali metin önlemi)
+ *
+ * Bu testler: yeni kuralların kayboluş regression'ını ve eski kuralların
+ * korunmasını assert eder.
+ */
+describe("OCR_PROMPT", () => {
+  it("Bug #5 fix — kural 7 var: 'AYNI CÜMLEYİ BİRDEN FAZLA KEZ YAZMA'", () => {
+    expect(OCR_PROMPT).toContain("AYNI CÜMLEYİ BİRDEN FAZLA KEZ YAZMA");
+  });
+
+  it("Bug #5 fix — kural 8 var: 'Sayfa BOŞSA ... BOŞ yanıt döndür'", () => {
+    expect(OCR_PROMPT).toContain("Sayfa BOŞSA");
+    expect(OCR_PROMPT).toContain("BOŞ yanıt döndür");
+  });
+
+  it("legacy kural — tire ile bölünmüş kelimeleri birleştir", () => {
+    expect(OCR_PROMPT).toContain("tire (-) ile bölünmüş");
+    expect(OCR_PROMPT).toContain("BİRLEŞTİR");
+  });
+
+  it("legacy kural — üst/alt bilgi + sayfa numarası atlanır", () => {
+    expect(OCR_PROMPT).toContain("Üst/alt bilgi");
+    expect(OCR_PROMPT).toContain("sayfa numarası");
+    expect(OCR_PROMPT).toContain("ATLA");
+  });
+
+  it("legacy kural — çeviri/yorum yasak", () => {
+    expect(OCR_PROMPT).toContain("Çeviri yapma");
+    expect(OCR_PROMPT).toContain("yorum ekleme");
+  });
+
+  it("KURALLAR section header var", () => {
+    expect(OCR_PROMPT).toContain("KURALLAR:");
+  });
+
+  it("kapanış: 'Sadece düzenlenmiş metni döndür'", () => {
+    expect(OCR_PROMPT).toContain("Sadece düzenlenmiş metni döndür");
+  });
+
+  it("placeholder yok (caller image content ayrı message block olarak geçiyor)", () => {
+    // OCR_PROMPT text-only system instruction; kullanıcı sayfa fotoğrafı
+    // ayrı message content block'ta image_url olarak geçer. Yanlışlıkla
+    // {TEXT} eklenmesi enrichment prompt pattern'iyle karıştırma demektir.
+    expect(OCR_PROMPT).not.toContain("{TEXT}");
+    expect(OCR_PROMPT).not.toContain("{IMAGE}");
   });
 });

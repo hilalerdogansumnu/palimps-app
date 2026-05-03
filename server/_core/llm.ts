@@ -57,8 +57,21 @@ export type InvokeParams = {
   tools?: Tool[];
   toolChoice?: ToolChoice;
   tool_choice?: ToolChoice;
+  /**
+   * Output token cap. Default 32768 (Gemini flash-lite/flash hard ceiling).
+   * Deterministik OCR/markings workload'larında daha küçük değer (örn 8192
+   * = ~32K char güvenli sınır) verilmelidir; cap'siz bırakmak Bug #5 May
+   * 2026'da olduğu gibi repetition loop sırasında ham ~35 KB metin üretimine
+   * yol açar.
+   */
   maxTokens?: number;
   max_tokens?: number;
+  /**
+   * Sampling temperature. OCR ve markings için 0.0-0.2 (deterministik); chat
+   * için undefined → Gemini default. Repetition loop riskini düşürmek için
+   * deterministik workload'larda explicit set edilmeli.
+   */
+  temperature?: number;
   outputSchema?: OutputSchema;
   output_schema?: OutputSchema;
   responseFormat?: ResponseFormat;
@@ -67,6 +80,15 @@ export type InvokeParams = {
   // use this to route OCR workloads to the cheaper flash-lite tier, and let
   // chat keep full flash for quality on complex queries.
   model?: string;
+  /**
+   * Fetch timeout (ms). Default 45_000 (45 sn). OCR/markings çağrılarında
+   * 30_000 önerilir — Gemini bazen flash-lite tier'da silently asılı kalıyor
+   * (Bug #5 May 2026: 1m36s timeout-suz beklediğimizde 500 fırladı). Timeout
+   * → AbortError fırlatılır → isTransientLLMError true döner → caller retry
+   * loop'u devreye girer. Caller bilinçli olarak null verirse timeout
+   * uygulanmaz (hot debugging için escape hatch).
+   */
+  timeoutMs?: number | null;
 };
 
 export type ToolCall = {
@@ -287,6 +309,16 @@ const TRANSIENT_KEYWORDS = [
 ];
 
 export function isTransientLLMError(err: unknown): boolean {
+  // AbortSignal.timeout() Node 20+ DOMException name: "TimeoutError".
+  // Kullanıcı tarafından iptal: name: "AbortError". İkisi de transient —
+  // network/server tarafında bir şey takıldı, yeniden denenebilir.
+  if (
+    err instanceof Error &&
+    (err.name === "TimeoutError" || err.name === "AbortError")
+  ) {
+    return true;
+  }
+
   const msg = err instanceof Error ? err.message : String(err);
   if (!msg) return false;
 
@@ -302,6 +334,46 @@ export function isTransientLLMError(err: unknown): boolean {
   return TRANSIENT_KEYWORDS.some((kw) => upper.includes(kw));
 }
 
+/**
+ * OCR çıktısında repetition loop tespiti. Gemini bazı görüntülerde belirli
+ * koşullarda aynı cümleyi defalarca tekrar etmeye başlar (rare ama
+ * deterministic failure mode — Bug #5 May 2026 root cause: Sf 110 fotoğrafı
+ * ~500 kez aynı 70-char cümleyi üretti, ~35 KB ham text → readingMoments
+ * INSERT 1m36s asılı kalıp 500 fırlattı).
+ *
+ * Yöntem: 50-char sliding window n-gram. Aynı substring >5 kez geçiyorsa
+ * repetition flag. Threshold conservative — gerçek metinde tekrarlanan
+ * başlık / dipnot / kısa formül false-positive olarak yakalanmasın diye.
+ *
+ * Performans: O(n) time, O(n) memory; 50 KB text → ~2.5 MB peak map
+ * allocation. Tek seferlik post-processing, async hot path'te değil.
+ *
+ * Edge case'ler:
+ * - text.length < 250 → false (5 tekrar × 50 char minimum threshold)
+ * - tek satırda yüzlerce kez peş peşe geçen cümle → cycle ~70-200 char
+ *   civarında, her unique window threshold'a hızlıca ulaşır (~280-1000 char)
+ * - kısa fragment (<50 char) tekrarı YAKALANMAZ — Bug #5 spesifik failure
+ *   mode'una odaklı; "..." gibi gürültü tekrarlarını bilinçli olarak
+ *   ele almıyor (caller layer'ında zaten farklı handle).
+ */
+export function detectOcrRepetition(text: string): boolean {
+  // Çok kısa metinde repetition pattern oluşamaz (5 tekrar × 50 char = 250)
+  if (text.length < 250) return false;
+
+  const NGRAM_SIZE = 50;
+  const THRESHOLD = 5;
+
+  const counts = new Map<string, number>();
+  const limit = text.length - NGRAM_SIZE;
+  for (let i = 0; i <= limit; i++) {
+    const ngram = text.slice(i, i + NGRAM_SIZE);
+    const c = (counts.get(ngram) ?? 0) + 1;
+    if (c > THRESHOLD) return true;
+    counts.set(ngram, c);
+  }
+  return false;
+}
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
@@ -310,11 +382,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     tools,
     toolChoice,
     tool_choice,
+    maxTokens,
+    max_tokens,
+    temperature,
     outputSchema,
     output_schema,
     responseFormat,
     response_format,
     model,
+    timeoutMs,
   } = params;
 
   const payload: Record<string, unknown> = {
@@ -333,7 +409,18 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768;
+  // Caller-provided cap wins; default 32768 (Gemini hard ceiling). Bug #5
+  // (May 2026) sebebiyle artık caller'lar OCR/markings için 8192 civarı
+  // explicit set ediyor — repetition loop'un üretebileceği max output'u
+  // sınırlamak defense-in-depth'in birinci adımı.
+  payload.max_tokens = maxTokens ?? max_tokens ?? 32768;
+
+  // Sampling temperature — caller explicit verirse payload'a koy; aksi halde
+  // Gemini'nin kendi default'unu kullansın (genelde 1.0). OCR call site'ları
+  // 0.1 set ediyor (deterministik), chat undefined bırakıyor (creative).
+  if (typeof temperature === "number") {
+    payload.temperature = temperature;
+  }
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -346,14 +433,25 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetch(resolveApiUrl(), {
+  // Fetch timeout — Bug #5 May 2026'da timeout-suz fetch nedeniyle 1m36s
+  // asılı kaldıktan sonra 500 fırlamıştı. AbortSignal.timeout() Node 20+
+  // native; default 45s, caller override edebilir. null geçilirse timeout
+  // hiç uygulanmaz (debug escape hatch).
+  const effectiveTimeoutMs = timeoutMs === null ? null : (timeoutMs ?? 45_000);
+
+  const fetchOptions: Parameters<typeof fetch>[1] = {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${ENV.geminiApiKey}`,
     },
     body: JSON.stringify(payload),
-  });
+  };
+  if (effectiveTimeoutMs !== null) {
+    fetchOptions.signal = AbortSignal.timeout(effectiveTimeoutMs);
+  }
+
+  const response = await fetch(resolveApiUrl(), fetchOptions);
 
   if (!response.ok) {
     const errorText = await response.text();

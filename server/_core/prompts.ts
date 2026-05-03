@@ -5,6 +5,43 @@
  */
 
 /**
+ * OCR — kitap sayfası fotoğrafından düzenli metin çıkarır. Gemini flash-lite,
+ * yapılandırılmamış text return (markdown/JSON yok, ham düzenli paragraflar).
+ *
+ * Tasarım notları:
+ * - Tire ile bölünmüş kelimeler birleştirilir, paragraf içi satır sonları
+ *   kaldırılır — UI'da akıcı okuma için gerekli.
+ * - Üst/alt bilgi, sayfa numarası, bölüm başlığı atılır — gürültü.
+ * - Çeviri YOK, yorum YOK — model sadece görsel-to-text dönüşümü yapar.
+ *
+ * Bug #5 (May 2026) defansları:
+ * - "Aynı cümleyi birden fazla kez yazma" — repetition loop önlemi.
+ *   Gemini bazen belirli el yazısı / düşük kontrast input'larda aynı cümleyi
+ *   defalarca üretiyordu (~500 tekrar, ~35 KB). Caller layer'ında ayrıca
+ *   detectOcrRepetition() ile post-process guard var (defense-in-depth).
+ * - "Sayfa boşsa boş yanıt ver" — model boş sayfada hayali metin
+ *   üretmesin. Önceki prompt'ta explicit yoktu, model "Sadece düzenlenmiş
+ *   metni döndür" kuralını esnek yorumlayabiliyordu.
+ *
+ * Caller (server/routers.ts > runOcr) ayrıca:
+ *   max_tokens: 8192 (~32K char güvenli üst sınır), temperature: 0.1
+ *   (deterministik), timeoutMs: 30_000 (30s) override eder.
+ */
+export const OCR_PROMPT = `Bu kitap sayfasındaki metni OKUNABİLİR bir şekilde çıkar.
+
+KURALLAR:
+1. Satır sonunda tire (-) ile bölünmüş kelimeleri BİRLEŞTİR. Örnek: 'di-\\nzim' → 'dizim'.
+2. Paragraf içindeki satır sonlarını KALDIR — metni akıcı cümleler halinde yaz. Bir paragraf tek bir satırda akmalı.
+3. Paragraflar arasına tek bir boş satır koy.
+4. Noktalama işaretlerini, tırnakları ve diyalog tire'lerini (—) koru.
+5. Üst/alt bilgi, sayfa numarası, bölüm başlığı ve kitap başlığını ATLA.
+6. Çeviri yapma, yorum ekleme, '"""' veya benzer kod blokları kullanma.
+7. AYNI CÜMLEYİ BİRDEN FAZLA KEZ YAZMA — sayfada metin tekrar etse bile sadece bir kez yaz. Aynı paragrafı, aynı cümleyi, aynı satırı tekrarlama.
+8. Sayfa BOŞSA veya okunabilir metin yoksa BOŞ yanıt döndür — hayali metin üretme, "metin bulunamadı" gibi açıklama da yazma.
+
+Sadece düzenlenmiş metni döndür, başka hiçbir şey ekleme.`;
+
+/**
  * Moment enrichment — OCR başarılı olduktan sonra ham metin üzerinde
  * çalıştırılır. Gemini flash-lite, JSON schema ile çağrılır.
  *
